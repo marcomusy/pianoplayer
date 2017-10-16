@@ -17,6 +17,13 @@ Optionally:
 - visual, from vpython.org
 - musescore 
 
+
 How does it work:
+
 The algorithm minimizes the finger speed by searching through feasible combinations of finger sequences.
 
+
+Parameters you can change:
+- your hand size ('XXS' to 'XXL') which sets the max distance between thumb and pinkie (e.g. 'S' -> 17.2 cm)
+- depth of combinatorial search (from 3 notes up to 9)
+- usable fingers (disabled players can exclude usable_fingers in Hand class)
