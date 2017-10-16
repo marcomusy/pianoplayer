@@ -110,6 +110,6 @@ class PianoGUI(Frame):
 
 
 root = Tk()
-root.geometry("455x220")
+root.geometry("800x400")
 app = PianoGUI(root)
 root.mainloop()  
