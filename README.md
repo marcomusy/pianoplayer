@@ -9,6 +9,7 @@ Automatic piano fingering generator
 - press Musescore to visualise the annotated score
 - press 3D Player to show the animation (closing it with Esc will quit the application)
 
+![alt text](https://photos-5.dropbox.com/t/2/AAB8rkbRF7zvlCdSr6G3wHD0jr47-z8sNim1yX-TQVd2XA/12/7083398/png/32x32/3/1508256000/0/2/gui-pf.png/ENqHoQUY4OYDIAIoAg/1dehEbGni75c25AESLBekgbpamf6Gz81CLMbUR4MFgU?dl=0&size=1280x960&size_mode=3)
 
 ## Command line usage: 
 > pianofing.py score.mid
