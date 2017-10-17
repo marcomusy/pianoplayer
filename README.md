@@ -51,5 +51,3 @@ Tested on Ubuntu 15.04, Python 2.7.9, music21 3.1.0, visual 1.8.2.
 - usable fingers (disabled players can exclude fingers in the list Hand.usable_fingers)
 - weights for individual fingers (in Hand.weights)
 - step of notes: you can skip the prediction of the next note at the price of precision (default in Hand.fstep is 2, which is a reasonable trade-off that speeds up the algorithm by a factor 2)
-
-adding a line
