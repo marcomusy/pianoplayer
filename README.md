@@ -17,6 +17,8 @@ Automatic piano fingering generator
 The program output is a fingering-annotated xml file which can be read with free software like Musescore:
 > musescore output.xml
 
+![alt text](https://user-images.githubusercontent.com/32848391/31663245-a9e23e0c-b341-11e7-9e07-d90d4959521b.png)
+
 If VPython is installed click on "3D Player" for a visualization (right-click drag to move the scene, middle-click drag to zoom). 
 You will see the both hands playing but hear the right hand notes only. Chords are rendered as a rapid sequence of notes.
 
