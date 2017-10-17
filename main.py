@@ -3,7 +3,7 @@
 from Tkinter import Frame, Tk, BOTH, Label, Scale, Checkbutton, BooleanVar
 from ttk import Button, Style, Combobox
 import tkFileDialog 
-import sys, os, scorereader, test_scales
+import sys, os, scorereader
 from music21 import converter
 from hand import *
 
