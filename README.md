@@ -9,7 +9,7 @@ Automatic piano fingering generator
 - press Musescore to visualise the annotated score
 - press 3D Player to show the animation (closing it with Esc will quit the application)
 
-![alt text](https://photos-5.dropbox.com/t/2/AAB8rkbRF7zvlCdSr6G3wHD0jr47-z8sNim1yX-TQVd2XA/12/7083398/png/32x32/3/1508256000/0/2/gui-pf.png/ENqHoQUY4OYDIAIoAg/1dehEbGni75c25AESLBekgbpamf6Gz81CLMbUR4MFgU?dl=0&size=1280x960&size_mode=3)
+![alt text](https://user-images.githubusercontent.com/32848391/31662571-42a05c94-b33f-11e7-9a5e-989fea82ad4c.png)
 
 ## Command line usage: 
 > pianofing.py score.mid
@@ -38,7 +38,7 @@ Tested on Ubuntu 15.04 vivid, Python 2.7.9, music21 3.1.0, visual 1.8.2.
 
 ## Parameters you can change:
 - your hand size ('XXS' to 'XXL') which sets the max distance between thumb and pinkie (e.g. 'S' = 17.2 cm)
-- The beam number associated to the right hand is nr.0 (nr.1 for left hand). If not so, you need to manually change it in main.py (PianoGUI.RightHandBeam)
+- the beam number associated to the right hand is nr.0 (nr.1 for left hand). If not so, you need to manually change it in main.py (PianoGUI.RightHandBeam)
 - depth of combinatorial search (from 3 up to 9 notes ahead of the currently playing note, default is 'auto' which selects this value based on the duration of the notes to be played)
 - usable fingers (disabled players can exclude fingers in the list Hand.usable_fingers)
 - weights for individual fingers (in Hand.weights)
