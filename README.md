@@ -20,6 +20,7 @@ The program output is a fingering-annotated xml file which can be read with free
 If VPython is installed click on "3D Player" for a visualization (right-click drag to move the scene, middle-click drag to zoom). 
 You will see the both hands playing but hear the right hand notes only. Chords are rendered as a rapid sequence of notes.
 
+![alt text](https://user-images.githubusercontent.com/32848391/31662850-515dc946-b340-11e7-86c8-999e68451078.png)
 
 ## Required imports: 
 - music21
