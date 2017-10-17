@@ -18,7 +18,7 @@ If VPython is installed click on "3D Player" for a visualization (right-click dr
 - Tkinter, tkFileDialog (for the GUI)
 
 ## Optionally:
-- visual, from [vpython.org]
+- visual, from [http://vpython.org/index.html]
 - musescore, [https://musescore.org]
 
 
@@ -30,5 +30,5 @@ The algorithm minimizes the finger speed by searching through feasible combinati
 ## Parameters you can change:
 - your hand size ('XXS' to 'XXL') which sets the max distance between thumb and pinkie (e.g. 'S' = 17.2 cm)
 - depth of combinatorial search (from 3 up to 9 notes ahead of the currently playing note)
-- usable fingers (disabled players can exclude usable_fingers in class Hand)
+- usable fingers (disabled players can exclude fingers in the list Hand.usable_fingers)
 - weights for individual fingers (in Hand.weights)
