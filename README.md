@@ -1,5 +1,5 @@
 # piano-fingering
-Automatic piano fingering generator
+Automatic piano fingering generator. Find and show the best fingers to use to play a score.
 
 ## GUI Usage: 
 > python main.py
@@ -25,23 +25,23 @@ You will see the both hands playing but hear the right hand notes only. Chords a
 ![alt text](https://user-images.githubusercontent.com/32848391/31662850-515dc946-b340-11e7-86c8-999e68451078.png)
 
 ## Required imports: 
-- music21, [http://web.mit.edu/music21] (to install: sudo pip install –upgrade music21) 
-- Tkinter, tkFileDialog (for the GUI)
+- music21, [http://web.mit.edu/music21] (to install in linux: *sudo pip install –upgrade music21*) 
 
-## Optionally:
-- visual, from [http://vpython.org/index.html]
+## Optional:
+- visual, from [http://vpython.org/index.html] (to install in linux: *sudo apt-get install python-visual*)
 - musescore, [https://musescore.org]
 
 
 ## How does it work:
 The algorithm minimizes the fingers speed needed to play a sequence of notes or chords by searching through feasible combinations of fingerings. At every note the hand position is assumed to be at rest (this can be improved in the future). Some weights can also be tuned. For example thumb is assumed to be 10% faster than index finger (variable in Hand.weights). Similarly thumb is slower when hitting a black key by 50% (in Hand.bfactor). 
 
+
 ## Limitations
 The limitation of this method is that some specific fingering combinations, which are very unlikely in the first place, are excluded from the search (e.g. the 3rd finger crossing the 4th). Hand are considered independent from each other.
 Repeated notes for which pianists often change finger will be assigned the same finger as this choice minimises fingers speed globally.
 The last nine notes of the score are not correctly fingered (to be fixed).
 
-Tested on Ubuntu 15.04 vivid, Python 2.7.9, music21 3.1.0, visual 1.8.2.
+Tested on Ubuntu 15.04, Python 2.7.9, music21 3.1.0, visual 1.8.2.
 
 
 ## Parameters you can change:
@@ -51,3 +51,4 @@ Tested on Ubuntu 15.04 vivid, Python 2.7.9, music21 3.1.0, visual 1.8.2.
 - usable fingers (disabled players can exclude fingers in the list Hand.usable_fingers)
 - weights for individual fingers (in Hand.weights)
 - step of notes: you can skip the prediction of the next note at the price of precision (default in Hand.fstep is 2, which is a reasonable trade-off that speeds up the algorithm by a factor 2)
+
