@@ -12,7 +12,7 @@ Automatic piano fingering generator. Find and show the best fingers to use to pl
 ![alt text](https://user-images.githubusercontent.com/32848391/31662571-42a05c94-b33f-11e7-9a5e-989fea82ad4c.png)
 
 ## Command line usage: 
-> pianofing.py score.mid
+> python pianofing.py myscore.mid   *# midi, krn, lilipond or xml files*
 
 The program output is a fingering-annotated xml file which can be read with free software like Musescore:
 > musescore output.xml
