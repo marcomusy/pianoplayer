@@ -3,6 +3,10 @@ Automatic piano fingering generator
 
 ## GUI Usage: 
 > python main.py
+> Import Score
+> press GENERATE (a file output.xml is written)
+> press Musescore to visualise the annotated score
+> press 3D Player to show the animation (closing it with Esc will quit the application)
 
 ## Command line usage: 
 > pianofing.py score.mid
@@ -29,6 +33,7 @@ The algorithm minimizes the finger speed by searching through feasible combinati
 
 ## Parameters you can change:
 - your hand size ('XXS' to 'XXL') which sets the max distance between thumb and pinkie (e.g. 'S' = 17.2 cm)
+- The beam number associated to the right hand is nr.0 (nr.1 for left hand). If not so, you need to manually change it in main.py (PianoGUI.RightHandBeam)
 - depth of combinatorial search (from 3 up to 9 notes ahead of the currently playing note, default is 'auto' which selects this value based on the duration of the notes to be played)
 - usable fingers (disabled players can exclude fingers in the list Hand.usable_fingers)
 - weights for individual fingers (in Hand.weights)
