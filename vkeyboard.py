@@ -96,7 +96,7 @@ class VirtualKeyboard:
         nr_octaves = 7
         span = nr_octaves*wb*7.
     
-        self.scene = vp.display(title='Piano Keyboard', x=0, y=0, width=1400./2., height=600./2.,  
+        self.scene = vp.display(title='Piano Keyboard', x=0, y=0, width=1400./1., height=600./1.,  
                                 center=(75,0,0), forward=(0.,-2,-1.), background=(0., 0.25, 0.0))
         #wooden top and base
         vp.box(pos=(span/2+keybsize,-1.,-3),length=span+1, height=1, width=17, material=vp.materials.wood)
