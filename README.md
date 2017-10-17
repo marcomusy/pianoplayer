@@ -34,7 +34,12 @@ You will see the both hands playing but hear the right hand notes only. Chords a
 
 
 ## How does it work:
-The algorithm minimizes the fingers speed needed to play a sequence of notes or chords by searching through feasible combinations of fingerings. At every note the hand position is assumed to be at rest (this can be improved in the future). Some weights can also be tuned. For example thumb is assumed to be 10% faster than index finger (variable in Hand.weights). Similarly thumb is slower when hitting a black key by 50% (in Hand.bfactor). The limitation of this method is that some specific fingering combinations, which are very unlikely in the first place, are excluded from the search (e.g. the 3rd finger crossing the 4th). The last nine notes of the score are not correctly fingered (to be fixed).
+The algorithm minimizes the fingers speed needed to play a sequence of notes or chords by searching through feasible combinations of fingerings. At every note the hand position is assumed to be at rest (this can be improved in the future). Some weights can also be tuned. For example thumb is assumed to be 10% faster than index finger (variable in Hand.weights). Similarly thumb is slower when hitting a black key by 50% (in Hand.bfactor). 
+
+## Limitations
+The limitation of this method is that some specific fingering combinations, which are very unlikely in the first place, are excluded from the search (e.g. the 3rd finger crossing the 4th).
+Repeated notes for which pianists often change finger will be assigned the same finger as this choice minimises fingers speed globally.
+The last nine notes of the score are not correctly fingered (to be fixed).
 
 Tested on Ubuntu 15.04 vivid, Python 2.7.9, music21 3.1.0, visual 1.8.2.
 
