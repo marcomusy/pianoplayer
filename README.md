@@ -3,10 +3,15 @@ Automatic piano fingering generator
 
 ## GUI Usage: 
 > python main.py
+
 > Import Score
+
 > press GENERATE (a file output.xml is written)
+
 > press Musescore to visualise the annotated score
+
 > press 3D Player to show the animation (closing it with Esc will quit the application)
+
 
 ## Command line usage: 
 > pianofing.py score.mid
