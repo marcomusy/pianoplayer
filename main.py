@@ -21,7 +21,7 @@ class PianoGUI(Frame):
         self.initUI()
         
     def initUI(self):      
-        self.parent.title("PianoFing 4.2")
+        self.parent.title("PianoFingering 4.2")
         self.style = Style()
         self.style.theme_use("clam")
         self.pack(fill=BOTH, expand=True)       
