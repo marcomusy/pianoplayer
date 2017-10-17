@@ -5,7 +5,7 @@
 # Purpose:      Find optimal fingering for piano scores
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
-import sys, scorereader, test_scales
+import sys, scorereader
 from music21 import converter
 from hand import *
 
