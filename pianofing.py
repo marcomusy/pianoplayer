@@ -10,7 +10,7 @@ from music21 import converter
 from hand import *
 
 #####################################################
-Nmeasures = 10
+Nmeasures = 100
 handsize  = 'S'
 rate      = 100
 visual    = 1
