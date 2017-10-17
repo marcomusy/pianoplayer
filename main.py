@@ -50,7 +50,7 @@ class PianoGUI(Frame):
         museButton = Button(self, text="Musescore", command=self.musescoreCMD)
         museButton.place(x=300, y=70)
 
-        vpButton = Button(self, text="3D Visual", command=self.vpCMD)
+        vpButton = Button(self, text="3D Player", command=self.vpCMD)
         vpButton.place(x=300, y=120)
 
         closeButton = Button(self, text="Close", command=self.quit)
