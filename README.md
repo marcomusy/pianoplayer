@@ -11,8 +11,9 @@ Automatic piano fingering generator. Find and show the best fingers to use to pl
 
 ![alt text](https://user-images.githubusercontent.com/32848391/31662571-42a05c94-b33f-11e7-9a5e-989fea82ad4c.png)
 
+
 ## Command line usage: 
-> python pianofing.py myscore.mid   *# midi, krn, lilipond or xml files*
+> python pianofing.py test_invention4.xml   *# any midi, krn, lilipond or xml files*
 
 The program output is a fingering-annotated xml file which can be read with free software like Musescore:
 > musescore output.xml
@@ -23,6 +24,7 @@ If VPython is installed click on "3D Player" for a visualization (right-click dr
 You will see the both hands playing but hear the right hand notes only. Chords are rendered as a rapid sequence of notes.
 
 ![alt text](https://user-images.githubusercontent.com/32848391/31662850-515dc946-b340-11e7-86c8-999e68451078.png)
+
 
 ## Required imports: 
 - music21, [http://web.mit.edu/music21] (to install in linux: *sudo pip install –upgrade music21*) 
