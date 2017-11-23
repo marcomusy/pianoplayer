@@ -1,9 +1,18 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from Tkinter import Frame, Tk, BOTH, Label, Scale, Checkbutton, BooleanVar
-from ttk import Button, Style, Combobox
-import tkFileDialog 
-import sys, os, scorereader
+
+import sys
+
+if sys.version_info >= (3, 0):
+    from tkinter import Frame, Tk, BOTH, Label, Scale, Checkbutton, BooleanVar
+    from tkinter.ttk import Button, Style, Combobox
+    from tkinter import filedialog as tkFileDialog
+else:
+    from Tkinter import Frame, Tk, BOTH, Label, Scale, Checkbutton, BooleanVar
+    from ttk import Button, Style, Combobox
+    import tkFileDialog
+
+import os, scorereader
 from music21 import converter
 from hand import *
 
@@ -69,11 +78,11 @@ class PianoGUI(Frame):
         slab.place(x=40, y=170)    
 
     def importCMD(self):
-        ftypes = [('XML Music files', '*.xml*'),('Midi Music files', '*.mid?'),
+        ftypes = [('XML Music files', '*.xml'),('Midi Music files', '*.mid'),
                     ('All files', '*')]
         dlg = tkFileDialog.Open(self, filetypes = ftypes)
         self.filename = dlg.show()
-        print 'Input File is ', self.filename
+        print('Input File is ', self.filename)
 
 
     def generateCMD(self): 
@@ -89,13 +98,13 @@ class PianoGUI(Frame):
             self.lh.noteseq = scorereader.reader(sf, beam=self.LeftHandBeam)
             self.lh.generateFingering(nmeasures=self.meas.get())
 
-        print "Saving score to output.xml"
+        print("Saving score to output.xml")
         sf.write('xml', fp='output.xml')
-        print "\nTo visualize score type:\n musescore output.xml\n"
+        print("\nTo visualize score type:\n musescore output.xml\n")
 
                  
     def vpCMD(self):  
-        print 'try import vkeyboard'
+        print('try import vkeyboard')
         import vkeyboard
         vk = vkeyboard.VirtualKeyboard()
         if self.Rcb.get(): vk.build_RH(self.rh)
@@ -105,7 +114,7 @@ class PianoGUI(Frame):
         vk.playKeyboard()
 
     def musescoreCMD(self):  
-        print 'try opening musescore'
+        print('try opening musescore')
         os.system('musescore output.xml')
 
 

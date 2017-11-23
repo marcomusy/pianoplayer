@@ -49,7 +49,7 @@ def keypos(n): #position of notes on keyboard
     elif n.name == 'A-' : step = k *5.
     elif n.name == 'B-' : step = k *6.
     else: 
-        print "ERROR note not found", n.name
+        print("ERROR note not found", n.name)
     return keybsize * n.octave + step
     
 
@@ -61,9 +61,9 @@ def reader(sf, beam=0):
     except AttributeError: 
         strm = sf.flat
     except IndexError:
-        print 'Beam nr.', beam, 'not found. Skip.'
+        print('Beam nr.', beam, 'not found. Skip.')
         return []
-    print 'Reading beam', beam, 'made of', len(strm), 'objects...'
+    print('Reading beam', beam, 'made of', len(strm), 'objects...')
 
     noteseq = []
 
@@ -119,9 +119,9 @@ def reader(sf, beam=0):
                 else: an.isBlack = False
                 noteseq.append(an)
 
-    print "Total nr of notes read:",len(noteseq)
+    print("Total nr of notes read:",len(noteseq))
     if len(noteseq)<2: 
-        print "Beam is empty."
+        print("Beam is empty.")
         quit()    
     
     return noteseq
