@@ -23,7 +23,7 @@ class Hand:
         
         self.setHandSize(size)
         if self.LR is not "right" and self.LR is not "left":
-            print 'Error: Hand must be left or right. Abort.', left_or_right
+            print('Error: Hand must be left or right. Abort.', left_or_right)
             quit()
 
     #####################################################
@@ -37,14 +37,14 @@ class Hand:
         elif  s=='XL' : f = 1.2
         elif  s=='XXL': f = 1.3
         else:
-            print "Unknown hand size", s, "... Abort."
+            print("Unknown hand size", s, "... Abort.")
             quit()
         
         for i in range(1,6): 
             if self.fpos[i]: self.fpos[i] *= f
         self.handspan = 21.0*f
-        print '\nYour hand span set to size-'+s, 'which is',self.handspan,'cm'
-        print '(max relaxed distance btw thumb and pinkie)\n'
+        print('\nYour hand span set to size-'+s, 'which is',self.handspan,'cm')
+        print('(max relaxed distance btw thumb and pinkie)\n')
 
     
     #####################################################
@@ -232,24 +232,13 @@ class Hand:
                     an.note21.addLyric(best_finger)
 
             #-----------------------------
-            print "meas."+str(an.measure),
-            print "  f:"+str(best_finger), "plays", an.name+str(an.octave), 
+            print("meas."+str(an.measure))
+            print("  f:"+str(best_finger), "plays", an.name+str(an.octave))
             if i==0:
-                print "  \tv=", int(costf*10.)/10.,
+                print("  \tv=", int(costf*10.)/10.)
                 if self.autodepth:
-                    print "  \t"+"   "+str(out[0:self.depth]), " d =",self.depth
+                    print("  \t"+"   "+str(out[0:self.depth]), " d =",self.depth)
                 else:
-                    print "  \t"+("   "*(inote%self.depth))+str(out[0:self.depth])
+                    print("  \t"+("   "*(inote%self.depth))+str(out[0:self.depth]))
             else:
                 print
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
