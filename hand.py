@@ -4,6 +4,7 @@
 # Purpose:      Find optimal fingering for piano scores
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
+from __future__ import division, print_function
 
 #####################################################
 class Hand:
@@ -231,14 +232,16 @@ class Hand:
                 else:
                     an.note21.addLyric(best_finger)
 
+            
             #-----------------------------
-            print("meas."+str(an.measure))
-            print("  f:"+str(best_finger), "plays", an.name+str(an.octave))
+
+            print("meas."+str(an.measure), end='')
+            print("  finger:"+str(best_finger) + " on " + an.name+str(an.octave), end='')
             if i==0:
-                print("  \tv=", int(costf*10.)/10.)
+                print("\tv=" + str(int(costf*10.)/10.), end='')
                 if self.autodepth:
-                    print("  \t"+"   "+str(out[0:self.depth]), " d =",self.depth)
+                    print("\t"+"   "+str(out[0:self.depth]) + " d =",self.depth)
                 else:
-                    print("  \t"+("   "*(inote%self.depth))+str(out[0:self.depth]))
+                    print("\t"+("   "*(inote%self.depth))+str(out[0:self.depth]))
             else:
-                print
+                print()

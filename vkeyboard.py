@@ -13,9 +13,11 @@ from music21.stream import Stream
 try:
     import visual as vp
     from visual.text import text
-except :
+except:
+    # import vpython as vp
+    # from vpython.text import text
     print "VirtualKeyboard: cannot find some package."
-    print 'python visual not installed? Abort.'
+    print 'python visual not installed?'
     quit()
 
 

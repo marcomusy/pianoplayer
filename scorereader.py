@@ -5,6 +5,7 @@ Created on Thu Nov 26 19:22:20 2015
 
 @author: marco musy
 """
+from __future__ import division, print_function
 
 #####################################################
 class INote:
@@ -119,7 +120,7 @@ def reader(sf, beam=0):
                 else: an.isBlack = False
                 noteseq.append(an)
 
-    print("Total nr of notes read:",len(noteseq))
+    print("Total nr of notes read:", len(noteseq))
     if len(noteseq)<2: 
         print("Beam is empty.")
         quit()    

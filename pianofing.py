@@ -5,6 +5,7 @@
 # Purpose:      Find optimal fingering for piano scores
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
+from __future__ import division, print_function
 import sys, scorereader
 from music21 import converter
 from hand import *
@@ -20,7 +21,7 @@ visual    = 1
 # reload(sys); sys.setdefaultencoding('utf8')
 
 if len(sys.argv)<2:
-    print "Usage: pianofing myscore.xml"
+    print ("Usage: pianofing myscore.xml")
     sys.exit(1)
 sf = converter.parse(sys.argv[1])
 #sf = test_scales.s4
@@ -33,9 +34,9 @@ lh = Hand("left", handsize)
 lh.noteseq = scorereader.reader(sf, beam=1)
 lh.generateFingering(nmeasures=Nmeasures)
 
-print "Saving score to output.xml"
+print ("Saving score to output.xml")
 sf.write('xml', fp='output.xml')
-print "\nTo visualize score type:\n musescore output.xml\n"
+print ("\nTo visualize score type:\n musescore output.xml\n")
 
 if visual:
     import vkeyboard
@@ -45,8 +46,7 @@ if visual:
     vk.rate = rate
     vk.playsounds = 1
     vk.playKeyboard()
-
-
+    print("\nTo visualize score type:\n musescore output.xml\n")
 
 
 
