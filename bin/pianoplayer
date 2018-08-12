@@ -12,9 +12,10 @@ else:
     from ttk import Button, Style, Combobox
     import tkFileDialog
 
-import os, scorereader
+import os
 from music21 import converter
-from hand import *
+from pianoplayer.hand import Hand
+from pianoplayer.scorereader import reader
 
 ######################
 class PianoGUI(Frame):
@@ -90,12 +91,12 @@ class PianoGUI(Frame):
 
         if self.Rcb.get():
             self.rh = Hand("right", self.handsize.get())
-            self.rh.noteseq = scorereader.reader(sf, beam=self.RightHandBeam)
+            self.rh.noteseq = reader(sf, beam=self.RightHandBeam)
             self.rh.generateFingering(nmeasures=self.meas.get())
 
         if self.Lcb.get():
             self.lh = Hand("left", self.handsize.get())
-            self.lh.noteseq = scorereader.reader(sf, beam=self.LeftHandBeam)
+            self.lh.noteseq = reader(sf, beam=self.LeftHandBeam)
             self.lh.generateFingering(nmeasures=self.meas.get())
 
         print("Saving score to output.xml")
@@ -105,8 +106,8 @@ class PianoGUI(Frame):
                  
     def vpCMD(self):  
         print('try import vkeyboard')
-        import vkeyboard
-        vk = vkeyboard.VirtualKeyboard()
+        from pianoplayer.vkeyboard import VirtualKeyboard
+        vk = VirtualKeyboard()
         if self.Rcb.get(): vk.build_RH(self.rh)
         if self.Lcb.get(): vk.build_LH(self.lh)
         vk.rate = self.rate.get()
@@ -122,3 +123,56 @@ root = Tk()
 root.geometry("455x220")
 app = PianoGUI(root)
 root.mainloop()  
+
+
+
+# #!/usr/bin/env python
+# # -*- coding: utf-8 -*-
+# #-------------------------------------------------------------------------------
+# # Name:         PianoFing
+# # Purpose:      Find optimal fingering for piano scores
+# # Author:       Marco Musy
+# #-------------------------------------------------------------------------------
+# from __future__ import division, print_function
+# import sys, scorereader
+# from music21 import converter
+# from hand import *
+
+# #####################################################
+# Nmeasures = 100
+# handsize  = 'S'
+# rate      = 100
+# visual    = 1
+# #####################################################
+
+# # in case of "decoding error" message uncomment:
+# # reload(sys); sys.setdefaultencoding('utf8')
+
+# if len(sys.argv)<2:
+#     print ("Usage: pianofing myscore.xml")
+#     sys.exit(1)
+# sf = converter.parse(sys.argv[1])
+# #sf = test_scales.s4
+
+# rh = Hand("right", handsize)
+# rh.noteseq = scorereader.reader(sf, beam=0)
+# rh.generateFingering(nmeasures=Nmeasures)
+
+# lh = Hand("left", handsize)
+# lh.noteseq = scorereader.reader(sf, beam=1)
+# lh.generateFingering(nmeasures=Nmeasures)
+
+# print ("Saving score to output.xml")
+# sf.write('xml', fp='output.xml')
+# print ("\nTo visualize score type:\n musescore output.xml\n")
+
+# if visual:
+#     import vkeyboard
+#     vk = vkeyboard.VirtualKeyboard()
+#     vk.build_RH(rh)
+#     vk.build_LH(lh)
+#     vk.rate = rate
+#     vk.playsounds = 1
+#     vk.playKeyboard()
+#     print("\nTo visualize score type:\n musescore output.xml\n")
+
