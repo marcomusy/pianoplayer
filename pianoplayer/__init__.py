@@ -7,7 +7,8 @@ __website__ = "https://github.com/marcomusy/pianoplayer"
 
 
 from pianoplayer.hand import Hand
-from pianoplayer.scorereader import *
+from pianoplayer.scorereader import  reader
+from pianoplayer.vtk_keyboard import VirtualKeyboard
 
 
 import warnings

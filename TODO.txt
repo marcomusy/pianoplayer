@@ -1,0 +1,7 @@
+TODO
+
+- complete vtkplotter migration
+- pass arguments to pianoplayer command line
+- fix bug Cb/B
+- fix last 9 notes
+- implement hand stretching

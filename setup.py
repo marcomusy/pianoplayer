@@ -2,12 +2,14 @@ from setuptools import setup
 
 setup(
     name='pianoplayer',
-    version='1.0.0', #change also in plotter.py
+    version='1.0.0', #change also in vtk_keyboard.py
     packages=['pianoplayer'],
     scripts=['bin/pianoplayer'],
-    install_requires=[], # vtk and numpy are needed but better install it manually
-    description='Automatic piano fingering generator. Finds and shows the best fingering combination to use to play a score.',
-    long_description="""Automatic piano fingering generator.
+    install_requires=['music21','vtkplotter'], # vtk and numpy are needed but better install them manually
+    description='Automatic piano fingering generator. Finds and shows in 3D the best fingering combination to play a score.',
+    long_description="""Automatic piano fingering generator. 
+    Finds and shows in a 3D visualization the best fingering combination to play a score.
+
     Check out https://github.com/marcomusy/pianoplayer for documentation.""",
     author='Marco Musy',
     author_email='marco.musy@gmail.com',
@@ -24,17 +26,13 @@ setup(
 )
 
 ##############################################################
-# # check examples
 # cd ~/Projects/pianoplayer/
 # pip install .
-# cd examples
-# source run_all.sh
 
-# # check version number here and in plotter.py
+# # check version number here and in vtk_keyboard
 
 # ana3
 # git status
-# python -m pip install --user --upgrade twine
 # python setup.py sdist bdist_wheel
 
 # git commit -a -m 'comment'
