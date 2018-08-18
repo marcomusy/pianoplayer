@@ -5,6 +5,7 @@
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
 from __future__ import division, print_function
+from music21.articulations import Fingering
 
 #####################################################
 class Hand:
@@ -224,13 +225,23 @@ class Hand:
             an.fingering = best_finger
             if best_finger>0:
                 if an.isChord:
-                    if not an.chord21.hasLyrics():
-                        for li in range(len(an.chord21.pitches)): an.chord21.addLyric('0')
-                    #an.chord21.addLyric(best_finger)
-                    nl = len(an.chord21.pitches)-an.chordnr
-                    an.chord21.addLyric(best_finger, nl)
+                    articulations = an.chord21.articulations
+                    pitchcount = len(an.chord21.pitches)
+                    nl = len(an.chord21.pitches) - an.chordnr
+                    #if not an.chord21.hasLyrics():
+                    #    for li in range(len(an.chord21.pitches)): an.chord21.addLyric('0')
+                    #an.chord21.addLyric(best_finger, nl)
                 else:
-                    an.note21.addLyric(best_finger)
+                    articulations = an.note21.articulations
+                    pitchcount = 1
+                    nl = 0
+                    #an.note21.addLyric(best_finger)
+                # Add as many Fingerings as we require
+                fingerings = [a for a in articulations if type(a) is Fingering]
+                if (nl + 1) > len(fingerings):
+                    articulations.append(Fingering(best_finger))
+                else:
+                    fingerings[nl] = Fingering(best_finger)
 
             
             #-----------------------------
