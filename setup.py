@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pianoplayer',
-    version='1.0.0', #change also in vtk_keyboard.py
+    version='1.1.0', #change also in __init__.py
     packages=['pianoplayer'],
     scripts=['bin/pianoplayer'],
     install_requires=['music21','vtkplotter'], # vtk and numpy are needed but better install them manually
@@ -29,7 +29,7 @@ setup(
 # cd ~/Projects/pianoplayer/
 # pip install .
 
-# # check version number here and in vtk_keyboard
+# # check version number here and in __init__
 
 # ana3
 # git status
