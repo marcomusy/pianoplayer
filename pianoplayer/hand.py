@@ -5,8 +5,8 @@
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
 from __future__ import division, print_function
-from music21.articulations import Fingering, Articulation
-from music21.style import Style
+from music21.articulations import Fingering
+from music21.style import TextStyle
 
 
 #####################################################
@@ -191,6 +191,14 @@ class Hand:
         start_finger, out, costf, ninenotes  = 0, [0]*9, 0, [0]*9
         N = len(self.noteseq)
 
+        # Remove existing fingerings
+        for an in self.noteseq:
+            if an.isChord:
+                an.chord21.articulations = [a for a in an.chord21.articulations if type(a) is not Fingering]
+            else:
+                an.note21.articulations = [a for a in an.note21.articulations if type(a) is not Fingering]
+
+
         for inote in range(start_measure, N):
 
             best_finger = 0
@@ -198,6 +206,7 @@ class Hand:
             if an.measure:
                 if an.measure < start_measure : continue
                 if an.measure > start_measure + nmeasures : break
+            
             if inote > N-11:
                 self.autodepth = False
                 self.depth = 9
@@ -221,22 +230,22 @@ class Hand:
            
             an.fingering = best_finger
             if best_finger>0:
+
+                fng = Fingering(best_finger)
+                # sty = TextStyle()      #this has no effect..
+                # sty.placement='below'
+                # fng.style = sty
+
                 if an.isChord:
-                    npitches = len(an.chord21.pitches)
-                    # dont show fingering for >3 note-chords
-                    if (self.LR=='right' and npitches<4) or (self.LR=='left' and npitches<3):
-                        nl = len(an.chord21.pitches) - an.chordnr
-                        an.chord21.addLyric(best_finger, nl)
+                    # npitches = len(an.chord21.pitches)
+                    # if (self.LR=='right' and npitches<4) or (self.LR=='left' and npitches<4):# dont show fingering for >3 note-chords
+                        # nl = len(an.chord21.pitches) - an.chordnr
+                        # an.chord21.addLyric(best_finger, nl)
+                    an.chord21.articulations.append(fng)
                 else:
-                    an.note21.addLyric(best_finger)
-                    # muf = Fingering(best_finger) # cannot shift them to make them visible
-                    # sty = Style()
-                    # sty.placement = 'below'
-                    # sty.offset = .90
-                    # sty.absoluteY = 30
-                    # muf.style = sty
-                    # an.note21.articulations.append(muf)
-                    
+                    # an.note21.addLyric(best_finger)
+                    an.note21.articulations.append(fng)
+
 
             #-----------------------------
             if self.verbose:
@@ -254,28 +263,3 @@ class Hand:
 
 
 
-
-
-
-    ##################################################### proportional stretching
-    # def set_fingers_positions(self, fings, notes, i):
-    #     fi = fings[i]
-    #     nix = notes[i].x
-    #     newfpos = [0]*6
-    #     fac, minfac, maxfac = 1., 0.8, 1.4
-    #     if i<len(notes)-1:
-    #         fj = fings[i+1] #next note
-    #         if fj :
-    #             nj = notes[i+1]
-    #             restd = self.fpos[fi]-self.fpos[fj] #rest distance btw 2 fings
-    #             actud = nix - nj.x                  #actual distance btw 2 notes
-    #             if restd: 
-    #                 tfac  = abs(actud/restd)
-    #                 if    tfac < minfac: fac = minfac   #allow whole hand stretching
-    #                 elif  tfac > maxfac: fac = maxfac
-    #                 else: fac = tfac 
-
-    #     for j in (1,2,3,4,5):
-    #         newfpos[j] = (self.fpos[j]-self.fpos[fi]) *fac + nix
-
-    #     return newfpos

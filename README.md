@@ -104,5 +104,8 @@ minimizes the effort of the hand avoiding unnecessary movements.
 ## In this release / To do list:
 - New graphic interface using [vtkplotter](https://github.com/marcomusy/vtkplotter)
 - Extended possibilty to pass various options in *pianoplayer* command line to customize its behaviour
-- A user reported an odd behaviour reported when substituting C flat to B.
-- Will try to switch from lyrics to fingering in score visualization.
+- A user reported an odd behaviour when substituting C flat to B.
+- Small notes / ornaments are ignored.
+- A patch for fingering positions as shown in musescore 
+- Working now on how to improve the actual fingering prediction by allowing some degree of hand stretching
+

@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pianoplayer',
-    version='1.1.0', #change also in __init__.py
+    version='1.1.1', #change also in __init__.py
     packages=['pianoplayer'],
     scripts=['bin/pianoplayer'],
     install_requires=['music21','vtkplotter'], # vtk and numpy are needed but better install them manually
