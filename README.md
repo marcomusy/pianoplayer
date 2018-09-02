@@ -42,7 +42,7 @@ pianoplayer [-h] [-o] [-n] [-s] [-d] [-k] [-rbeam] [-lbeam] [-q] [-m] [-v] [--vt
 #   -o , --outputfile     Annotated output xml file name
 #   -n , --n-measures     [100] Number of score measures to scan
 #   -s , --start-measure  Start from measure number [1]
-#   -d , --depth          [auto] Depth of combinatorial search, [3-9]
+#   -d , --depth          [auto] Depth of combinatorial search, [4-9]
 #   -rbeam                [0] Specify Right Hand beam number
 #   -lbeam                [1] Specify Left Hand beam number
 #   -q, --quiet           Switch off verbosity
@@ -85,11 +85,11 @@ through feasible combinations of fingerings.
 At every note the hand position is assumed to be at rest (this can be improved in the future). 
 
 ## Parameters you can change:
-- your hand size (from 'XXS' to 'XXL') which sets the relaxed distance between thumb and pinkie (e.g. 'M' = 17.2 cm)
-- the beam number associated to the right hand is by default nr.0 (nr.1 for left hand). You can change it with -rbeam 
-and -lbeam command line options.
-- depth of combinatorial search (from 4 up to 9 notes ahead of the currently playing note, 
-default is `auto` which selects this number based on the duration of the notes to be played).
+- your hand size (from 'XXS' to 'XXL') which sets the relaxed distance between thumb and pinkie (e.g. 'M' = 17 cm)
+- the beam number associated to the right hand is by default nr.0 (nr.1 for left hand). 
+You can change it with `-rbeam` and `-lbeam` command line options.
+- depth of combinatorial search (from 4 up to 9 notes ahead of the currently playing note, by
+default the algorithm selects this number automatically based on the duration of the notes to be played).
 
 ## Advantages
 One possible advantage is that this algorithm is completely *dynamic* which means that it 
@@ -115,6 +115,6 @@ minimizes the effort of the hand avoiding unnecessary movements.
 - Patch in [music21](http://web.mit.edu/music21) for fingering positions as shown in musescore. 
 If notes are still hiding fingering numbers use `-b` option.
 - A user reported an odd behaviour when substituting C flat to B which I could not reproduce.
-- Some odd fingering in left hand of scores/mozart_fantasia.xml to be fixed.
-- Small notes/ornaments are ignored.
+- Some odd fingering in left hand of scores/mozart_fantasia.xml needs to be fixed.
+- Small notes/ornaments are ignored at the moment.
 
