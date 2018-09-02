@@ -76,7 +76,7 @@ If VTK is installed click on "3D Player" for a visualization (in interactive mod
 to move the scene, right-click drag to zoom). You will see the both hands playing but hear the right hand notes only. 
 Chords are rendered as a rapid sequence of notes.
 
-![alt text](![pianoplayer3d](https://user-images.githubusercontent.com/32848391/44957809-b2c09500-aed6-11e8-9dc5-c2e52b632f94.gif))
+![pianoplayer3d](https://user-images.githubusercontent.com/32848391/44957809-b2c09500-aed6-11e8-9dc5-c2e52b632f94.gif)
 
 
 ## How does the algorithm work:
