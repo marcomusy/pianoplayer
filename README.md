@@ -45,7 +45,7 @@ pianoplayer [-h] [-o] [-n] [-s] [-d] [-k] [-rbeam] [-lbeam] [-q] [-m] [-v] [--vt
 #   -d , --depth          [auto] Depth of combinatorial search, [4-9]
 #   -rbeam                [0] Specify Right Hand beam number
 #   -lbeam                [1] Specify Left Hand beam number
-#   -q, --quiet           Switch off verbosity
+#   --debug               Switch on verbosity
 #   -m, --musescore       Open output in musescore after processing
 #   -b, --below-beam      Show fingering numbers below beam line
 #   -v, --with-vtk        Play 3D scene after processing
@@ -61,8 +61,11 @@ pianoplayer [-h] [-o] [-n] [-s] [-d] [-k] [-rbeam] [-lbeam] [-q] [-m] [-v] [--vt
 #   -XL, --hand-size-XL   Set hand size to XL
 #   -XXL, --hand-size-XXL Set hand size to XXL
 ```
+Example command line:
+`pianoplayer scores/bach_invention4.xml -n10 -r -v --vtk-speed 2 --debug -mb`<br />
+will find fingerings for the first 10 measures right hand, pop up the 3D rendering and invoke musescore.<br />
 
-Then:<br />
+If using the GUI:<br />
 - press Import Score
 - press GENERATE (a file output.xml is written)
 - press Musescore to visualise the annotated score
