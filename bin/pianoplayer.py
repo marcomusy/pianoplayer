@@ -1,0 +1,244 @@
+#!/usr/bin/python
+#
+#-------------------------------------------------------------------------------
+# Name:         PianoPlayer
+# Purpose:      Find optimal fingering for piano scores
+# Author:       Marco Musy
+#-------------------------------------------------------------------------------
+
+from __future__ import division, print_function
+import os, sys 
+from music21 import converter
+from pianoplayer.hand import Hand
+from pianoplayer.scorereader import reader
+
+
+if len(sys.argv) < 2: # no args are passed, pop up GUI
+
+    if sys.version_info >= (3, 0):
+        from tkinter import Frame, Tk, BOTH, Label, Scale, Checkbutton, BooleanVar
+        from tkinter.ttk import Button, Style, Combobox
+        from tkinter import filedialog as tkFileDialog
+    else:
+        from Tkinter import Frame, Tk, BOTH, Label, Scale, Checkbutton, BooleanVar
+        from ttk import Button, Style, Combobox
+        import tkFileDialog
+
+    ######################
+    class PianoGUI(Frame):
+    
+        def __init__(self, parent):
+            Frame.__init__(self, parent, bg="white")
+            self.parent = parent
+            self.filename = 'timetravel.xml'
+            self.Rcb = BooleanVar()
+            self.Lcb = BooleanVar()
+            self.RightHandBeam = 0
+            self.LeftHandBeam  = 1
+            self.initUI()
+            
+        def initUI(self):      
+            self.parent.title("PianoPlayer")
+            self.style = Style()
+            self.style.theme_use("clam")
+            self.pack(fill=BOTH, expand=True)       
+
+            importButton = Button(self, text="Import Score",command=self.importCMD)
+            importButton.place(x=115, y=15)
+            
+            hlab = Label(self,text="Hand Size:", bg="white")
+            hlab.place(x=40, y=67)
+            hvalues = ('XXS','XS','S','M','L','XL','XXL')
+            self.handsize = Combobox(self, state="readonly",values=hvalues, width=4)
+            self.handsize.current(3)
+            self.handsize.place(x=115, y=65)
+
+            Rcb = Checkbutton(self, text="R", variable=self.Rcb, bg="white")
+            Rcb.select()
+            Rcb.place(x=220, y=65)
+
+            Lcb = Checkbutton(self, text="L", variable=self.Lcb, bg="white")
+            Lcb.select()
+            Lcb.place(x=180, y=65)
+    
+            genButton = Button(self, text="GENERATE", command=self.generateCMD)
+            genButton.place(x=300, y=20)
+
+            museButton = Button(self, text="Musescore", command=self.musescoreCMD)
+            museButton.place(x=300, y=70)
+
+            vpButton = Button(self, text="3D Player", command=self.vpCMD)
+            vpButton.place(x=300, y=120)
+
+            closeButton = Button(self, text="Close", command=self.quit)
+            closeButton.place(x=300, y=170)
+
+            self.meas = Scale(self, from_=5, to=100, bg='white', length=120, orient='horizontal')
+            self.meas.set(100)
+            self.meas.place(x=130, y=110)    
+            melab = Label(self, text='#max meas:', bg="white")        
+            melab.place(x=40, y=130)    
+
+            self.rate = Scale(self, from_=1, to=8, bg='white', length=120, orient='horizontal')
+            self.rate.set(1)
+            self.rate.place(x=130, y=150)    
+            slab = Label(self, text='3D speed:', bg="white")        
+            slab.place(x=40, y=170)    
+
+        def importCMD(self):
+            ftypes = [('XML Music files', '*.xml'),('Midi Music files', '*.mid'),
+                        ('All files', '*')]
+            dlg = tkFileDialog.Open(self, filetypes = ftypes)
+            self.filename = dlg.show()
+            print('Input File is ', self.filename)
+
+        def generateCMD(self): 
+            sf = converter.parse(self.filename)
+
+            if self.Rcb.get():
+                self.rh = Hand("right", self.handsize.get())
+                self.rh.noteseq = reader(sf, beam=self.RightHandBeam)
+                self.rh.generate(nmeasures=self.meas.get())
+
+            if self.Lcb.get():
+                self.lh = Hand("left", self.handsize.get())
+                self.lh.noteseq = reader(sf, beam=self.LeftHandBeam)
+                self.lh.generate(nmeasures=self.meas.get())
+
+            print("Saving score to output.xml")
+            sf.write('xml', fp='output.xml')
+            print("\nTo visualize score type:\n musescore output.xml\n")
+                    
+        def vpCMD(self):  
+            from pianoplayer.vtk_keyboard import VirtualKeyboard
+
+            vk = VirtualKeyboard()
+            if self.Rcb.get(): vk.build_RH(self.rh)
+            if self.Lcb.get(): vk.build_LH(self.lh)
+            vk.playsounds = 1
+            vk.play()
+
+            vk.vp.show(zoom=2, interactive=1)
+            print('Close window and press Close to exit.')
+
+        def musescoreCMD(self):  
+            print('try opening musescore')
+            os.system('musescore output.xml')
+
+    root = Tk()
+    root.geometry("455x220")
+    app = PianoGUI(root)
+    root.mainloop()  
+
+
+else: ################################################################################################# command line mode
+
+
+    import argparse
+
+    pr = argparse.ArgumentParser(description="""PianoPlayer,
+    check out home page https://github.com/marcomusy/pianoplayer""")
+    pr.add_argument("filename", type=str, help="Input music xml/midi file name")
+    pr.add_argument("-o", "--outputfile", metavar='', type=str, help="Annotated output xml file name", default='output.xml')
+    pr.add_argument("-n", "--n-measures", metavar='', type=int, help="[100] Number of score measures to scan", default=100)
+    pr.add_argument("-s", "--start-measure", metavar='', type=int, help="Start from measure number [1]", default=1)
+    pr.add_argument("-d", "--depth", metavar='', type=int, help="[auto] Depth of combinatorial search, [4-9]", default=0)
+    pr.add_argument("-rbeam", metavar='', type=int, help="[0] Specify Right Hand beam number", default=0)
+    pr.add_argument("-lbeam", metavar='', type=int, help="[1] Specify Left Hand beam number", default=1)
+    pr.add_argument("--debug",             help="Switch on verbosity", action="store_true")
+    pr.add_argument("-m", "--musescore",   help="Open output in musescore after processing", action="store_true")
+    pr.add_argument("-b", "--below-beam",  help="Show fingering numbers below beam line", action="store_true")
+    pr.add_argument("-v", "--with-vtk",    help="Play 3D scene after processing", action="store_true")
+    pr.add_argument("--vtk-speed", metavar='', type=float, help="[1] Speed factor of rendering", default=1.5)
+    pr.add_argument("-z", "--sound-off",   help="Disable sound", action="store_true")
+    pr.add_argument("-l", "--left-only",   help="Fingering for left hand only", action="store_true")
+    pr.add_argument("-r", "--right-only",  help="Fingering for right hand only", action="store_true")
+    pr.add_argument("-XXS", "--hand-size-XXS", help="Set hand size to XXS", action="store_true")
+    pr.add_argument("-XS", "--hand-size-XS",   help="Set hand size to XS", action="store_true")
+    pr.add_argument("-S", "--hand-size-S",     help="Set hand size to S", action="store_true")
+    pr.add_argument("-M", "--hand-size-M",     help="Set hand size to M", action="store_true")
+    pr.add_argument("-L", "--hand-size-L",     help="Set hand size to L", action="store_true")
+    pr.add_argument("-XL", "--hand-size-XL",   help="Set hand size to XL", action="store_true")
+    pr.add_argument("-XXL", "--hand-size-XXL", help="Set hand size to XXL", action="store_true")
+    args = pr.parse_args()
+
+    hand_size = 'M' # default
+    if args.hand_size_XXS: hand_size = 'XXS'
+    if args.hand_size_XS : hand_size = 'XS'
+    if args.hand_size_S  : hand_size = 'S'
+    if args.hand_size_M  : hand_size = 'M'
+    if args.hand_size_L  : hand_size = 'L'
+    if args.hand_size_XL : hand_size = 'XL'
+    if args.hand_size_XXL: hand_size = 'XXL'
+
+    xmlfn = args.filename
+    if '.msc' in args.filename:
+        try:
+            xmlfn = str(args.filename).replace('.mscz', '.xml').replace('.mscx', '.xml')
+            print('..trying to convert your musescore file to',xmlfn)
+            os.system('musescore -f "'+args.filename+'" -o "'+xmlfn+'"') # quotes avoid problems w/ spaces in filename
+        except:
+            print('Unable to convert file, try to do it from musescore.')
+            sys.exit()
+
+    sf = converter.parse(xmlfn)
+
+    if not args.left_only:
+        rh = Hand("right", hand_size)
+        rh.verbose = args.debug
+        if args.depth == 0:
+            rh.autodepth = True
+        else:
+            rh.autodepth = False
+            rh.depth = args.depth
+        rh.lyrics = args.below_beam
+       
+        rh.noteseq = reader(sf, beam=args.rbeam)
+        rh.generate(args.start_measure, args.n_measures)
+
+    if not args.right_only:
+        lh = Hand("left", hand_size)
+        lh.verbose = args.debug
+        if args.depth == 0:
+            lh.autodepth = True
+        else:
+            lh.autodepth = False
+            lh.depth = args.depth
+        lh.lyrics = args.below_beam
+        
+        lh.noteseq = reader(sf, beam=args.lbeam)
+        lh.generate(args.start_measure, args.n_measures)
+
+    sf.write('xml', fp=args.outputfile)
+
+    if args.musescore:
+        try:
+            os.system('musescore "'+args.outputfile+'" &')
+        except:
+            print('Unable to convert musescore file')
+    else:
+        print ("\nTo visualize annotated score with fingering type:\n musescore '"+args.outputfile+"'")
+
+
+    if args.with_vtk:
+        from pianoplayer.vtk_keyboard import VirtualKeyboard
+        
+        if args.start_measure !=1:
+            print('Sorry, start_measure must be set to 1 when -v option is used. Exit.')
+            exit()
+
+        vk = VirtualKeyboard(songname=xmlfn)
+
+        if not args.left_only: 
+            vk.build_RH(rh)
+        if not args.right_only: 
+            vk.build_LH(lh)
+
+        if args.sound_off: 
+            vk.playsounds = False
+
+        vk.verbose = args.debug
+        vk.speedfactor = args.vtk_speed
+        vk.play()
+        vk.vp.show(zoom=2, interactive=1)
+    

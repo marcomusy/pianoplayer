@@ -6,19 +6,21 @@
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
 from __future__ import division, print_function
+
 try:
-    import vtk, time
+    import time
     from vtkplotter import Plotter, printc
     from vtkplotter.shapes import ellipsoid, box
     from vtkplotter.utils import makeAssembly
 except:
-    print("VirtualKeyboard: cannot find vtk or vtkplotter packages. Not installed?")
-    print('Try: (sudo) pip install --upgrade vtkplotter')
+    print("VirtualKeyboard: cannot find vtkplotter package. Not installed?")
+    print('Try:\n(sudo) pip install --upgrade vtkplotter')
     quit()
 
 from pianoplayer import __version__
 from pianoplayer.utils import fpress, frelease, kpress, krelease, nameof
 from pianoplayer.wavegenerator import playSound
+import pianoplayer.utils as utils
 
 
 ###########################################################
@@ -46,23 +48,24 @@ class VirtualKeyboard:
         self.build_keyboard() 
 
     #######################################################
-    def makeHandActor(self):
-        a1, a2, a3, c = (10,0,0), (0,7,0), (0,0,3), (.7,0.3,0.3)
+    def makeHandActor(self, f=1):
+        a1, a2, a3, c = (10*f,0,0), (0,7*f,0), (0,0,3*f), (.7,0.3,0.3)
         palm = ellipsoid(pos=(0,-3,0), axis1=a1, axis2=a2, axis3=a3, alpha=0.6, c=c)
-        wrist= box(pos=(0,-9,0), length=6, width=5, height=2, alpha=0.4, c=c)
+        wrist= box(pos=(0,-9,0), length=6*f, width=5, height=2, alpha=0.4, c=c)
         arm  = makeAssembly([palm,wrist])
         self.vp.actors.append(arm) # add actor to internal list
-        f1 = self.vp.cylinder((-2, 1.5,0), axis=(0,1,0), height=5, r=.8, c=c)
-        f2 = self.vp.cylinder((-1, 3  ,0), axis=(0,1,0), height=6, r=.7, c=c)
-        f3 = self.vp.cylinder(( 0, 4  ,0), axis=(0,1,0), height=6.2, r=.75, c=c)
-        f4 = self.vp.cylinder(( 1, 3.5,0), axis=(0,1,0), height=6.1, r=.7, c=c)
-        f5 = self.vp.cylinder(( 2, 2  ,0), axis=(0,1,0), height=5, r=.6, c=c)
+        f1 = self.vp.cylinder((-2, 1.5,0), axis=(0,1,0), height=5, r=.8*f, c=c)
+        f2 = self.vp.cylinder((-1, 3  ,0), axis=(0,1,0), height=6, r=.7*f, c=c)
+        f3 = self.vp.cylinder(( 0, 4  ,0), axis=(0,1,0), height=6.2, r=.75*f, c=c)
+        f4 = self.vp.cylinder(( 1, 3.5,0), axis=(0,1,0), height=6.1, r=.7*f, c=c)
+        f5 = self.vp.cylinder(( 2, 2  ,0), axis=(0,1,0), height=5, r=.6*f, c=c)
         return [arm, f1,f2,f3,f4,f5]
 
     def build_RH(self, hand):    
         if self.verbose: print('Building Right Hand..')
         self.rightHand = hand
-        self.vpRH = self.makeHandActor()
+        f = utils.handSizeFactor(hand.size)
+        self.vpRH = self.makeHandActor(f)
         for limb in self.vpRH: # initial x positions are superseded later
             limb.x( limb.x()* 2.5 )
             limb.addpos([16.5*5+1, -7.5, 3] )
@@ -70,7 +73,8 @@ class VirtualKeyboard:
     def build_LH(self, hand): #########################
         if self.verbose: print('Building Left Hand..')
         self.leftHand = hand
-        self.vpLH = self.makeHandActor()
+        f = utils.handSizeFactor(hand.size)
+        self.vpLH = self.makeHandActor(f)
         for limb in self.vpLH: 
             limb.x( limb.x()* -2.5 ) #flip
             limb.addpos([16.5*3+1, -7.5, 3] )
@@ -87,7 +91,7 @@ class VirtualKeyboard:
         nr_octaves = 7
         span = nr_octaves*wb*7
     
-        self.vp = Plotter(title='PianoPlayer '+__version__, axes=0, size=(1200,600), bg='lb', verbose=0)
+        self.vp = Plotter(title='PianoPlayer '+__version__, axes=0, size=(1400,700), bg='lb', verbose=0)
 
         #wooden top and base
         self.vp.box(pos=(span/2+keybsize, 6,  1), length=span+1, height=3, width= 5, texture='wood5') #top
@@ -113,49 +117,41 @@ class VirtualKeyboard:
 
     #####################################################################
     def play(self):
-        printc('\nPress space to proceed one note',1)
-        printc('Press [5-9] to proceed for more seconds',1)
+        printc('Press [0-9] to proceed by one note or for more seconds',1)
         printc('Press Esc to exit.',1)
-        self.vp.keyPressFunction = runTime # enable observer
-
-        startR,startL, fineR,fineL = 9999,9999, 0,0
+        self.vp.keyPressFunction = runTime    # enable observer
 
         if self.rightHand:
             self.engagedkeysR    = [False]*len(self.rightHand.noteseq)
-            self.engagedfingersR = [False]*6         # element 0 is dummy
-            startR = self.rightHand.noteseq[0].time  #start time of first note
-            fineR  = self.rightHand.noteseq[-1].time #end time
+            self.engagedfingersR = [False]*6  # element 0 is dummy
         if self.leftHand:           
             self.engagedkeysL    = [False]*len(self.leftHand.noteseq)
-            self.engagedfingersL = [False]*6         # element 0 is dummy
-            startL = self.leftHand.noteseq[0].time   #start time of first note
-            fineL  = self.leftHand.noteseq[-1].time  #end time
-        fine = max(fineR, fineL)
+            self.engagedfingersL = [False]*6        
 
-        t = min(startR, startL)
+        t=0.0
         while True:
-            if self.rightHand: self.moveHand( 1, t)
-            if self.leftHand:  self.moveHand(-1, t)
-            if t > fine: break                                         
-            t += self.dt #time flows
+            if self.rightHand: self._moveHand( 1, t)
+            if self.leftHand:  self._moveHand(-1, t)
+            if t > 1000: break                                         
+            t += self.dt                      # absolute time flows
         
         if self.verbose: printc('End of note sequence reached.')
-        self.vp.keyPressFunction = None # disable observer
+        self.vp.keyPressFunction = None       # disable observer
 
-    #####################################################################
-    def moveHand(self, side, t):########runs inside play() loop
+    ###################################################################
+    def _moveHand(self, side, t):############# runs inside play() loop
         if side == 1: 
             c1,c2 = 'tomato', 'orange'
             engagedkeys    = self.engagedkeysR
             engagedfingers = self.engagedfingersR
-            H = self.rightHand
-            vpH = self.vpRH
+            H              = self.rightHand
+            vpH            = self.vpRH
         else:               
             c1,c2 = 'purple', 'mediumpurple'
             engagedkeys    = self.engagedkeysL
             engagedfingers = self.engagedfingersL
-            H = self.leftHand
-            vpH = self.vpLH
+            H              = self.leftHand
+            vpH            = self.vpLH
 
         for i, n in enumerate(H.noteseq):##################### 
             start, stop, f = n.time, n.time+n.duration, n.fingering
@@ -179,29 +175,33 @@ class VirtualKeyboard:
                 engagedfingers[f] = True
                 name = nameof(n)
                 
-                for g in [1,2,3,4,5]: vpH[g].x( side * H.fingerseq[i][g] ) 
+                if t> self.t0 + self.vp.clock: 
+                    self.t0 = t
+                    self.vp.show(zoom=2, interactive=True)
+
+                for g in [1,2,3,4,5]: 
+                    vpH[g].x( side * H.fingerseq[i][g] ) 
                 vpH[0].x(vpH[3].x()) # index 0 is arm, put it where middle finger is
                 
                 fpress(vpH[f],  c1)
                 kpress(self.KB[name], c2)
-                if t> self.t0 + self.vp.clock: 
-                    self.vp.interactive = True
-                    self.t0 = t
-                self.vp.show(zoom=2)
+                self.vp.show(zoom=2, interactive=False)
 
                 if self.verbose:
-                    msg = 'meas.'+str(n.measure+1)+' t='+str(round(t,2))
+                    msg = 'meas.'+str(n.measure)+' t='+str(round(t,2))
                     if side==1: printc((msg,'\t\t\t\tRH.finger', f, 'hit', name), 'b')
                     else:       printc((msg,      '\tLH.finger', f, 'hit', name), 'm')
 
-                if self.playsounds: playSound(n, self.speedfactor)
-                else: time.sleep(n.duration*self.speedfactor)
+                if self.playsounds: 
+                    playSound(n, self.speedfactor)
+                else: 
+                    time.sleep(n.duration*self.speedfactor)
 
 
 ##########################################
 def runTime(key, vplt):
-    if key not in ['5','6','7','8','9','0']: return
-    if key == '0': key='10'
+    secs = [str(i) for i in range(10)]
+    if key not in secs: return
     printc('Will execute score for '+key+' seconds')
     vplt.interactive = False
     vplt.clock = int(key)

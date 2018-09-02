@@ -6,6 +6,8 @@ has_simpleaudio=True
 try:
     import simpleaudio
 except:
+    print("Cannot find simpleaudio package. Not installed?")
+    print('Try:\n(sudo) pip install --upgrade simpleaudio')
     has_simpleaudio=False
 
 

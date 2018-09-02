@@ -78,3 +78,31 @@ def keypos(n): #position of notes on keyboard
     else: 
         print("ERROR note not found", n.name)
     return keybsize * n.octave + step
+
+
+def handSizeFactor(s): 
+    f=0.82       
+    if    s=='XXS': f = 0.33
+    elif  s=='XS' : f = 0.46
+    elif  s=='S'  : f = 0.64
+    elif  s=='M'  : f = 0.82
+    elif  s=='L'  : f = 1.0
+    elif  s=='XL' : f = 1.1
+    elif  s=='XXL': f = 1.2
+    return f
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

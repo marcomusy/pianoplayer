@@ -90,7 +90,6 @@ def reader(sf, beam=0):
                 else: an.isBlack = False
                 noteseq.append(an)
 
-    # print("Total nr of notes read:", len(noteseq))
     if len(noteseq)<2: 
         print("Beam is empty. Exit.")
         quit()    
