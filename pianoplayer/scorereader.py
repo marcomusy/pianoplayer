@@ -69,7 +69,7 @@ def reader(sf, beam=0):
 
         if n.isChord:
             if n.tie and (n.tie.type=='continue' or n.tie.type=='stop'): continue
-            sfasam = 0.01 # sfasa leggermente le note dell'accordo
+            sfasam = 0.005 # sfasa leggermente le note dell'accordo
             for j, cn in enumerate(n.pitches):
                 an = INote()
                 an.isChord = True
