@@ -75,11 +75,11 @@ If using the GUI:<br />
 - press GENERATE (`output.xml` is written)
 - press Musescore to visualize the annotated score
 - press 3D Player to show the animation (closing it with `Esc` will quit the application)
+![gui](https://user-images.githubusercontent.com/32848391/44989235-8582ee00-af8d-11e8-8899-e35df11a4076.png)
 
-![bachinv4](https://user-images.githubusercontent.com/32848391/31663245-a9e23e0c-b341-11e7-9e07-d90d4959521b.png)
 
 Example output displayed in *musescore*:<br />
-![gui](https://user-images.githubusercontent.com/32848391/44989235-8582ee00-af8d-11e8-8899-e35df11a4076.png)
+![bachinv4](https://user-images.githubusercontent.com/32848391/31663245-a9e23e0c-b341-11e7-9e07-d90d4959521b.png)
 
 If VTK is installed click on `3D Player` for a visualization (in interactive mode, drag mouse 
 to move the scene, right-click drag to zoom). You will see the both hands playing but hear the right hand notes only. 
