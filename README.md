@@ -6,7 +6,7 @@ and [music21](http://web.mit.edu/music21).<br />
 
 ## Download and Install:
 ```bash
-(sudo) pip install --upgrade pianoplayer
+pip install --upgrade pianoplayer
 ```
 
 ### Optional:
@@ -15,17 +15,14 @@ To visualize the annotated score install for free [musescore](https://musescore.
 sudo apt install musescore
 ```
 
-To open a 3D visualization, [install VTK](https://www.vtk.org/download) with one of these command lines:
+To open a 3D visualization, [install VTK](https://www.vtk.org/download) 
+with one of these command lines:
 ```bash
-sudo apt install vtk7
-# or
-conda install -c conda-forge vtk
-# or 
-(sudo) pip install vtk
+pip install --upgrade vtkplotter
 #
 # for sound:
 sudo apt install libasound2-dev
-(sudo) pip install simpleaudio
+pip install simpleaudio
 ```
 
 ## Usage: 

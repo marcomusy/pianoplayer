@@ -29,21 +29,21 @@ def nameof(n):
 
 def fpress(f, color):
     f.rotate(-20, axis=(1,0,0), axis_point=f.pos())
-    f.addpos([0,0,-1])
+    f.addPos([0,0,-1])
     f.color(color)#.alpha(1)
 
 def frelease(f):
-    f.addpos([0,0,1])
+    f.addPos([0,0,1])
     f.rotate(20, axis=(1,0,0), axis_point=f.pos())
     f.color((.7,0.3,0.3))#.alpha(.6)
 
 def kpress(f, color):
     f.rotate(4, axis=(1,0,0), axis_point=f.pos())
-    f.addpos([0,0,-.4])
+    f.addPos([0,0,-.4])
     f.color(color)
 
 def krelease(f):
-    f.addpos([0,0,.4])
+    f.addPos([0,0,.4])
     p = f.pos()
     f.rotate(-4, axis=(1,0,0), axis_point=p)
     if p[2]>.5: f.color('k')

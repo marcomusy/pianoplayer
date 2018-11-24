@@ -11,7 +11,7 @@ try:
     import time
     from vtkplotter import Plotter, printc
     from vtkplotter.shapes import ellipsoid, box
-    from vtkplotter.utils import makeAssembly
+    from vtkplotter import Assembly
 except:
     print("VirtualKeyboard: cannot find vtkplotter package. Not installed?")
     print('Try:\n(sudo) pip install --upgrade vtkplotter')
@@ -52,7 +52,7 @@ class VirtualKeyboard:
         a1, a2, a3, c = (10*f,0,0), (0,7*f,0), (0,0,3*f), (.7,0.3,0.3)
         palm = ellipsoid(pos=(0,-3,0), axis1=a1, axis2=a2, axis3=a3, alpha=0.6, c=c)
         wrist= box(pos=(0,-9,0), length=6*f, width=5, height=2, alpha=0.4, c=c)
-        arm  = makeAssembly([palm,wrist])
+        arm  = Assembly([palm,wrist])
         self.vp.actors.append(arm) # add actor to internal list
         f1 = self.vp.cylinder((-2, 1.5,0), axis=(0,1,0), height=5, r=.8*f, c=c)
         f2 = self.vp.cylinder((-1, 3  ,0), axis=(0,1,0), height=6, r=.7*f, c=c)
@@ -68,7 +68,7 @@ class VirtualKeyboard:
         self.vpRH = self.makeHandActor(f)
         for limb in self.vpRH: # initial x positions are superseded later
             limb.x( limb.x()* 2.5 )
-            limb.addpos([16.5*5+1, -7.5, 3] )
+            limb.addPos([16.5*5+1, -7.5, 3] )
 
     def build_LH(self, hand): #########################
         if self.verbose: print('Building Left Hand..')
@@ -76,8 +76,8 @@ class VirtualKeyboard:
         f = utils.handSizeFactor(hand.size)
         self.vpLH = self.makeHandActor(f)
         for limb in self.vpLH: 
-            limb.x( limb.x()* -2.5 ) #flip
-            limb.addpos([16.5*3+1, -7.5, 3] )
+            limb.x( limb.x()* 2.5 ) 
+            limb.addPos([16.5*3+1, -7.5, 3] )
                
 
     #######################################################
@@ -91,7 +91,7 @@ class VirtualKeyboard:
         nr_octaves = 7
         span = nr_octaves*wb*7
     
-        self.vp = Plotter(title='PianoPlayer '+__version__, axes=0, size=(1400,700), bg='lb', verbose=0)
+        self.vp = Plotter(title='PianoPlayer '+__version__, axes=0, size=(700,1400), bg='lb', verbose=0)
 
         #wooden top and base
         self.vp.box(pos=(span/2+keybsize, 6,  1), length=span+1, height=3, width= 5, texture='wood5') #top
@@ -117,9 +117,9 @@ class VirtualKeyboard:
 
     #####################################################################
     def play(self):
-        printc('Press [0-9] to proceed by one note or for more seconds',1)
-        printc('Press Esc to exit.',1)
-        self.vp.keyPressFunction = runTime    # enable observer
+        printc('Press [0-9] to proceed by one note or for more seconds', c=1)
+        printc('Press Esc to exit.', c=1)
+        self.vp.keyPressFunction = self.runTime    # enable observer
 
         if self.rightHand:
             self.engagedkeysR    = [False]*len(self.rightHand.noteseq)
@@ -189,8 +189,8 @@ class VirtualKeyboard:
 
                 if self.verbose:
                     msg = 'meas.'+str(n.measure)+' t='+str(round(t,2))
-                    if side==1: printc((msg,'\t\t\t\tRH.finger', f, 'hit', name), 'b')
-                    else:       printc((msg,      '\tLH.finger', f, 'hit', name), 'm')
+                    if side==1: printc(msg,'\t\t\t\tRH.finger', f, 'hit', name, c='b')
+                    else:       printc(msg,      '\tLH.finger', f, 'hit', name, c='m')
 
                 if self.playsounds: 
                     playSound(n, self.speedfactor)
@@ -198,14 +198,14 @@ class VirtualKeyboard:
                     time.sleep(n.duration*self.speedfactor)
 
 
-##########################################
-def runTime(key, vplt):
-    secs = [str(i) for i in range(10)]
-    if key not in secs: return
-    printc('Will execute score for '+key+' seconds')
-    vplt.interactive = False
-    vplt.clock = int(key)
-    vplt.interactor.ExitCallback()
+    ##########################################
+    def runTime(self, key):
+        secs = [str(i) for i in range(10)]
+        if key not in secs: return
+        printc('Will execute score for '+key+' seconds')
+        self.vp.interactive = False
+        self.vp.clock = int(key)
+        self.vp.interactor.ExitCallback()
 
 
 ############################ test
