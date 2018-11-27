@@ -68,7 +68,7 @@ class VirtualKeyboard:
         self.vpRH = self.makeHandActor(f)
         for limb in self.vpRH: # initial x positions are superseded later
             limb.x( limb.x()* 2.5 )
-            limb.addPos([16.5*5+1, -7.5, 3] )
+            limb.addPos([16.5*5+1, -7.5, 3] ) # vtkplotter < 8.7.1 was addpos()
 
     def build_LH(self, hand): #########################
         if self.verbose: print('Building Left Hand..')
@@ -77,7 +77,7 @@ class VirtualKeyboard:
         self.vpLH = self.makeHandActor(f)
         for limb in self.vpLH: 
             limb.x( limb.x()* 2.5 ) 
-            limb.addPos([16.5*3+1, -7.5, 3] )
+            limb.addPos([16.5*3+1, -7.5, 3] ) # vtkplotter < 8.7.1 was addpos()
                
 
     #######################################################
