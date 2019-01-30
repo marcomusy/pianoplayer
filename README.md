@@ -18,7 +18,7 @@ sudo apt install musescore
 To open a 3D visualization, [install VTK](https://www.vtk.org/download) 
 with one of these command lines:
 ```bash
-pip install vtkplotter=8.7.1
+pip install vtkplotter==8.7.1
 #
 # for sound:
 sudo apt install libasound2-dev
