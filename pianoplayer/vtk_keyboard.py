@@ -10,7 +10,7 @@ from __future__ import division, print_function
 try:
     import time
     from vtkplotter import Plotter, printc
-    from vtkplotter.shapes import ellipsoid, box
+    from vtkplotter.shapes import Ellipsoid, Box, Cylinder, Text
     from vtkplotter import Assembly
 except:
     print("VirtualKeyboard: cannot find vtkplotter package. Not installed?")
@@ -50,15 +50,15 @@ class VirtualKeyboard:
     #######################################################
     def makeHandActor(self, f=1):
         a1, a2, a3, c = (10*f,0,0), (0,7*f,0), (0,0,3*f), (.7,0.3,0.3)
-        palm = ellipsoid(pos=(0,-3,0), axis1=a1, axis2=a2, axis3=a3, alpha=0.6, c=c)
-        wrist= box(pos=(0,-9,0), length=6*f, width=5, height=2, alpha=0.4, c=c)
+        palm = Ellipsoid(pos=(0,-3,0), axis1=a1, axis2=a2, axis3=a3, alpha=0.6, c=c)
+        wrist= Box(pos=(0,-9,0), length=6*f, width=5, height=2, alpha=0.4, c=c)
         arm  = Assembly([palm,wrist])
         self.vp.actors.append(arm) # add actor to internal list
-        f1 = self.vp.cylinder((-2, 1.5,0), axis=(0,1,0), height=5, r=.8*f, c=c)
-        f2 = self.vp.cylinder((-1, 3  ,0), axis=(0,1,0), height=6, r=.7*f, c=c)
-        f3 = self.vp.cylinder(( 0, 4  ,0), axis=(0,1,0), height=6.2, r=.75*f, c=c)
-        f4 = self.vp.cylinder(( 1, 3.5,0), axis=(0,1,0), height=6.1, r=.7*f, c=c)
-        f5 = self.vp.cylinder(( 2, 2  ,0), axis=(0,1,0), height=5, r=.6*f, c=c)
+        f1 = self.vp.add(Cylinder((-2, 1.5,0), axis=(0,1,0), height=5, r=.8*f, c=c))
+        f2 = self.vp.add(Cylinder((-1, 3  ,0), axis=(0,1,0), height=6, r=.7*f, c=c))
+        f3 = self.vp.add(Cylinder(( 0, 4  ,0), axis=(0,1,0), height=6.2, r=.75*f, c=c))
+        f4 = self.vp.add(Cylinder(( 1, 3.5,0), axis=(0,1,0), height=6.1, r=.7*f, c=c))
+        f5 = self.vp.add(Cylinder(( 2, 2  ,0), axis=(0,1,0), height=5, r=.6*f, c=c))
         return [arm, f1,f2,f3,f4,f5]
 
     def build_RH(self, hand):    
@@ -94,21 +94,21 @@ class VirtualKeyboard:
         self.vp = Plotter(title='PianoPlayer '+__version__, axes=0, size=(700,1400), bg='lb', verbose=0)
 
         #wooden top and base
-        self.vp.box(pos=(span/2+keybsize, 6,  1), length=span+1, height=3, width= 5, texture='wood5') #top
-        self.vp.box(pos=(span/2+keybsize, 0, -1), length=span+1, height=1, width=17, texture='wood5')
-        self.vp.text('PianoPlayer '+__version__, pos=(18, 5.5, 2), depth=.7)
-        self.vp.text('https://github.com/marcomusy/pianoplayer', pos=(105,4.8,2), depth=.7, s=.8)
-        leggio = self.vp.box(pos=(span/1.55,8,10), length=span/2, height=span/8, width=0.08, c=(1,1,0.9))
+        self.vp.add(Box(pos=(span/2+keybsize, 6,  1), length=span+1, height=3, width= 5).texture('wood5')) #top
+        self.vp.add(Box(pos=(span/2+keybsize, 0, -1), length=span+1, height=1, width=17).texture('wood5'))
+        self.vp.add(Text('PianoPlayer '+__version__, pos=(18, 5.5, 2), depth=.7, c='w'))
+        self.vp.add(Text('https://github.com/marcomusy/pianoplayer', pos=(105,4.8,2), depth=.7, c='w', s=.8))
+        leggio = self.vp.add(Box(pos=(span/1.55,8,10), length=span/2, height=span/8, width=0.08, c=(1,1,0.9)))
         leggio.rotateX(-20)
-        self.vp.text('Playing\n\n'+self.songname, s=1.2).rotateX(70).pos([49,11,9])
+        self.vp.add(Text('Playing\n\n'+self.songname, pos=[0,0,0], s=1.2, c='k').rotateX(70).pos([49,7,9]))
 
         for ioct in range(nr_octaves):
             for ik in range(7):              #white keys
                 x  = ik * wb + (ioct+1)*keybsize +wb/2
-                tb = self.vp.box(pos=(x,-2,0), length=wb-tol, height=1, width=12, c='white')
+                tb = self.vp.add(Box(pos=(x,-2,0), length=wb-tol, height=1, width=12, c='white'))
                 self.KB.update({nts[ik]+str(ioct+1) : tb})
                 if not nts[ik] in ("E","B"): #black keys
-                    tn=self.vp.box(pos=(x+wb/2,0,1), length=wb*.6, height=1, width=8, c='black')
+                    tn=self.vp.add(Box(pos=(x+wb/2,0,1), length=wb*.6, height=1, width=8, c='black'))
                     self.KB.update({nts[ik]+"#"+str(ioct+1) : tn})
         self.vp.show(interactive=0)
         self.vp.camera.Azimuth(4)
