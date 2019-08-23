@@ -1,5 +1,4 @@
-#!/usr/bin/python
-#
+#!/usr/bin/env python
 #-------------------------------------------------------------------------------
 # Name:         PianoPlayer
 # Purpose:      Find optimal fingering for piano scores
@@ -7,10 +6,10 @@
 #-------------------------------------------------------------------------------
 
 from __future__ import division, print_function
-import os, sys 
-from music21 import converter
+import os, sys
+from music21 import converter, stream
 from pianoplayer.hand import Hand
-from pianoplayer.scorereader import reader
+from pianoplayer.scorereader import reader, PIG2Stream
 
 
 if len(sys.argv) < 2: # no args are passed, pop up GUI
@@ -26,73 +25,58 @@ if len(sys.argv) < 2: # no args are passed, pop up GUI
 
     ######################
     class PianoGUI(Frame):
-    
+
         def __init__(self, parent):
             Frame.__init__(self, parent, bg="white")
             self.parent = parent
-            self.filename = 'timetravel.xml'
+            self.filename = 'scores/timetravel.xml'
             self.Rcb = BooleanVar()
             self.Lcb = BooleanVar()
             self.RightHandBeam = 0
             self.LeftHandBeam  = 1
             self.initUI()
-            
-        def initUI(self):      
+
+        def initUI(self):
             self.parent.title("PianoPlayer")
             self.style = Style()
             self.style.theme_use("clam")
-            self.pack(fill=BOTH, expand=True)       
+            self.pack(fill=BOTH, expand=True)
 
-            importButton = Button(self, text="Import Score",command=self.importCMD)
-            importButton.place(x=115, y=15)
-            
-            hlab = Label(self,text="Hand Size:", bg="white")
-            hlab.place(x=40, y=67)
+            Button(self, text="Import Score",command=self.importCMD).place(x=300, y=20)
+
+            Label(self,text="Hand Size:", bg="white").place(x=40, y=50)
             hvalues = ('XXS','XS','S','M','L','XL','XXL')
             self.handsize = Combobox(self, state="readonly",values=hvalues, width=4)
             self.handsize.current(3)
-            self.handsize.place(x=115, y=65)
+            self.handsize.place(x=130, y=50)
 
-            Rcb = Checkbutton(self, text="R", variable=self.Rcb, bg="white")
+            Label(self,text="Scan:", bg="white").place(x=80, y=80)
+            Rcb = Checkbutton(self, text="Right", variable=self.Rcb, bg="white")
             Rcb.select()
-            Rcb.place(x=220, y=65)
-
-            Lcb = Checkbutton(self, text="L", variable=self.Lcb, bg="white")
+            Rcb.place(x=130, y=80)
+            Lcb = Checkbutton(self, text="Left", variable=self.Lcb, bg="white")
             Lcb.select()
-            Lcb.place(x=180, y=65)
-    
-            genButton = Button(self, text="GENERATE", command=self.generateCMD)
-            genButton.place(x=300, y=20)
+            Lcb.place(x=200, y=80)
 
-            museButton = Button(self, text="Musescore", command=self.musescoreCMD)
-            museButton.place(x=300, y=70)
+            Button(self, text="GENERATE", command=self.generateCMD).place(x=300, y=70)
 
-            vpButton = Button(self, text="3D Player", command=self.vpCMD)
-            vpButton.place(x=300, y=120)
+            Button(self, text="Musescore", command=self.musescoreCMD).place(x=300, y=120)
 
-            closeButton = Button(self, text="Close", command=self.quit)
-            closeButton.place(x=300, y=170)
+            Button(self, text="3D Player", command=self.vpCMD).place(x=300, y=170)
 
-            self.meas = Scale(self, from_=5, to=100, bg='white', length=120, orient='horizontal')
+            self.meas = Scale(self, from_=2, to=100, bg='white', length=210, orient='horizontal')
             self.meas.set(100)
-            self.meas.place(x=130, y=110)    
-            melab = Label(self, text='#max meas:', bg="white")        
-            melab.place(x=40, y=130)    
-
-            self.rate = Scale(self, from_=1, to=8, bg='white', length=120, orient='horizontal')
-            self.rate.set(1)
-            self.rate.place(x=130, y=150)    
-            slab = Label(self, text='3D speed:', bg="white")        
-            slab.place(x=40, y=170)    
+            self.meas.place(x=40, y=110)
+            Label(self, text='Max nr. of measures', bg="white").place(x=40, y=150)
 
         def importCMD(self):
-            ftypes = [('XML Music files', '*.xml'),('Midi Music files', '*.mid'),
-                        ('All files', '*')]
+            ftypes = [('XML Music files', '*.xml'), ('Midi Music files', '*.mid'),
+                      ('PIG Music files', '*.txt'), ('All files', '*')]
             dlg = tkFileDialog.Open(self, filetypes = ftypes)
             self.filename = dlg.show()
             print('Input File is ', self.filename)
 
-        def generateCMD(self): 
+        def generateCMD(self):
             sf = converter.parse(self.filename)
 
             if self.Rcb.get():
@@ -108,8 +92,8 @@ if len(sys.argv) < 2: # no args are passed, pop up GUI
             print("Saving score to output.xml")
             sf.write('xml', fp='output.xml')
             print("\nTo visualize score type:\n musescore output.xml\n")
-                    
-        def vpCMD(self):  
+
+        def vpCMD(self):
             from pianoplayer.vtk_keyboard import VirtualKeyboard
 
             vk = VirtualKeyboard()
@@ -121,14 +105,14 @@ if len(sys.argv) < 2: # no args are passed, pop up GUI
             vk.vp.show(zoom=2, interactive=1)
             print('Close window and press Close to exit.')
 
-        def musescoreCMD(self):  
+        def musescoreCMD(self):
             print('try opening musescore')
             os.system('musescore output.xml')
 
     root = Tk()
     root.geometry("455x220")
     app = PianoGUI(root)
-    root.mainloop()  
+    root.mainloop()
 
 
 else: ################################################################################################# command line mode
@@ -145,7 +129,7 @@ else: ##########################################################################
     pr.add_argument("-d", "--depth", metavar='', type=int, help="[auto] Depth of combinatorial search, [4-9]", default=0)
     pr.add_argument("-rbeam", metavar='', type=int, help="[0] Specify Right Hand beam number", default=0)
     pr.add_argument("-lbeam", metavar='', type=int, help="[1] Specify Left Hand beam number", default=1)
-    pr.add_argument("--debug",             help="Switch on verbosity", action="store_true")
+    pr.add_argument("--verbose",             help="Switch off verbosity", action="store_true")
     pr.add_argument("-m", "--musescore",   help="Open output in musescore after processing", action="store_true")
     pr.add_argument("-b", "--below-beam",  help="Show fingering numbers below beam line", action="store_true")
     pr.add_argument("-v", "--with-vtk",    help="Play 3D scene after processing", action="store_true")
@@ -178,15 +162,28 @@ else: ##########################################################################
             xmlfn = str(args.filename).replace('.mscz', '.xml').replace('.mscx', '.xml')
             print('..trying to convert your musescore file to',xmlfn)
             os.system('musescore -f "'+args.filename+'" -o "'+xmlfn+'"') # quotes avoid problems w/ spaces in filename
+            sf = converter.parse(xmlfn)
         except:
             print('Unable to convert file, try to do it from musescore.')
             sys.exit()
 
-    sf = converter.parse(xmlfn)
+    elif '.txt' in args.filename:
+        sf = stream.Stream()
+
+        if not args.left_only:
+            ptr = PIG2Stream(args.filename, 0)
+            sf.insert(0, ptr)
+        if not args.right_only:
+            ptl = PIG2Stream(args.filename, 1)
+            sf.insert(0, ptl) # 0=offset
+
+    else:
+        sf = converter.parse(xmlfn)
+
 
     if not args.left_only:
         rh = Hand("right", hand_size)
-        rh.verbose = args.debug
+        rh.verbose = args.verbose
         if args.depth == 0:
             rh.autodepth = True
         else:
@@ -194,13 +191,13 @@ else: ##########################################################################
             rh.depth = args.depth
         rh.lyrics = args.below_beam
         rh.handstretch = args.hand_stretch
-       
+
         rh.noteseq = reader(sf, beam=args.rbeam)
         rh.generate(args.start_measure, args.n_measures)
 
     if not args.right_only:
         lh = Hand("left", hand_size)
-        lh.verbose = args.debug
+        lh.verbose = args.verbose
         if args.depth == 0:
             lh.autodepth = True
         else:
@@ -208,40 +205,38 @@ else: ##########################################################################
             lh.depth = args.depth
         lh.lyrics = args.below_beam
         lh.handstretch = args.hand_stretch
-        
+
         lh.noteseq = reader(sf, beam=args.lbeam)
         lh.generate(args.start_measure, args.n_measures)
 
     sf.write('xml', fp=args.outputfile)
 
-    if args.musescore:
-        try:
-            os.system('musescore "'+args.outputfile+'" &')
-        except:
-            print('Unable to convert musescore file')
+
+    if args.musescore: # -m option
+        print('Opening musescore with output score:', args.outputfile)
+        os.system('musescore "'+args.outputfile+'" > /dev/null 2>&1')
     else:
         print ("\nTo visualize annotated score with fingering type:\n musescore '"+args.outputfile+"'")
 
 
     if args.with_vtk:
         from pianoplayer.vtk_keyboard import VirtualKeyboard
-        
+
         if args.start_measure !=1:
             print('Sorry, start_measure must be set to 1 when -v option is used. Exit.')
             exit()
 
         vk = VirtualKeyboard(songname=xmlfn)
 
-        if not args.left_only: 
+        if not args.left_only:
             vk.build_RH(rh)
-        if not args.right_only: 
+        if not args.right_only:
             vk.build_LH(lh)
 
-        if args.sound_off: 
+        if args.sound_off:
             vk.playsounds = False
 
-        vk.verbose = args.debug
+        vk.verbose = args.verbose
         vk.speedfactor = args.vtk_speed
         vk.play()
         vk.vp.show(zoom=2, interactive=1)
-    

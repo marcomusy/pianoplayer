@@ -11,19 +11,19 @@ def nameof(n):
     a = n.name+str(n.octave)
     if "-" in a:
         b = a.replace("C-","B")
-        b = b.replace("D-","C#")
+        b = b.replace("D-","C#") # chain b
         b = b.replace("E-","D#")
         b = b.replace("F-","E")
         b = b.replace("G-","F#")
         b = b.replace("A-","G#")
         b = b.replace("B-","A#")
-        return b 
+        return b
     elif "E#" in a:
         b = a.replace("E#","F")
-        return b         
+        return b
     elif "B#" in a:
         b = a.replace("B#","C")
-        return b         
+        return b
     else:
         return a
 
@@ -69,19 +69,19 @@ def keypos(n): #position of notes on keyboard
     elif n.name == 'G#' : step = k *5.
     elif n.name == 'A#' : step = k *6.
     elif n.name == 'C-' : step = k *6.5
-    elif n.name == 'D-' : step = k 
+    elif n.name == 'D-' : step = k
     elif n.name == 'E-' : step = k *2.
     elif n.name == 'F-' : step = k *2.5
     elif n.name == 'G-' : step = k *4.
     elif n.name == 'A-' : step = k *5.
     elif n.name == 'B-' : step = k *6.
-    else: 
+    else:
         print("ERROR note not found", n.name)
     return keybsize * n.octave + step
 
 
-def handSizeFactor(s): 
-    f=0.82       
+def handSizeFactor(s):
+    f=0.82
     if    s=='XXS': f = 0.33
     elif  s=='XS' : f = 0.46
     elif  s=='S'  : f = 0.64

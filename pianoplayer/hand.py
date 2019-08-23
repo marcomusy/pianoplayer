@@ -1,5 +1,3 @@
-#
-# 
 #-------------------------------------------------------------------------------
 # Name:         PianoPlayer
 # Purpose:      Find optimal fingering for piano scores
@@ -13,22 +11,23 @@ import pianoplayer.utils as utils
 #####################################################
 class Hand:
     def __init__(self, side="right", size='M'):
-        
+
         self.LR        = side
-        self.frest     = [None,  -7.0,-2.8, 0.0, 2.8, 5.8] # first is dummy, (cm)
-        self.weights   = [None,   1.1, 1.0, 1.1, 0.9, 0.8] # finger rel strength
+        # fingers pos at rest first is dummy, (cm), asymmetry helps with scales
+        self.frest     = [None,  -7.0,-2.8, 0.0, 2.8, 5.6]
+        self.weights   = [None,   1.1, 1.0, 1.1, 0.9, 0.8] # finger relative strength
         self.bfactor   = [None,   0.3, 1.0, 1.1, 0.8, 0.7] # hit of black key bias
         self.noteseq   = []
         self.fingerseq = []
         self.depth     = 9
-        self.autodepth = True  
+        self.autodepth = True
         self.verbose   = True
         self.lyrics    = False  # show fingering numbers as lyrics in musescore
         self.size      = size
         self.handstretch = False
 
         self.hf = utils.handSizeFactor(size)
-        for i in (1,2,3,4,5): 
+        for i in (1,2,3,4,5):
             if self.frest[i]: self.frest[i] *= self.hf
         print('Your hand span set to size-'+size, 'which is', 21*self.hf, 'cm')
         print('(max relaxed distance between thumb and pinkie)')
@@ -36,75 +35,93 @@ class Hand:
 
 
     #####################################################
-    def set_fingers_positions(self, fings, notes, i): 
+    def set_fingers_positions(self, fings, notes, i):
 
         fi = fings[i]
         ni = notes[i]
         fac = 1
-        
+
         if self.handstretch:
-            # allow whole hand stretching from -20% to +40%, 
+            # allow whole hand stretching from -20% to +40%,
             # based on the distribution of next 2 notes
             tfac, minfac, maxfac = 1, 0.8, 1.4
             nn = min(len(fings), len(notes), 2)
-            if not ni.isChord or (self.LR=='left' and len(ni.chord21.pitches)==2):
+            if not ni.isChord:
                 xs = [n.x for n in notes[i:i+nn]]
                 if xs:
                     handspread = max(xs) - min(xs)
-                    if handspread: 
+                    if handspread:
                         tfac = handspread/(self.frest[5]-self.frest[1])*self.hf/0.8
-                        if   tfac < minfac: fac = minfac 
+                        if   tfac < minfac: fac = minfac
                         elif tfac > maxfac: fac = maxfac
                         else: fac = abs(tfac)
 
         ifx = self.frest[fi]
         if ifx is not None:
-            for j in (1,2,3,4,5): 
-                self.cfps[j] = (self.frest[j]-ifx) *fac + ni.x
-         
-        
+            for j in (1,2,3,4,5):
+                jfx = self.frest[j]
+                self.cfps[j] = (jfx-ifx) *fac + ni.x
+
+
     #####################################################
     def ave_velocity(self, fingering, notes):
         ###calculate v for playing for notes in a given fingering combination
-        
+
         self.set_fingers_positions(fingering, notes, 0)
+
+        #print('-----------', fingering)
 
         vmean = 0.
         for i in range(1, self.depth):
             na = notes[i-1]
             nb = notes[i]
             fb = fingering[i]
-                        
-            dx = nb.x - self.cfps[fb]     # space travelled by finger fb
-            dt = nb.time - na.time +0.001 # available time +smoothing term
-            v  = abs(dx/dt)               # velocity
-            
-            if nb.isBlack: 
+
+            dx = abs(nb.x - self.cfps[fb])     # space travelled by finger fb
+
+            if na.isChord:
+                tchord = na.duration/na.NinChord
+            else:
+                tchord=0
+
+            # available time +smoothing terms
+            dt = abs(nb.time - na.time) +0.1 +tchord
+            v  = dx/dt                         # velocity
+
+            if nb.isBlack:
                 bfac = self.bfactor[fb]
-            else: 
+            else:
                 bfac = 1
-            v /= self.weights[fb] * bfac  # penalty (increase speed)
+            v /= self.weights[fb] * bfac  # penalty (by increasing speed)
             vmean += v
-            
+
+            #print(i, na.name, nb.name)
+            #print('bx', nb.x-self.cfps[fb], nb.time-na.time, dt)
+            #print('velocity=', v)
+
             #update all fingers positions
             self.set_fingers_positions(fingering, notes, i)
 
+       # print('final', vmean / (self.depth-1))
         return vmean / (self.depth-1)
-        
-        
+
+
     #####################################################
     def optimize_seq(self, nseq, istart):
         '''Generate meaningful fingerings for a note sequence of size depth'''
-    
+
         if self.autodepth:
-            for i in (4,5,6,7,8):
+            for i in (4,5,6,7): # limit to 8 for speed
+                if nseq[i].isChord: # chords make fingers jump anyway
+                    self.depth = 4
+                    break
                 self.depth = i+1
-                if nseq[i].time - nseq[0].time > 3: 
-                    break #depth limit in secs
+                if nseq[i].time - nseq[0].time > 3:
+                    break
         depth = self.depth
-    
+
         fingers = (1,2,3,4,5)
-        n1, n2, n3, n4, n5 = nseq[0:5] 
+        n1, n2, n3, n4, n5 = nseq[0:5]
         n6, n7, n8, n9 = [None]*4
         if depth>5: n6 = nseq[5]
         if depth>6: n7 = nseq[6]
@@ -113,30 +130,45 @@ class Hand:
         if istart == 0: u1 = fingers
         else: u1 = [istart]
 
-        def skip(fa,fb, na,nb): ### two-consecutive-notes movement skipping rules ###
-            # fa is fingering for note na
-            xba = nb.x - na.x  # physical distance, cm
+        ############################
+        def skip(fa,fb, na,nb): ### RH two-consecutive-notes movement skipping rules ###
 
-            if fa==fb and xba and na.duration<4 and not nb.isChord: 
+            # fa is fingering for note na
+            xba = nb.x - na.x  # physical distance btw the second to first note, in cm
+
+            if not nb.isChord and not na.isChord and fa==fb and xba and na.duration<4:
                 return True # play different notes w/ same finger, skip
-        
+
             if fa>1 : # if a is not thumb
                 if fb>1  and (fb-fa)*xba<0: return True # non-thumb fingers are crossings, skip
                 if fb==1 and nb.isBlack and xba>0: return True # crossing thumb goes to black, skip
-                
-            if na.isChord and na.time-nb.time<0.0051: # na and nb are in the same chord
-                axba = abs(xba)*self.hf/0.8 # max normalizd distance in cm btw 2 consecutive fingers
-                if fa==fb  and axba: return True # play different chord notes w/ same finger, skip
-                if axba> 6 and (fa==2 and fb==3 or fa==3 and fb==2): return True
-                if axba>12 and (fa==1 and fb==2 or fa==2 and fb==1): return True
-                if axba>14 and (fa==1 and fb==3 or fa==3 and fb==1): return True
-                if axba>16 and (fa==1 and fb==4 or fa==4 and fb==1): return True
-                if  xba> 0 and fa>1  and fb==1: return True # no thumb cross inside chord, skip
-                if  xba< 0 and fa==1 and fb>1 : return True
-            return False   ##########################################################
+            else: # a is thumb
+                # skip if a is black and xba<0 and fb>1 and na.duration<2
+                if na.isBlack and xba<0 and fb>1 and na.duration<2: return True
+
+            if na.isChord:
+                if abs(na.time-nb.time)<0.051: # na and nb are notes in the same chord
+                    axba = abs(xba)*self.hf /0.8 # max normalizd distance in cm btw 2 consecutive fingers
+                    if axba:
+                        if fa==fb: return True # play different chord notes w/ same finger, skip
+                        if fa<fb and self.LR=='left' : return True
+                        if fa>fb and self.LR=='right': return True
+                    if axba> 5 and (fa==3 and fb==4 or fa==4 and fb==3): return True
+                    if axba> 5 and (fa==4 and fb==5 or fa==5 and fb==4): return True
+                    if axba> 6 and (fa==2 and fb==3 or fa==3 and fb==2): return True
+                    if axba> 7 and (fa==2 and fb==4 or fa==4 and fb==2): return True
+                    if axba> 8 and (fa==3 and fb==5 or fa==5 and fb==3): return True
+                    if axba>11 and (fa==2 and fb==5 or fa==5 and fb==2): return True
+                    if axba>12 and (fa==1 and fb==2 or fa==2 and fb==1): return True
+                    if axba>14 and (fa==1 and fb==3 or fa==3 and fb==1): return True
+                    if axba>16 and (fa==1 and fb==4 or fa==4 and fb==1): return True
+
+            return False
+        ##############################
 
         out = ([0]*depth, -1)
         minvel = 1.e+10
+
         for f1 in u1:
             for f2 in fingers:
                 if skip(f1,f2, n1,n2): continue
@@ -164,19 +196,21 @@ class Hand:
                                             if f9 and skip(f8,f9, n8,n9): continue
                                             c = [f1,f2,f3,f4,f5,f6,f7,f8,f9]
                                             v = self.ave_velocity(c, nseq)
-                                            if v < minvel: 
+                                            if v < minvel:
                                                 out = (c, v)
                                                 minvel  = v
         return out
 
-    
+
     ###########################################################################################
     def generate(self, start_measure=0, nmeasures=1000):
 
-        if start_measure == 1: start_measure=0 # avoid confusion with python numbering
+        if start_measure == 1:
+            start_measure=0 # avoid confusion with python numbering
+
         if self.LR == "left":
             for anote in self.noteseq:
-                anote.x = -anote.x             # play left as a right on a mirrored keyboard
+                anote.x = -anote.x     # play left as a right on a mirrored keyboard
 
         start_finger, out, vel = 0, [0]*9, 0
         N = len(self.noteseq)
@@ -207,7 +241,7 @@ class Hand:
             self.set_fingers_positions(out, ninenotes, 0)
             self.fingerseq.append(list(self.cfps))
 
-            if best_finger>0:
+            if best_finger>0 and i < N-3:
                 fng = Fingering(best_finger)
                 if an.isChord:
                     if self.lyrics:
@@ -218,13 +252,13 @@ class Hand:
                     else:
                         an.chord21.articulations.append(fng)
                 else:
-                    if self.lyrics: 
+                    if self.lyrics:
                         an.note21.addLyric(best_finger)
-                    else:           
+                    else:
                         an.note21.articulations.append(fng)
 
 
-            #-----------------------------
+            #---------------------------------------------------------------------------- print
             if self.verbose:
                 print("meas."+str(an.measure), end=' ')
                 print("  finger:"+str(best_finger) + " on " + an.name+str(an.octave), end=' ')
@@ -237,7 +271,7 @@ class Hand:
                 else:
                     print()
             else:
-                if i and not i%100:
+                if i and not i%100 and an.measure:
                     print('scanned',i,'notes in', an.measure+1, 'measures for', self.LR ,'hand..')
 
 
