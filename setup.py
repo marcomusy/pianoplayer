@@ -2,12 +2,12 @@ from setuptools import setup
 
 setup(
     name='pianoplayer',
-    version='2.1.0', #change also in __init__.py and README.md
+    version='2.1.1', #change also in __init__.py and README.md
     packages=['pianoplayer'],
     scripts=['bin/pianoplayer'],
-    install_requires=['music21','vtkplotter'],
+    install_requires=['music21','vedo'],
     description='Automatic piano fingering generator. Finds and shows in 3D the best fingering combination to play a score.',
-    long_description="""Automatic piano fingering generator. 
+    long_description="""Automatic piano fingering generator.
     Finds and shows in a 3D visualization the best fingering combination to play a score.
 
     Check out https://github.com/marcomusy/pianoplayer for documentation.""",
