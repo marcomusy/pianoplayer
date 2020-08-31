@@ -27,7 +27,7 @@ def soundof(notes, duration, volume=1):
             freq = n21.frequency
     
         # get timesteps for each sample, duration is note duration in seconds
-        t = np.linspace(0, duration, duration * sample_rate, False)
+        t = np.linspace(0, duration, int(duration*sample_rate), False)
 
         # generate sine wave notes
         intensity = np.sin((freq*2*np.pi) * t )
