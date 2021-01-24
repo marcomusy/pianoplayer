@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pianoplayer',
-    version='2.1.1', #change also in __init__.py and README.md
+    version='2.2.0', #change also in __init__.py
     packages=['pianoplayer'],
     scripts=['bin/pianoplayer'],
     install_requires=['music21','vedo'],
