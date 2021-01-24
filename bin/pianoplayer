@@ -4,8 +4,6 @@
 # Purpose:      Find optimal fingering for piano scores
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
-
-from __future__ import division, print_function
 import os, sys
 from music21 import converter, stream
 from pianoplayer.hand import Hand
@@ -29,7 +27,7 @@ if len(sys.argv) < 2: # no args are passed, pop up GUI
         def __init__(self, parent):
             Frame.__init__(self, parent, bg="white")
             self.parent = parent
-            self.filename = 'scores/timetravel.xml'
+            self.filename = 'scores/bach_invention4.xml'
             self.Rcb = BooleanVar()
             self.Lcb = BooleanVar()
             self.RightHandBeam = 0
@@ -129,7 +127,7 @@ else: ##########################################################################
     pr.add_argument("-d", "--depth", metavar='', type=int, help="[auto] Depth of combinatorial search, [4-9]", default=0)
     pr.add_argument("-rbeam", metavar='', type=int, help="[0] Specify Right Hand beam number", default=0)
     pr.add_argument("-lbeam", metavar='', type=int, help="[1] Specify Left Hand beam number", default=1)
-    pr.add_argument("--verbose",             help="Switch off verbosity", action="store_true")
+    pr.add_argument("--quiet",             help="Switch off verbosity", action="store_true")
     pr.add_argument("-m", "--musescore",   help="Open output in musescore after processing", action="store_true")
     pr.add_argument("-b", "--below-beam",  help="Show fingering numbers below beam line", action="store_true")
     pr.add_argument("-v", "--with-vedo",   help="Play 3D scene after processing", action="store_true")
@@ -137,7 +135,6 @@ else: ##########################################################################
     pr.add_argument("-z", "--sound-off",   help="Disable sound", action="store_true")
     pr.add_argument("-l", "--left-only",   help="Fingering for left hand only", action="store_true")
     pr.add_argument("-r", "--right-only",  help="Fingering for right hand only", action="store_true")
-    pr.add_argument("-x", "--hand-stretch",    help="Enable hand stretching", action="store_true")
     pr.add_argument("-XXS", "--hand-size-XXS", help="Set hand size to XXS", action="store_true")
     pr.add_argument("-XS", "--hand-size-XS",   help="Set hand size to XS", action="store_true")
     pr.add_argument("-S", "--hand-size-S",     help="Set hand size to S", action="store_true")
@@ -183,28 +180,26 @@ else: ##########################################################################
 
     if not args.left_only:
         rh = Hand("right", hand_size)
-        rh.verbose = args.verbose
+        rh.verbose = not(args.quiet)
         if args.depth == 0:
             rh.autodepth = True
         else:
             rh.autodepth = False
             rh.depth = args.depth
         rh.lyrics = args.below_beam
-        rh.handstretch = args.hand_stretch
 
         rh.noteseq = reader(sf, beam=args.rbeam)
         rh.generate(args.start_measure, args.n_measures)
 
     if not args.right_only:
         lh = Hand("left", hand_size)
-        lh.verbose = args.verbose
+        lh.verbose = not(args.quiet)
         if args.depth == 0:
             lh.autodepth = True
         else:
             lh.autodepth = False
             lh.depth = args.depth
         lh.lyrics = args.below_beam
-        lh.handstretch = args.hand_stretch
 
         lh.noteseq = reader(sf, beam=args.lbeam)
         lh.generate(args.start_measure, args.n_measures)
@@ -236,7 +231,6 @@ else: ##########################################################################
         if args.sound_off:
             vk.playsounds = False
 
-        vk.verbose = args.verbose
         vk.speedfactor = args.vedo_speed
         vk.play()
         vk.vp.show(zoom=2, interactive=1)

@@ -1,25 +1,20 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #-------------------------------------------------------------------------------
 # Name:         VirtualKeyboard
 # Purpose:      Find optimal fingering for piano scores
 # URL:          https://github.com/marcomusy/pianoplayer
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
-from __future__ import division, print_function
-
 try:
-    from vedo import Plotter, Assembly, printc, vector
+    from vedo import Plotter, Assembly, printc
     from vedo import Ellipsoid, Box, Cylinder, Text
 except:
     pass
-    #print("VirtualKeyboard: cannot find vedo package. Not installed?")
-    #print('Try:\n(sudo) pip install vedo')
 
 from pianoplayer import __version__
 from pianoplayer.utils import fpress, frelease, kpress, krelease, nameof
 from pianoplayer.wavegenerator import playSound
 import pianoplayer.utils as utils
-import time
 
 
 ###########################################################
@@ -43,35 +38,9 @@ class VirtualKeyboard:
         self.engagedfingersL = [False]*6
         self.engagedkeysR    = []
         self.engagedkeysL    = []
-        self.tcoords=[[-10., -15.], # texture
-                     [ 11., -15.],
-                     [-10.,  16.],
-                     [ 11.,  16.],
-                     [ 10., -15.],
-                     [-11., -15.],
-                     [ 10.,  16.],
-                     [-11.,  16.],
-                     [  5.,  10.],
-                     [  5., -11.],
-                     [ -6.,  10.],
-                     [ -6., -11.],
-                     [ -5.,  10.],
-                     [ -5., -11.],
-                     [  6.,  10.],
-                     [  6., -11.],
-                     [  5., -15.],
-                     [ -6., -15.],
-                     [  5.,  16.],
-                     [ -6.,  16.],
-                     [ -5., -15.],
-                     [  6., -15.],
-                     [ -5.,  16.],
-                     [  6.,  16.]]
-        self.tcoords = vector(self.tcoords)/12+0.44
-
         self.build_keyboard()
 
-    #######################################################
+    ################################################################################
     def makeHandActor(self, f=1):
         a1, a2, a3, c = (10*f,0,0), (0,7*f,0), (0,0,3*f), (.7,0.3,0.3)
         palm = Ellipsoid(pos=(0,-3,0), axis1=a1, axis2=a2, axis3=a3, alpha=0.6, c=c)
@@ -85,8 +54,7 @@ class VirtualKeyboard:
         self.vp += [arm, f1,f2,f3,f4,f5] # add actors to internal list
         return [arm, f1,f2,f3,f4,f5]
 
-    def build_RH(self, hand):
-        if self.verbose: print('Building Right Hand..')
+    def build_RH(self, hand): #########################Build Right Hand
         self.rightHand = hand
         f = utils.handSizeFactor(hand.size)
         self.vpRH = self.makeHandActor(f)
@@ -94,8 +62,7 @@ class VirtualKeyboard:
             limb.x( limb.x()* 2.5 )
             limb.addPos([16.5*5+1, -7.5, 3] )
 
-    def build_LH(self, hand): #########################
-        if self.verbose: print('Building Left Hand..')
+    def build_LH(self, hand): ########################Build Left Hand
         self.leftHand = hand
         f = utils.handSizeFactor(hand.size)
         self.vpLH = self.makeHandActor(f)
@@ -104,10 +71,8 @@ class VirtualKeyboard:
             limb.addPos([16.5*3+1, -7.5, 3] )
 
 
-    #######################################################
+    #######################################################Build Keyboard
     def build_keyboard(self):
-
-        if self.verbose: print('Building Keyboard..')
         nts = ("C","D","E","F","G","A","B")
         tol = 0.12
         keybsize = 16.5 # in cm, span of one octave
@@ -116,23 +81,21 @@ class VirtualKeyboard:
         span = nr_octaves*wb*7
 
         self.vp = Plotter(title='PianoPlayer '+__version__,
-                          axes=0, size=(1400,700), bg='cornsilk', bg2='lb', verbose=0)
+                          axes=0, size=(1400,700), bg='cornsilk', bg2='lb')
 
         #wooden top and base
         self.vp += Box(pos=(span/2+keybsize, 6, 1),
-                       length=span+1, height=3, width= 5).texture('wood1', # top
-                                                                  tcoords=self.tcoords)
+                       length=span+1, height=3, width= 5).texture('wood1')
         self.vp += Box(pos=(span/2+keybsize, 0, -1),
-                       length=span+1, height=1, width=17).texture('wood1', # base
-                                                                  tcoords=self.tcoords)
+                       length=span+1, height=1, width=17).texture('wood1')
         self.vp += Text('PianoPlayer ^'+__version__+" ",
                         pos=(18, 5., 2.3), depth=.5, c='silver', italic=0.8)
         leggio = Box(pos=(span/1.55,8,10),
                      length=span/2, height=span/8, width=0.08, c=(1,1,0.9)).rotateX(-20)
         self.vp += leggio.texture('paper1')
-        self.vp += Text('Playing:\n'+self.songname.replace('_',"\\_"), font="Theemim",
-                        vspacing=3, depth=0.04,
-                        s=1.35, c='k', italic=0.5).rotateX(70).pos([55,10,6])
+        self.vp += Text('Playing:\n'+self.songname[-30:].replace('_',"\\_"), font="Theemim",
+                        vspacing=3, depth=0.04, s=1.35, c='k', italic=0.5
+                       ).rotateX(70).pos([55,10,6])
 
         for ioct in range(nr_octaves):
             for ik in range(7):              #white keys
@@ -147,17 +110,15 @@ class VirtualKeyboard:
         cam = dict(pos=(110, -51.1, 89.1),
                    focalPoint=(81.5, 0.531, 2.82),
                    viewup=(-0.163, 0.822, 0.546),
-                   distance=105,
-                   clippingRange=(41.4, 179))
+                   distance=105, clippingRange=(41.4, 179))
         self.vp.show(interactive=0, camera=cam, resetcam=0)
 
 
     #####################################################################
     def play(self):
-        #printc('Press [0-9] to proceed by one note or for more seconds', c=1)
+
         printc('Press space to proceed by one note', c=1)
-        printc('Press F1 to exit.', c=1)
-        # self.vp.keyPressFunction = self.runTime    # enable observer
+        printc('Press Esc to exit.', c=1)
 
         if self.rightHand:
             self.engagedkeysR    = [False]*len(self.rightHand.noteseq)
@@ -178,14 +139,15 @@ class VirtualKeyboard:
 
     ###################################################################
     def _moveHand(self, side, t):############# runs inside play() loop
+
         if side == 1:
-            c1,c2 = 'tomato', 'orange'
+            c1, c2         = 'tomato', 'orange'
             engagedkeys    = self.engagedkeysR
             engagedfingers = self.engagedfingersR
             H              = self.rightHand
             vpH            = self.vpRH
         else:
-            c1,c2 = 'purple', 'mediumpurple'
+            c1, c2         = 'purple', 'mediumpurple'
             engagedkeys    = self.engagedkeysL
             engagedfingers = self.engagedfingersL
             H              = self.leftHand
@@ -200,8 +162,8 @@ class VirtualKeyboard:
                 name = nameof(n)
                 krelease(self.KB[name])
                 frelease(vpH[f])
-                if hasattr(self.vp, 'interactor') : return
-                self.vp.interactor.Render()
+                if hasattr(self.vp, 'interactor'):
+                    self.vp.render()
 
         for i, n in enumerate(H.noteseq):#####################
             start, stop, f = n.time, n.time+n.duration, n.fingering
@@ -217,7 +179,7 @@ class VirtualKeyboard:
 
                 if t> self.t0 + self.vp.clock:
                     self.t0 = t
-                    self.vp.show(interactive=0, resetcam=0)
+                    self.vp.show(interactive=False, resetcam=False)
 
                 for g in [1,2,3,4,5]:
                     vpH[g].x( side * H.fingerseq[i][g] )
@@ -225,7 +187,6 @@ class VirtualKeyboard:
 
                 fpress(vpH[f],  c1)
                 kpress(self.KB[name], c2)
-                self.vp.show(interactive=1, resetcam=0)
 
                 if self.verbose:
                     msg = 'meas.'+str(n.measure)+' t='+str(round(t,2))
@@ -233,37 +194,17 @@ class VirtualKeyboard:
                     else:       printc(msg,      '\tLH.finger', f, 'hit', name, c='m')
 
                 if self.playsounds:
-                    playSound(n, self.speedfactor)
+                    self.vp.show(interactive=False, resetcam=False)
+                    playSound(n, self.speedfactor, wait=True)
+                    if hasattr(self.vp, 'interactor'):
+                        self.vp.interactor.Start()
                 else:
-                    time.sleep(n.duration*self.speedfactor)
-
-
-    ##########################################
-    def runTime(self, key):
-        secs = [str(i) for i in range(10)]
-        if key not in secs: return
-        printc('Will execute score for '+key+' seconds')
-        self.vp.interactive = False
-        self.vp.clock = int(key)
-        self.vp.interactor.ExitCallback()
+                    self.vp.show(interactive=1, resetcam=0)
 
 
 ############################ test
 if __name__ == "__main__":
-
     vk = VirtualKeyboard('Chopin Valse in A minor')
     vk.vp.show(interactive=1, resetcam=0)
-    # vk.build_LH(None)
-
-    # fpress(vk.vpLH[1], 'b')
-    # kpress(vk.KB['E3'], 'db')
-    # vk.vp.show(interactive=1)
-
-    # frelease(vk.vpLH[1])
-    # krelease(vk.KB['E3'])
-    # vk.vp.show(interactive=1)
-
-
-
 
 

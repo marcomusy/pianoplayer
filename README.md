@@ -7,9 +7,8 @@
 
 
 Automatic piano fingering generator. <br />
-Find the optimal fingering combination to play a piano score
-and visualize it in 3D with [vedo](https://github.com/marcomusy/vedo)
-and [music21](http://web.mit.edu/music21).<br />
+Find the optimal fingering combination to play a piano score.
+Optionally visualize it in 3D with [vedo](https://github.com/marcomusy/vedo).<br />
 
 ## Download and Install:
 ```bash
@@ -21,17 +20,24 @@ sudo apt install libasound2-dev
 pip install simpleaudio
 ```
 
-To visualize the output annotated score install the latest [musescore](https://musescore.org/en/download), or any other renderer of [MusicXML](https://en.wikipedia.org/wiki/MusicXML)
-files.
-
-**Windows 10** users can place this file: [pianoplayer.bat](https://github.com/marcomusy/pianoplayer/blob/master/pianoplayer.bat) ontheir desktop (edit the path to your local anaconda or python installation). Check out [this link](https://github.com/marcomusy/pianoplayer/issues/27) in case of installation problems.
-
 #### Installing without 3D rendering
-To only install the core functionality and skip everything else, use:
+To only install the core functionality and skip everything else, use the following:
 ```bash
 pip install music21
 pip install --no-deps pianoplayer
 ```
+
+To visualize the output annotated score install the latest
+[musescore](https://musescore.org/en/download), or any other renderer
+of [MusicXML](https://en.wikipedia.org/wiki/MusicXML)
+files.
+
+**Windows 10** users can place this file:
+[pianoplayer.bat](https://github.com/marcomusy/pianoplayer/blob/master/pianoplayer.bat)
+on their desktop (edit the path to your local anaconda or python installation).
+Check out [this link](https://github.com/marcomusy/pianoplayer/issues/27) in case of
+installation problems.
+
 
 ## CLI Usage:
 Example command line from terminal:<br />
@@ -58,14 +64,13 @@ pianoplayer [-h] [-o] [-n] [-s] [-d] [-k] [-rbeam] [-lbeam] [-q] [-m] [-v] [--ve
 #   -d , --depth          [auto] Depth of combinatorial search, [2-9]
 #   -rbeam                [0] Specify Right Hand beam number
 #   -lbeam                [1] Specify Left Hand beam number
-#   --verbose             Switch on verbosity
+#   --quiet               Switch off verbosity
 #   -m, --musescore       Open output in musescore after processing
 #   -b, --below-beam      Show fingering numbers below beam line
 #   -v, --with-vedo       Play 3D scene after processing
 #   -z, --sound-off       Disable sound
 #   -l, --left-only       Fingering for left hand only
 #   -r, --right-only      Fingering for right hand only
-#   -x, --hand-stretch    Enable hand stretching
 #   -XXS, --hand-size-XXS Set hand size to XXS
 #   -XS, --hand-size-XS   Set hand size to XS
 #   -S, --hand-size-S     Set hand size to S
@@ -77,7 +82,8 @@ pianoplayer [-h] [-o] [-n] [-s] [-d] [-k] [-rbeam] [-lbeam] [-q] [-m] [-v] [--ve
 
 ### GUI Usage:<br />
 Just type `pianoplayer` in a terminal
-(or double click the [pianoplayer.bat](https://github.com/marcomusy/pianoplayer/blob/master/pianoplayer.bat) file),
+(or double click the
+[pianoplayer.bat](https://github.com/marcomusy/pianoplayer/blob/master/pianoplayer.bat) file),
 then:
 
 ![newgui](https://user-images.githubusercontent.com/32848391/63605343-09365000-c5ce-11e9-97b8-a5642e71ca24.png)
@@ -85,7 +91,7 @@ then:
 - press **Import Score** (valid formats: *musescore, MusicXML, MIDI, [PIG](http://beam.kisarazu.ac.jp/~saito/research/PianoFingeringDataset/)*)
 - press **GENERATE** (`output.xml` is written)
 - press **Musescore** to visualize the annotated score
-- press **3D Player** to show the animation (Press `F1` to quit the application)
+- press **3D Player** to show the animation (Press `Esc` to quit the application)
 
 
 #### Example output, as displayed in *musescore*:
@@ -118,7 +124,7 @@ minimizes the effort of the hand avoiding unnecessary movements.
 - Your hand size (from 'XXS' to 'XXL') which sets the relaxed distance between thumb and pinkie.
 - The beam number associated to the right hand is by default nr.0 (nr.1 for left hand).
 You can change it with `-rbeam` and `-lbeam` command line options.
-- Depth of combinatorial search, from 2 up to 9 notes ahead of the currently playing note. By
+- Depth of combinatorial search, from 3 up to 9 notes ahead of the currently playing note. By
 default the algorithm selects this number automatically based on the duration of the notes to be played.
 
 ## Limitations

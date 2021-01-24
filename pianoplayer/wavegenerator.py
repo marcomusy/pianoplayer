@@ -1,93 +1,96 @@
-from __future__ import division, print_function
-
 import numpy as np
+import music21
 
-has_simpleaudio=True
+
 try:
     import simpleaudio
+    has_simpleaudio=True
 except:
     print("Cannot find simpleaudio package. Not installed?")
     print('Try:\n(sudo) pip install --upgrade simpleaudio')
     has_simpleaudio=False
 
 
+#####################################################################
+def soundof(notes, duration=1, volume=0.75, fading=750, wait=True):
+    """
+    Play a group of notes (chord) for the prescribed duration.
 
-def soundof(notes, duration, volume=1):
+    Parameters
+    ----------
+    notes : list
+        list of notes to be played (as strings or music21.Note).
+    duration : float
+        duration in seconds.
+    volume : float, optional
+        Output volume. The default is 0.75.
+    fading : int, optional
+        linear ramp up and down of volume. The default is 750.
+    wait : bool, optional
+        wait for the sound to end before continuing
+    """
+    if not has_simpleaudio:
+        return
 
     sample_rate = 44100
+    fade_in  = np.arange(0, 1,  1/fading)
+    fade_out = np.arange(1, 0, -1/fading)
+    timepoints = int(duration*sample_rate)
 
-    # calculate note frequencies
-    intensities = []
+    intensity = np.zeros(timepoints)
     for n in notes:
-        # freq = frequency(n)
-        n21 = n.note21
-        if hasattr(n21, 'pitch'):
-            freq = n21.pitch.frequency
+        if isinstance(n, (int,float)): # user gives n in Hz
+            freq = n
         else:
-            freq = n21.frequency
-    
+            if isinstance(n, str):
+                n = music21.note.Note(n)
+            if isinstance(n, music21.note.Note):
+                n21 = n
+            else:
+                n21 = n.note21
+            if hasattr(n21, 'pitch'):
+                freq = n21.pitch.frequency
+            else:
+                freq = n21.frequency
+
         # get timesteps for each sample, duration is note duration in seconds
-        t = np.linspace(0, duration, int(duration*sample_rate), False)
+        t = np.linspace(0, duration, timepoints, False)
 
         # generate sine wave notes
-        intensity = np.sin((freq*2*np.pi) * t )
-        intensities.append(intensity)
-    
-    for i in range(1, len(intensities)):
-        intensity = intensity + intensities[i]
+        note_intensity = np.sin(freq * 2*np.pi * t )
+        if len(intensity) > fading:
+            note_intensity[:fading]  *= fade_in
+            note_intensity[-fading:] *= fade_out
+        intensity += note_intensity
 
-    if not 0<volume<=1: volume=1
-
-    audio = intensity/(len(intensities)/float(volume))
-
-    # concatenate notes
-    # audio = np.hstack((intensity1, intensity2))
     # normalize to 16-bit range
-    audio *= 32767 / np.max(np.abs(audio))
-    # convert to 16-bit data
-    audio = audio.astype(np.int16)
+    audio = intensity * (32767 / np.max(np.abs(intensity)) * float(volume))
 
     # start playback
-    play_obj = simpleaudio.play_buffer(audio, 1, 2, sample_rate)
+    play_obj = simpleaudio.play_buffer(audio.astype(np.int16), 1, 2, sample_rate)
 
     # wait for playback to finish before exiting
-    play_obj.wait_done()
+    if wait:
+        play_obj.wait_done()
+    return play_obj
 
-    
-def pitch(freq):
-    from math import log2, pow
 
-    A4 = 440
-    C0 = A4*pow(2, -4.75)
-    name = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-    h = round(12*log2(freq/C0))
-    octave = h // 12
-    n = h % 12
-    return name[n] + str(octave)
-    
-
-####################################################### 
-from music21.midi.realtime import StreamPlayer
-from music21.stream import Stream
-
-def playSound(n, speedfactor):
+#######################################################
+def playSound(n, speedfactor=1.0, wait=True):
+    """Play a single chord and or a sequence of notes and chords"""
     if has_simpleaudio:
-        soundof([n], n.duration/speedfactor)
+        soundof([n], n.duration/speedfactor, wait)
     else:
         try:
-            s = Stream() 
-            if n.isChord: n = n.chord21
-            else: s.append(n.note21)
-            sp = StreamPlayer(s)
-            sp.play()            
-            # if n.isChord: 
-            #     s.append(n)
-            # else: 
-            #     nn = Note(n.nameWithOctave)
-            #     s.append(nn)
-            # sp = StreamPlayer(s)
-            # sp.play()        
+            s = music21.stream.Stream()
+            if n.isChord:
+                n = n.chord21
+            else:
+                s.append(n.note21)
+            sp = music21.midi.realtime.StreamPlayer(s)
+            sp.play()
         except:
             print('Unable to play sounds, add -z option')
+            print('pygame not installed?')
         return
-    
+

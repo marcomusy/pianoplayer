@@ -3,7 +3,6 @@ Created on Thu Nov 26 19:22:20 2015
 
 @author: marco musy
 """
-from __future__ import division, print_function
 from pianoplayer.utils import keypos
 
 #####################################################
@@ -21,40 +20,46 @@ class INote:
         self.measure  = 0
         self.chordnr  = 0
         self.NinChord = 0
-
+        self.chordID  = 0
+        self.noteID   = 0
 
 
 #####################################################
 def reader(sf, beam=0):
 
+    noteseq = []
 
     if hasattr(sf, 'parts'):
+        if len(sf.parts) <= beam:
+            return []
         strm = sf.parts[beam].flat
-        #print('pick part',beam, strm)
     elif hasattr(sf, 'elements'):
         if len(sf.elements)==1 and beam==1:
             strm = sf[0]
         else:
+            if len(sf) <= beam:
+                return []
             strm = sf[beam]
-        #print('pick element',beam)
     else:
         strm = sf.flat
 
     print('Reading beam', beam, 'with', len(strm), 'objects in stream.')
 
-    noteseq = []
+    chordID = 0
 
     for n in strm:
 
         if n.duration.quarterLength==0 : continue
 
-        if n.tie and (n.tie.type=='continue' or n.tie.type=='stop'): continue
+        if hasattr(n, 'tie'): # address bug https://github.com/marcomusy/pianoplayer/issues/29
+            if n.tie and (n.tie.type=='continue' or n.tie.type=='stop'): continue
 
         if n.isNote:
             if len(noteseq) and n.offset == noteseq[-1].time:
                 # print "doppia nota", n.name
                 continue
             an        = INote()
+            an.noteID += 1
             an.note21 = n
             an.isChord= False
             an.name   = n.name
@@ -73,11 +78,14 @@ def reader(sf, beam=0):
             if n.lyrics: an.fingering = n.lyric
             noteseq.append(an)
 
-        if n.isChord:
+        elif n.isChord:
+
             if n.tie and (n.tie.type=='continue' or n.tie.type=='stop'): continue
             sfasam = 0.05 # sfasa leggermente le note dell'accordo
             for j, cn in enumerate(n.pitches):
                 an = INote()
+                an.chordID  = chordID
+                an.noteID += 1
                 an.isChord = True
                 an.chord21 = n
                 an.note21  = cn
@@ -97,10 +105,11 @@ def reader(sf, beam=0):
                 else: an.isBlack = False
                 noteseq.append(an)
 
+            chordID += 1
+
     if len(noteseq)<2:
         print("Beam is empty.")
         return []
-
     return noteseq
 
 
@@ -112,7 +121,6 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
     beam = 0, right hand
     beam = 1, left hand.
     """
-
     from music21 import stream, note, chord
     from music21.articulations import Fingering
     import numpy as np
