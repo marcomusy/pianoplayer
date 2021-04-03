@@ -9,6 +9,10 @@ import os
 from music21.articulations import Fingering
 import pianoplayer.utils as utils
 
+KEY_TO_SEMITONE = {'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4,
+                   'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9,
+                   'a#': 10, 'bb': 10, 'b': 11, 'x': None}
+
 
 #####################################################
 class Hand:
@@ -171,6 +175,7 @@ class Hand:
         return out
 
 
+
     ###########################################################################################
     def generate(self, start_measure=0, nmeasures=1000, filename="temp"):
 
@@ -212,6 +217,22 @@ class Hand:
 
             if best_finger>0 and i < N-3:
                 fng = Fingering(best_finger)
+                name_fingers = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + '/'.join(
+                    ["Fingers"] + filename.split('/')[1:]) + '#fingers#' + self.LR + '.json'
+                if os.path.exists(name_fingers):
+                    with open(name_fingers) as json_file:
+                        data = json.load(json_file)
+                    fingers = {
+                        "key": data["key"] + [KEY_TO_SEMITONE[str(an.name).lower() * 12*an.octave]],
+                        "finger": data["finger"] + [fng]
+                    }
+                else:
+                    fingers = {
+                        "key": [KEY_TO_SEMITONE[str(an.name).lower() * 12*an.octave]],
+                        "finger": [fng]
+                    }
+                with open(name_fingers, 'w') as outfile:
+                    json.dump(fingers, outfile)
                 if an.isChord:
                     # if len(an.chord21.pitches) < 3:
                         # dont show fingering in the lyrics line for >3 note-chords
@@ -234,7 +255,7 @@ class Hand:
                 if i < N-10:
                     print(f"  v={round(vel,1)}", end='')
 
-                    name_velocities = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + '/'.join(["Fingers"] + filename.split('/')[1:]) + '#' + self.LR + '.json'
+                    name_velocities = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + '/'.join(["Fingers"] + filename.split('/')[1:]) + '#velocity#' + self.LR + '.json'
                     if os.path.exists(name_velocities):
                         with open(name_velocities) as json_file:
                             data = json.load(json_file)
