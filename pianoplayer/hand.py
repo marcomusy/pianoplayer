@@ -233,7 +233,8 @@ class Hand:
                 print(f"finger_{best_finger}  plays  {an.name: >2}{an.octave}", end=' ')
                 if i < N-10:
                     print(f"  v={round(vel,1)}", end='')
-                    name_velocities = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + filename + '#' + self.LR + '.json'
+
+                    name_velocities = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + '/'.join(["Fingers"] + filename.split('/')[1:]) + '#' + self.LR + '.json'
                     if os.path.exists(name_velocities):
                         with open(name_velocities) as json_file:
                             data = json.load(json_file)
