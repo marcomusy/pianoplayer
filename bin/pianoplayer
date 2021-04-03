@@ -189,7 +189,7 @@ else: ##########################################################################
         rh.lyrics = args.below_beam
 
         rh.noteseq = reader(sf, beam=args.rbeam)
-        rh.generate(args.start_measure, args.n_measures)
+        rh.generate(args.start_measure, args.n_measures, filename=os.path.splitext(args.filename)[0])
 
     if not args.right_only:
         lh = Hand("left", hand_size)
@@ -202,7 +202,7 @@ else: ##########################################################################
         lh.lyrics = args.below_beam
 
         lh.noteseq = reader(sf, beam=args.lbeam)
-        lh.generate(args.start_measure, args.n_measures)
+        lh.generate(args.start_measure, args.n_measures, filename=os.path.splitext(args.filename)[0])
 
     sf.write('xml', fp=args.outputfile)
 

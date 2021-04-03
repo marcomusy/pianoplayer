@@ -3,6 +3,9 @@
 # Purpose:      Find optimal fingering for piano scores
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
+import json
+import os
+
 from music21.articulations import Fingering
 import pianoplayer.utils as utils
 
@@ -169,7 +172,7 @@ class Hand:
 
 
     ###########################################################################################
-    def generate(self, start_measure=0, nmeasures=1000):
+    def generate(self, start_measure=0, nmeasures=1000, filename="temp"):
 
         if start_measure == 1:
             start_measure=0 # avoid confusion with python numbering
@@ -230,6 +233,15 @@ class Hand:
                 print(f"finger_{best_finger}  plays  {an.name: >2}{an.octave}", end=' ')
                 if i < N-10:
                     print(f"  v={round(vel,1)}", end='')
+                    name_velocities = filename + '#' + self.LR + '.json'
+                    if os.path.exists(name_velocities):
+                        with open(name_velocities) as json_file:
+                            data = json.load(json_file)
+                        velocities = data['velocities'] + [round(vel, 4)]
+                    else:
+                        velocities = [round(vel, 4)]
+                    with open(name_velocities, 'w') as outfile:
+                        json.dump(velocities, outfile)
                     if self.autodepth:
                         print("\t "+str(out[0:self.depth]) + " d:" + str(self.depth))
                     else:
