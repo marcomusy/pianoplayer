@@ -9,9 +9,9 @@ import os
 from music21.articulations import Fingering
 import pianoplayer.utils as utils
 
-KEY_TO_SEMITONE = {'c': 0, 'c#': 1, 'd-': 1, 'd': 2, 'd#': 3, 'e-': 3, 'e': 4,
-                   'f': 5, 'f#': 6, 'g-': 6, 'g': 7, 'g#': 8, 'a-': 8, 'a': 9,
-                   'a#': 10, 'b-': 10, 'b': 11, 'x': None}
+KEY_TO_SEMITONE = {'c': 0, 'c#': 1, 'd-': 1, 'd': 2, 'd#': 3, 'e-': 3, 'e': 4, 'e#': 5,
+                   'f-': 4, 'f': 5, 'f#': 6, 'g-': 6, 'g': 7, 'g#': 8, 'a-': 8, 'a': 9,
+                   'a#': 10, 'b-': 10, 'b': 11, 'c-': 11, 'b#': 0, 'x': None}
 
 
 #####################################################
@@ -223,12 +223,12 @@ class Hand:
                     with open(name_fingers) as json_file:
                         data = json.load(json_file)
                     fingers = {
-                        "keys": data["keys"] + [KEY_TO_SEMITONE[utils.nameof(str(an.name)).lower()] + an.octave*12],
+                        "keys": data["keys"] + [KEY_TO_SEMITONE[str(an.name).lower()] + an.octave*12],
                         "fingers": data["fingers"] + [best_finger]
                     }
                 else:
                     fingers = {
-                        "keys": [KEY_TO_SEMITONE[utils.nameof(str(an.name)).lower()] + an.octave*12],
+                        "keys": [KEY_TO_SEMITONE[str(an.name).lower()] + an.octave*12],
                         "fingers": [best_finger]
                     }
                 with open(name_fingers, 'w') as outfile:
