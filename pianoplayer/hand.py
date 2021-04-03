@@ -237,7 +237,7 @@ class Hand:
                     if os.path.exists(name_velocities):
                         with open(name_velocities) as json_file:
                             data = json.load(json_file)
-                        velocities = data['velocities'] + [round(vel, 4)]
+                        velocities = data + [round(vel, 4)]
                     else:
                         velocities = [round(vel, 4)]
                     with open(name_velocities, 'w') as outfile:
