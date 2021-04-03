@@ -223,13 +223,13 @@ class Hand:
                     with open(name_fingers) as json_file:
                         data = json.load(json_file)
                     fingers = {
-                        "key": data["key"] + [KEY_TO_SEMITONE[str(an.name).lower()] * 12*an.octave],
-                        "finger": data["finger"] + [fng]
+                        "keys": data["keys"] + [KEY_TO_SEMITONE[str(an.name).lower()] * 12*an.octave],
+                        "fingers": data["fingers"] + [best_finger]
                     }
                 else:
                     fingers = {
-                        "key": [KEY_TO_SEMITONE[str(an.name).lower()] * 12*an.octave],
-                        "finger": [fng]
+                        "keys": [KEY_TO_SEMITONE[str(an.name).lower()] * 12*an.octave],
+                        "fingers": [best_finger]
                     }
                 with open(name_fingers, 'w') as outfile:
                     json.dump(fingers, outfile)
