@@ -174,11 +174,39 @@ class Hand:
         # if out[1]==-1: exit() #no combination found
         return out
 
+    def _save_fingers(self, an, best_finger, filename):
+        name_fingers = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + '/'.join(
+            ["Fingers"] + filename.split('/')[1:]) + '#fingers#' + self.LR + '.json'
+        if os.path.exists(name_fingers):
+            with open(name_fingers) as json_file:
+                data = json.load(json_file)
+            fingers = {
+                "keys": data["keys"] + [KEY_TO_SEMITONE[str(an.name).lower()] + an.octave * 12],
+                "fingers": data["fingers"] + [best_finger]
+            }
+        else:
+            fingers = {
+                "keys": [KEY_TO_SEMITONE[str(an.name).lower()] + an.octave * 12],
+                "fingers": [best_finger]
+            }
+        with open(name_fingers, 'w') as outfile:
+            json.dump(fingers, outfile)
+
+    def _save_velocity(self, vel, filename):
+        name_velocities = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + '/'.join(
+            ["Fingers"] + filename.split('/')[1:]) + '#velocity#' + self.LR + '.json'
+        if os.path.exists(name_velocities):
+            with open(name_velocities) as json_file:
+                data = json.load(json_file)
+            velocities = data + [round(vel, 4)]
+        else:
+            velocities = [round(vel, 4)]
+        with open(name_velocities, 'w') as outfile:
+            json.dump(velocities, outfile)
 
 
     ###########################################################################################
     def generate(self, start_measure=0, nmeasures=1000, filename="temp"):
-
         if start_measure == 1:
             start_measure=0 # avoid confusion with python numbering
 
@@ -207,7 +235,7 @@ class Hand:
                 if len(out)>1: best_finger = out.pop(1)
             else:
                 ninenotes = self.noteseq[i : i+9]
-                out, vel  = self.optimize_seq(ninenotes, start_finger)
+                out, vel = self.optimize_seq(ninenotes, start_finger)
                 best_finger  = out[0]
                 start_finger = out[1]
 
@@ -215,24 +243,9 @@ class Hand:
             self.set_fingers_positions(out, ninenotes, 0)
             self.fingerseq.append(list(self.cfps))
 
-            if best_finger>0 and i < N-3:
+            if best_finger > 0 and i < N-3:
                 fng = Fingering(best_finger)
-                name_fingers = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + '/'.join(
-                    ["Fingers"] + filename.split('/')[1:]) + '#fingers#' + self.LR + '.json'
-                if os.path.exists(name_fingers):
-                    with open(name_fingers) as json_file:
-                        data = json.load(json_file)
-                    fingers = {
-                        "keys": data["keys"] + [KEY_TO_SEMITONE[str(an.name).lower()] + an.octave*12],
-                        "fingers": data["fingers"] + [best_finger]
-                    }
-                else:
-                    fingers = {
-                        "keys": [KEY_TO_SEMITONE[str(an.name).lower()] + an.octave*12],
-                        "fingers": [best_finger]
-                    }
-                with open(name_fingers, 'w') as outfile:
-                    json.dump(fingers, outfile)
+                self._save_fingers(an, best_finger, filename)
                 if an.isChord:
                     # if len(an.chord21.pitches) < 3:
                         # dont show fingering in the lyrics line for >3 note-chords
@@ -246,28 +259,23 @@ class Hand:
                         an.note21.addLyric(best_finger)
                     else:
                         an.note21.articulations.append(fng)
+            elif best_finger == 0:
+                self._save_fingers(an, best_finger, filename)
 
             #---------------------------------------------------------------------------- print
             if self.verbose:
-                if not best_finger: best_finger = '?'
-                if an.measure: print(f"meas.{an.measure: <3}", end=' ')
+                if not best_finger:
+                    best_finger = 0
+                if an.measure:
+                    print(f"meas.{an.measure: <3}", end=' ')
                 print(f"finger_{best_finger}  plays  {an.name: >2}{an.octave}", end=' ')
                 if i < N-10:
-                    print(f"  v={round(vel,1)}", end='')
-
-                    name_velocities = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + '/'.join(["Fingers"] + filename.split('/')[1:]) + '#velocity#' + self.LR + '.json'
-                    if os.path.exists(name_velocities):
-                        with open(name_velocities) as json_file:
-                            data = json.load(json_file)
-                        velocities = data + [round(vel, 4)]
-                    else:
-                        velocities = [round(vel, 4)]
-                    with open(name_velocities, 'w') as outfile:
-                        json.dump(velocities, outfile)
+                    print(f"  v={round(vel, 1)}", end='')
+                    self._save_velocity(vel, filename)
                     if self.autodepth:
-                        print("\t "+str(out[0:self.depth]) + " d:" + str(self.depth))
+                        print("\t " + str(out[0:self.depth]) + " d:" + str(self.depth))
                     else:
-                        print("\t"+("   "*(i%self.depth))+str(out[0:self.depth]))
+                        print("\t" + ("   " * (i % self.depth)) + str(out[0:self.depth]))
                 else:
                     print()
             else:
