@@ -207,6 +207,7 @@ class Hand:
 
     ###########################################################################################
     def generate(self, start_measure=0, nmeasures=1000, filename="temp"):
+        print("kk0", self.LR)
         if start_measure == 1:
             start_measure=0 # avoid confusion with python numbering
 
@@ -234,9 +235,9 @@ class Hand:
             if i > N-10:
                 if len(out)>1: best_finger = out.pop(1)
             else:
-                ninenotes = self.noteseq[i : i+9]
+                ninenotes = self.noteseq[i:i+9]
                 out, vel = self.optimize_seq(ninenotes, start_finger)
-                best_finger  = out[0]
+                best_finger = out[0]
                 start_finger = out[1]
 
             an.fingering = best_finger

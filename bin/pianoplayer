@@ -127,6 +127,7 @@ else: ##########################################################################
     pr.add_argument("-d", "--depth", metavar='', type=int, help="[auto] Depth of combinatorial search, [4-9]", default=0)
     pr.add_argument("-rbeam", metavar='', type=int, help="[0] Specify Right Hand beam number", default=0)
     pr.add_argument("-lbeam", metavar='', type=int, help="[1] Specify Left Hand beam number", default=1)
+    pr.add_argument("-save", metavar='', type=str, help="Path to save cost function and fingers", default=None)
     pr.add_argument("--quiet",             help="Switch off verbosity", action="store_true")
     pr.add_argument("-m", "--musescore",   help="Open output in musescore after processing", action="store_true")
     pr.add_argument("-b", "--below-beam",  help="Show fingering numbers below beam line", action="store_true")
