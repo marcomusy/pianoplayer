@@ -201,7 +201,7 @@ else: ##########################################################################
             lh.autodepth = False
             lh.depth = args.depth
         lh.lyrics = args.below_beam
-        import pdb; pdb.set_trace()
+        sf.show()
         lh.noteseq = reader(sf, beam=args.lbeam)
         lh.generate(args.start_measure, args.n_measures, filename=os.path.splitext(args.filename)[0])
 
