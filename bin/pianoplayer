@@ -153,7 +153,7 @@ else: ##########################################################################
     if args.hand_size_L  : hand_size = 'L'
     if args.hand_size_XL : hand_size = 'XL'
     if args.hand_size_XXL: hand_size = 'XXL'
-
+    print(args.filename)
     xmlfn = args.filename
     if '.msc' in args.filename:
         try:
@@ -201,7 +201,7 @@ else: ##########################################################################
             lh.autodepth = False
             lh.depth = args.depth
         lh.lyrics = args.below_beam
-        sf.show()
+
         lh.noteseq = reader(sf, beam=args.lbeam)
         lh.generate(args.start_measure, args.n_measures, filename=os.path.splitext(args.filename)[0])
 
