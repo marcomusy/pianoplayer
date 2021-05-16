@@ -207,7 +207,7 @@ class Hand:
 
     ###########################################################################################
     def generate(self, start_measure=0, nmeasures=1000, filename="temp"):
-        print("kk0", self.LR)
+        print("kk0", self.LR, len(self.noteseq))
         if start_measure == 1:
             start_measure=0 # avoid confusion with python numbering
 
