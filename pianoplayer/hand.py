@@ -248,12 +248,12 @@ class Hand:
                         if self.lyrics:
                             nl = len(an.chord21.pitches) - an.chordnr
                             an.chord21.addLyric(best_finger, nl)
-                        else:
+                        # else:
                             # an.chord21.articulations.append(fng)
                 else:
                     if self.lyrics:
                         an.note21.addLyric(best_finger)
-                    else:
+                    # else:
                         # an.note21.articulations.append(fng)
             elif best_finger == 0:
                 self._save_fingers(an, best_finger, filename)
