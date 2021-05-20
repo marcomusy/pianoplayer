@@ -228,11 +228,11 @@ else:  #########################################################################
     
     # sf.write('xml', fp=args.outputfile)
 
-    if args.musescore:  # -m option
-        print('Opening musescore with output score:', args.outputfile)
-        os.system('musescore "' + args.outputfile + '" > /dev/null 2>&1')
-    else:
-        print("\nTo visualize annotated score with fingering type:\n musescore '" + args.outputfile + "'")
+    # if args.musescore:  # -m option
+    #     print('Opening musescore with output score:', args.outputfile)
+    #     os.system('musescore "' + args.outputfile + '" > /dev/null 2>&1')
+    # else:
+    #     print("\nTo visualize annotated score with fingering type:\n musescore '" + args.outputfile + "'")
 
     if args.with_vedo:
         from pianoplayer.vkeyboard import VirtualKeyboard
