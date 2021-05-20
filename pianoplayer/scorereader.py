@@ -120,7 +120,7 @@ def reader_pretty_midi(pm, beam=0):
     pm_notes = sorted(pm.notes, key=attrgetter('start'))
     pm_onsets = [onset.start for onset in pm_notes]
 
-    print('Reading beam', beam, 'with', len(strm), 'objects in stream.')
+    print('Reading beam', beam, 'with', len(pm_notes), 'objects in stream.')
 
     chordID = 0
 
