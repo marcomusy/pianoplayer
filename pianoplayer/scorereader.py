@@ -4,6 +4,7 @@ Created on Thu Nov 26 19:22:20 2015
 @author: marco musy
 """
 from pianoplayer.utils import keypos
+from operator import attrgetter
 
 #####################################################
 class INote:
