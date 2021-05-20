@@ -104,16 +104,15 @@ _kb_layout = {
     "B--": 5.5,
 }
 
-# The assumtion of equal distance between notes is not totally true. (PRamoneda)
+# TODO The assumtion of equal distance between notes is not totally true. (PRamoneda)
 
 def keypos_midi(n):  # position of notes on keyboard
     step = 0.0
     keybsize = 16.5  # cm
     k = keybsize / 7.0  # 7 notes
-    if n.name in _kb_layout.keys():
-        step = (n.pitch % 12) * k
-    else:
-        print("ERROR note not found", n.name)
+    
+    step = (n.pitch % 12) * k
+    
     return keybsize * n.octave + step
 
 
