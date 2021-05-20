@@ -160,7 +160,6 @@ def reader_pretty_midi(pm, beam=0):
                 an.chordnr = jj
                 an.NinChord = chord_notes
                 an.octave  = cn.pitch //2
-                an.measure = n.measureNumber
                 an.x       = keypos_midi(cn)
                 an.time    = cn.start-sfasam*j
                 an.duration = cn_duration + sfasam * (an.NinChord - 1)
