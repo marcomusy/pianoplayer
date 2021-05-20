@@ -113,6 +113,70 @@ def reader(sf, beam=0):
     return noteseq
 
 
+def reader_pretty_midi(pm, beam=0):
+    
+    noteseq = []
+    pm_notes = sorted(pm.notes, key=attrgetter('start'))
+    pm_onsets = [onset.start for onset in pm_notes]
+
+    print('Reading beam', beam, 'with', len(strm), 'objects in stream.')
+
+    chordID = 0
+
+    ii = 0
+    while ii < len(pm_notes):
+        n = pm_notes[ii]
+        n_duration = n.end - n.start
+        chord_notes = pm_onsets.count(n.start)
+        if chord_notes != 1:
+            if n_duration == 0: continue
+            an        = INote()
+            an.noteID += 1
+            an.note21 = n
+            an.isChord= False
+            an.octave = n.octave
+            an.x      = keypos_midi(n)
+            an.time   = n.offset
+            an.duration = n_duration
+            an.isBlack= False
+            pc = n.pitch % 12
+            if pc in [1, 3, 6, 8, 10]: an.isBlack = True
+            noteseq.append(an)
+            ii += 1
+
+        else:
+            if n_duration == 0: continue
+            sfasam = 0.05 # sfasa leggermente le note dell'accordo
+            n_duration = n.end - n.start
+            for jj in range(chord_notes):
+                cn = pm_notes[ii]
+                an = INote()
+                an.chordID = chordID
+                an.noteID += 1
+                an.isChord = True
+                an.chord21 = n
+                an.note21  = cn
+                an.chordnr = jj
+                an.NinChord = chord_notes
+                an.octave  = cn.octave
+                an.measure = n.measureNumber
+                an.x       = keypos_midi(cn)
+                an.time    = cn.start-sfasam*j
+                an.duration = cn_duration + sfasam * (an.NinChord - 1)
+                pc = n.pitch % 12
+                if pc in [1, 3, 6, 8, 10]: an.isBlack = True
+                else: an.isBlack = False
+                noteseq.append(an)
+                ii += 1
+
+            chordID += 1
+
+    if len(noteseq)<2:
+        print("Beam is empty.")
+        return []
+    return noteseq
+
+
 def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
     """
     Convert a PIG text file to a music21 Stream object.

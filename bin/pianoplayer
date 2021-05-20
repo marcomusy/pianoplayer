@@ -1,16 +1,16 @@
 #!/usr/bin/env python
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Name:         PianoPlayer
 # Purpose:      Find optimal fingering for piano scores
 # Author:       Marco Musy
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 import os, sys
 from music21 import converter, stream
 from pianoplayer.hand import Hand
-from pianoplayer.scorereader import reader, PIG2Stream
+from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi
+import pretty_midi
 
-
-if len(sys.argv) < 2: # no args are passed, pop up GUI
+if len(sys.argv) < 2:  # no args are passed, pop up GUI
 
     if sys.version_info >= (3, 0):
         from tkinter import Frame, Tk, BOTH, Label, Scale, Checkbutton, BooleanVar
@@ -20,6 +20,7 @@ if len(sys.argv) < 2: # no args are passed, pop up GUI
         from Tkinter import Frame, Tk, BOTH, Label, Scale, Checkbutton, BooleanVar
         from ttk import Button, Style, Combobox
         import tkFileDialog
+
 
     ######################
     class PianoGUI(Frame):
@@ -31,7 +32,7 @@ if len(sys.argv) < 2: # no args are passed, pop up GUI
             self.Rcb = BooleanVar()
             self.Lcb = BooleanVar()
             self.RightHandBeam = 0
-            self.LeftHandBeam  = 1
+            self.LeftHandBeam = 1
             self.initUI()
 
         def initUI(self):
@@ -40,15 +41,15 @@ if len(sys.argv) < 2: # no args are passed, pop up GUI
             self.style.theme_use("clam")
             self.pack(fill=BOTH, expand=True)
 
-            Button(self, text="Import Score",command=self.importCMD).place(x=300, y=20)
+            Button(self, text="Import Score", command=self.importCMD).place(x=300, y=20)
 
-            Label(self,text="Hand Size:", bg="white").place(x=40, y=50)
-            hvalues = ('XXS','XS','S','M','L','XL','XXL')
-            self.handsize = Combobox(self, state="readonly",values=hvalues, width=4)
+            Label(self, text="Hand Size:", bg="white").place(x=40, y=50)
+            hvalues = ('XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL')
+            self.handsize = Combobox(self, state="readonly", values=hvalues, width=4)
             self.handsize.current(3)
             self.handsize.place(x=130, y=50)
 
-            Label(self,text="Scan:", bg="white").place(x=80, y=80)
+            Label(self, text="Scan:", bg="white").place(x=80, y=80)
             Rcb = Checkbutton(self, text="Right", variable=self.Rcb, bg="white")
             Rcb.select()
             Rcb.place(x=130, y=80)
@@ -70,7 +71,7 @@ if len(sys.argv) < 2: # no args are passed, pop up GUI
         def importCMD(self):
             ftypes = [('XML Music files', '*.xml'), ('Midi Music files', '*.mid'),
                       ('PIG Music files', '*.txt'), ('All files', '*')]
-            dlg = tkFileDialog.Open(self, filetypes = ftypes)
+            dlg = tkFileDialog.Open(self, filetypes=ftypes)
             self.filename = dlg.show()
             print('Input File is ', self.filename)
 
@@ -107,60 +108,68 @@ if len(sys.argv) < 2: # no args are passed, pop up GUI
             print('try opening musescore')
             os.system('musescore output.xml')
 
+
     root = Tk()
     root.geometry("455x220")
     app = PianoGUI(root)
     root.mainloop()
 
 
-else: ################################################################################################# command line mode
-
+else:  ################################################################################################# command line mode
 
     import argparse
 
     pr = argparse.ArgumentParser(description="""PianoPlayer,
     check out home page https://github.com/marcomusy/pianoplayer""")
     pr.add_argument("filename", type=str, help="Input music xml/midi file name")
-    pr.add_argument("-o", "--outputfile", metavar='', type=str, help="Annotated output xml file name", default='output.xml')
-    pr.add_argument("-n", "--n-measures", metavar='', type=int, help="[100] Number of score measures to scan", default=100)
+    pr.add_argument("-o", "--outputfile", metavar='', type=str, help="Annotated output xml file name",
+                    default='output.xml')
+    pr.add_argument("-n", "--n-measures", metavar='', type=int, help="[100] Number of score measures to scan",
+                    default=100)
     pr.add_argument("-s", "--start-measure", metavar='', type=int, help="Start from measure number [1]", default=1)
-    pr.add_argument("-d", "--depth", metavar='', type=int, help="[auto] Depth of combinatorial search, [4-9]", default=0)
+    pr.add_argument("-d", "--depth", metavar='', type=int, help="[auto] Depth of combinatorial search, [4-9]",
+                    default=0)
     pr.add_argument("-rbeam", metavar='', type=int, help="[0] Specify Right Hand beam number", default=0)
     pr.add_argument("-lbeam", metavar='', type=int, help="[1] Specify Left Hand beam number", default=1)
     pr.add_argument("-save", metavar='', type=str, help="Path to save cost function and fingers", default=None)
-    pr.add_argument("--quiet",             help="Switch off verbosity", action="store_true")
-    pr.add_argument("-m", "--musescore",   help="Open output in musescore after processing", action="store_true")
-    pr.add_argument("-b", "--below-beam",  help="Show fingering numbers below beam line", action="store_true")
-    pr.add_argument("-v", "--with-vedo",   help="Play 3D scene after processing", action="store_true")
+    pr.add_argument("--quiet", help="Switch off verbosity", action="store_true")
+    pr.add_argument("-m", "--musescore", help="Open output in musescore after processing", action="store_true")
+    pr.add_argument("-b", "--below-beam", help="Show fingering numbers below beam line", action="store_true")
+    pr.add_argument("-v", "--with-vedo", help="Play 3D scene after processing", action="store_true")
     pr.add_argument("--vedo-speed", metavar='', type=float, help="[1] Speed factor of rendering", default=1.5)
-    pr.add_argument("-z", "--sound-off",   help="Disable sound", action="store_true")
-    pr.add_argument("-l", "--left-only",   help="Fingering for left hand only", action="store_true")
-    pr.add_argument("-r", "--right-only",  help="Fingering for right hand only", action="store_true")
+    pr.add_argument("-z", "--sound-off", help="Disable sound", action="store_true")
+    pr.add_argument("-l", "--left-only", help="Fingering for left hand only", action="store_true")
+    pr.add_argument("-r", "--right-only", help="Fingering for right hand only", action="store_true")
     pr.add_argument("-XXS", "--hand-size-XXS", help="Set hand size to XXS", action="store_true")
-    pr.add_argument("-XS", "--hand-size-XS",   help="Set hand size to XS", action="store_true")
-    pr.add_argument("-S", "--hand-size-S",     help="Set hand size to S", action="store_true")
-    pr.add_argument("-M", "--hand-size-M",     help="Set hand size to M", action="store_true")
-    pr.add_argument("-L", "--hand-size-L",     help="Set hand size to L", action="store_true")
-    pr.add_argument("-XL", "--hand-size-XL",   help="Set hand size to XL", action="store_true")
+    pr.add_argument("-XS", "--hand-size-XS", help="Set hand size to XS", action="store_true")
+    pr.add_argument("-S", "--hand-size-S", help="Set hand size to S", action="store_true")
+    pr.add_argument("-M", "--hand-size-M", help="Set hand size to M", action="store_true")
+    pr.add_argument("-L", "--hand-size-L", help="Set hand size to L", action="store_true")
+    pr.add_argument("-XL", "--hand-size-XL", help="Set hand size to XL", action="store_true")
     pr.add_argument("-XXL", "--hand-size-XXL", help="Set hand size to XXL", action="store_true")
     args = pr.parse_args()
 
-    hand_size = 'M' # default
+    hand_size = 'M'  # default
     if args.hand_size_XXS: hand_size = 'XXS'
-    if args.hand_size_XS : hand_size = 'XS'
-    if args.hand_size_S  : hand_size = 'S'
-    if args.hand_size_M  : hand_size = 'M'
-    if args.hand_size_L  : hand_size = 'L'
-    if args.hand_size_XL : hand_size = 'XL'
+    if args.hand_size_XS: hand_size = 'XS'
+    if args.hand_size_S: hand_size = 'S'
+    if args.hand_size_M: hand_size = 'M'
+    if args.hand_size_L: hand_size = 'L'
+    if args.hand_size_XL: hand_size = 'XL'
     if args.hand_size_XXL: hand_size = 'XXL'
 
     xmlfn = args.filename
     if '.msc' in args.filename:
         try:
             xmlfn = str(args.filename).replace('.mscz', '.xml').replace('.mscx', '.xml')
-            print('..trying to convert your musescore file to',xmlfn)
-            os.system('musescore -f "'+args.filename+'" -o "'+xmlfn+'"') # quotes avoid problems w/ spaces in filename
+            print('..trying to convert your musescore file to', xmlfn)
+            os.system(
+                'musescore -f "' + args.filename + '" -o "' + xmlfn + '"')  # quotes avoid problems w/ spaces in filename
             sf = converter.parse(xmlfn)
+            if not args.left_only:
+                rh_noteseq = reader(sf, beam=args.rbeam)
+            if not args.right_only:
+                lh_noteseq = reader(sf, beam=args.lbeam)
         except:
             print('Unable to convert file, try to do it from musescore.')
             sys.exit()
@@ -169,19 +178,30 @@ else: ##########################################################################
         sf = stream.Stream()
 
         if not args.left_only:
-            ptr = PIG2Stream(args.filename, 0)
-            sf.insert(0, ptr)
+            ptr = PIG2Stream(args.filename, args.rbeam)
+            rh_noteseq = reader(ptr, beam=args.rbeam)
         if not args.right_only:
-            ptl = PIG2Stream(args.filename, 1)
-            sf.insert(0, ptl) # 0=offset
-
+            ptl = PIG2Stream(args.filename, args.lbeam)
+            lh_noteseq = reader(ptl, beam=args.lbeam)
+    elif '.mid' in arg.filename or '.midi' in arg.filename:
+        pm = pretty_midi.PrettyMIDI(arg.filename)
+        if not args.left_only:
+            pm_right = pm.instruments[args.rbeam]
+            rh_noteseq = reader_pretty_midi(pm_right, beam=args.rbeam)
+        if not args.right_only:
+            pm_left = pm.instruments[args.lbeam]
+            lh_noteseq = reader_pretty_midi(pm_left, beam=args.lbeam)
+    
     else:
         sf = converter.parse(xmlfn)
-
+        if not args.left_only:
+            rh_noteseq = reader(sf, beam=args.rbeam)
+        if not args.right_only:
+            lh_noteseq = reader(sf, beam=args.lbeam)
 
     if not args.left_only:
         rh = Hand("right", hand_size)
-        rh.verbose = not(args.quiet)
+        rh.verbose = not (args.quiet)
         if args.depth == 0:
             rh.autodepth = True
         else:
@@ -189,12 +209,12 @@ else: ##########################################################################
             rh.depth = args.depth
         rh.lyrics = args.below_beam
 
-        rh.noteseq = reader(sf, beam=args.rbeam)
+        rh.noteseq = rh_noteseq
         rh.generate(args.start_measure, args.n_measures, filename=os.path.splitext(args.filename)[0])
 
     if not args.right_only:
         lh = Hand("left", hand_size)
-        lh.verbose = not(args.quiet)
+        lh.verbose = not (args.quiet)
         if args.depth == 0:
             lh.autodepth = True
         else:
@@ -202,23 +222,21 @@ else: ##########################################################################
             lh.depth = args.depth
         lh.lyrics = args.below_beam
 
-        lh.noteseq = reader(sf, beam=args.lbeam)
+        lh.noteseq = lh_noteseq
         lh.generate(args.start_measure, args.n_measures, filename=os.path.splitext(args.filename)[0])
 
     sf.write('xml', fp=args.outputfile)
 
-
-    if args.musescore: # -m option
+    if args.musescore:  # -m option
         print('Opening musescore with output score:', args.outputfile)
-        os.system('musescore "'+args.outputfile+'" > /dev/null 2>&1')
+        os.system('musescore "' + args.outputfile + '" > /dev/null 2>&1')
     else:
-        print ("\nTo visualize annotated score with fingering type:\n musescore '"+args.outputfile+"'")
-
+        print("\nTo visualize annotated score with fingering type:\n musescore '" + args.outputfile + "'")
 
     if args.with_vedo:
         from pianoplayer.vkeyboard import VirtualKeyboard
 
-        if args.start_measure !=1:
+        if args.start_measure != 1:
             print('Sorry, start_measure must be set to 1 when -v option is used. Exit.')
             exit()
 
