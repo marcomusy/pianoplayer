@@ -183,8 +183,8 @@ else:  #########################################################################
         if not args.right_only:
             ptl = PIG2Stream(args.filename, args.lbeam)
             lh_noteseq = reader(ptl, beam=args.lbeam)
-    elif '.mid' in arg.filename or '.midi' in arg.filename:
-        pm = pretty_midi.PrettyMIDI(arg.filename)
+    elif '.mid' in args.filename or '.midi' in args.filename:
+        pm = pretty_midi.PrettyMIDI(args.filename)
         if not args.left_only:
             pm_right = pm.instruments[args.rbeam]
             rh_noteseq = reader_pretty_midi(pm_right, beam=args.rbeam)
