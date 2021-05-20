@@ -203,7 +203,6 @@ class Hand:
 
     ###########################################################################################
     def generate(self, start_measure=0, nmeasures=1000, filename="temp"):
-        print("kk0", self.LR, len(self.noteseq))
         if start_measure == 1:
             start_measure=0 # avoid confusion with python numbering
 
@@ -250,12 +249,12 @@ class Hand:
                             nl = len(an.chord21.pitches) - an.chordnr
                             an.chord21.addLyric(best_finger, nl)
                         else:
-                            an.chord21.articulations.append(fng)
+                            # an.chord21.articulations.append(fng)
                 else:
                     if self.lyrics:
                         an.note21.addLyric(best_finger)
                     else:
-                        an.note21.articulations.append(fng)
+                        # an.note21.articulations.append(fng)
             elif best_finger == 0:
                 self._save_fingers(an, best_finger, filename)
 
