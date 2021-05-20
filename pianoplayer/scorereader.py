@@ -64,7 +64,7 @@ def reader(sf, beam=0):
             an.note21 = n
             an.isChord= False
             an.name   = n.name
-            an.octave = n.octave
+            an.octave = n.pitch // 12
             an.measure= n.measureNumber
             an.x      = keypos(n)
             an.time   = n.offset
@@ -93,11 +93,11 @@ def reader(sf, beam=0):
                 an.name    = cn.name
                 an.chordnr = j
                 an.NinChord = len(n.pitches)
-                an.octave  = cn.octave
+                an.octave  = cn.pitch // 12
                 an.measure = n.measureNumber
                 an.x       = keypos(cn)
-                an.time    = n.offset                 -sfasam*j
-                an.duration= n.duration.quarterLength +sfasam*(an.NinChord-1)
+                an.time    = n.offset - sfasam*j
+                an.duration= n.duration.quarterLength + sfasam*(an.NinChord-1)
                 if hasattr(cn, 'pitch'):
                     pc = cn.pitch.pitchClass
                 else:
