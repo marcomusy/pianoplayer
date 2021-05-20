@@ -225,8 +225,8 @@ else:  #########################################################################
 
         lh.noteseq = lh_noteseq
         lh.generate(args.start_measure, args.n_measures, filename=os.path.splitext(args.filename)[0])
-
-    sf.write('xml', fp=args.outputfile)
+    
+    # sf.write('xml', fp=args.outputfile)
 
     if args.musescore:  # -m option
         print('Opening musescore with output score:', args.outputfile)

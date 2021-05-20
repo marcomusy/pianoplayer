@@ -148,9 +148,10 @@ def reader_pretty_midi(pm, beam=0):
         else:
             if n_duration == 0: continue
             sfasam = 0.05 # sfasa leggermente le note dell'accordo
-            n_duration = n.end - n.start
+            
             for jj in range(chord_notes):
                 cn = pm_notes[ii]
+                cn_duration = cn.end - cn.start
                 an = INote()
                 an.chordID = chordID
                 an.noteID += 1
