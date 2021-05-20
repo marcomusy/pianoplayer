@@ -113,7 +113,7 @@ def keypos_midi(n):  # position of notes on keyboard
     
     step = (n.pitch % 12) * k
     
-    return keybsize * n.octave + step
+    return keybsize * (n.pitch // 12) + step
 
 
 def keypos(n):  # position of notes on keyboard
