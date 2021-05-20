@@ -264,7 +264,7 @@ class Hand:
                     best_finger = 0
                 if an.measure:
                     print(f"meas.{an.measure: <3}", end=' ')
-                print(f"finger_{best_finger}  plays  {an.name: >2}{an.octave}", end=' ')
+                print(f"finger_{best_finger}  plays  {an.pitch: >2}{an.octave}", end=' ')
                 if i < N-10:
                     print(f"  v={round(vel, 1)}", end='')
                     self._save_velocity(vel, filename)
