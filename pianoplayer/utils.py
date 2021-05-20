@@ -107,12 +107,9 @@ _kb_layout = {
 # TODO The assumtion of equal distance between notes is not totally true. (PRamoneda)
 
 def keypos_midi(n):  # position of notes on keyboard
-    step = 0.0
     keybsize = 16.5  # cm
     k = keybsize / 7.0  # 7 notes
-    
     step = (n.pitch % 12) * k
-    
     return keybsize * (n.pitch // 12) + step
 
 
