@@ -25,7 +25,7 @@ def run_annotate(filename,
                  depth=0,
                  rbeam=0,
                  lbeam=1,
-                 cost=None,
+                 cost_path=None,
                  quiet=False,
                  musescore=False,
                  below_beam=False,
@@ -49,7 +49,7 @@ def run_annotate(filename,
     args.depth = depth
     args.rbeam = rbeam
     args.lbeam = lbeam
-    args.cost = cost
+    args.cost_path = cost_path
     args.quiet = quiet
     args.musescore = musescore
     args.below_beam = below_beam
