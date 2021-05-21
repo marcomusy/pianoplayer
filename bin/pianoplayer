@@ -4,12 +4,9 @@
 # Purpose:      Find optimal fingering for piano scores
 # Author:       Marco Musy
 # -------------------------------------------------------------------------------
-import os, sys
-from music21 import converter, stream
-from pianoplayer.hand import Hand
-from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi
-from operator import attrgetter
-import pretty_midi
+
+import pianoplayer
+
 
 if len(sys.argv) < 2:  # no args are passed, pop up GUI
 
@@ -149,5 +146,5 @@ else:  #########################################################################
     pr.add_argument("-XL", "--hand-size-XL", help="Set hand size to XL", action="store_true")
     pr.add_argument("-XXL", "--hand-size-XXL", help="Set hand size to XXL", action="store_true")
     args = pr.parse_args()
-    annotate(args)
+    pianoplayer.annotate(args)
 
