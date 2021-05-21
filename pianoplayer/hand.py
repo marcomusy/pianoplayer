@@ -202,7 +202,7 @@ class Hand:
 
 
     ###########################################################################################
-    def generate(self, start_measure=0, nmeasures=1000, filename="temp"):
+    def generate(self, start_measure=0, nmeasures=1000, cost_path="temp"):
         if start_measure == 1:
             start_measure=0 # avoid confusion with python numbering
 
@@ -241,7 +241,7 @@ class Hand:
 
             if best_finger > 0 and i < N-3:
                 fng = Fingering(best_finger)
-                self._save_fingers(an, best_finger, filename)
+                self._save_fingers(an, best_finger, cost_path)
                 if an.isChord:
                     # if len(an.chord21.pitches) < 3:
                         # dont show fingering in the lyrics line for >3 note-chords
@@ -256,7 +256,7 @@ class Hand:
                     # else:
                         # an.note21.articulations.append(fng)
             elif best_finger == 0:
-                self._save_fingers(an, best_finger, filename)
+                self._save_fingers(an, best_finger, cost_path)
 
             #---------------------------------------------------------------------------- print
             if self.verbose:
@@ -267,7 +267,7 @@ class Hand:
                 print(f"finger_{best_finger}  plays  {an.pitch: >2}{an.octave}", end=' ')
                 if i < N-10:
                     print(f"  v={round(vel, 1)}", end='')
-                    self._save_velocity(vel, filename)
+                    self._save_velocity(vel, cost_path)
                     if self.autodepth:
                         print("\t " + str(out[0:self.depth]) + " d:" + str(self.depth))
                     else:

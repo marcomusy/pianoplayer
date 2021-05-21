@@ -8,32 +8,40 @@ __license__ = "MIT"
 
 
 ###########################################################
-# Piano Player main analyse and generate
+# Piano Player main analyse and annotate
 ###########################################################
+def run_analyse():
+    pass
+
+
+def analyse():
+    pass
+
+
 def run_annotate(filename,
-             outputfile='output.xml',
-             n_measures=100,
-             start_measure=1,
-             depth=0,
-             rbeam=0,
-             lbeam=1,
-             cost=None,
-             quiet=False,
-             musescore=False,
-             below_beam=False,
-             with_vedo=1.5,
-             vedo_speed=False,
-             sound_off=False,
-             left_only=False,
-             right_only=False,
-             hand_size_XXS=False,
-             hand_size_XS=False,
-             hand_size_S=False,
-             hand_size_M=False,
-             hand_size_L=False,
-             hand_size_XL=True,
-             hand_size_XXL=False
-             ):
+                 outputfile='output.xml',
+                 n_measures=100,
+                 start_measure=1,
+                 depth=0,
+                 rbeam=0,
+                 lbeam=1,
+                 cost=None,
+                 quiet=False,
+                 musescore=False,
+                 below_beam=False,
+                 with_vedo=1.5,
+                 vedo_speed=False,
+                 sound_off=False,
+                 left_only=False,
+                 right_only=False,
+                 hand_size_XXS=False,
+                 hand_size_XS=False,
+                 hand_size_S=False,
+                 hand_size_M=False,
+                 hand_size_L=False,
+                 hand_size_XL=True,
+                 hand_size_XXL=False
+                 ):
     args.filename = filename
     args.outputfile = outputfile
     args.n_measures = n_measures
@@ -58,7 +66,6 @@ def run_annotate(filename,
     args.hand_size_XL = hand_size_XL
     args.hand_size_XXL = hand_size_XXL
     run_annotate(args)
-
 
 
 def annotate(args):
@@ -123,7 +130,7 @@ def annotate(args):
         rh.lyrics = args.below_beam
 
         rh.noteseq = rh_noteseq
-        rh.generate(args.start_measure, args.n_measures, filename=os.path.splitext(args.filename)[0])
+        rh.generate(args.start_measure, args.n_measures, cost_path=cost_path)
 
     if not args.right_only:
         lh = Hand("left", hand_size)
