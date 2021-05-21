@@ -42,6 +42,9 @@ def run_annotate(filename,
                  hand_size_XL=True,
                  hand_size_XXL=False
                  ):
+    class Args(object):
+        pass
+    args = Args()
     args.filename = filename
     args.outputfile = outputfile
     args.n_measures = n_measures
