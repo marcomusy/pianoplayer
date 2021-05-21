@@ -68,7 +68,7 @@ def run_annotate(filename,
     args.hand_size_L = hand_size_L
     args.hand_size_XL = hand_size_XL
     args.hand_size_XXL = hand_size_XXL
-    run_annotate(args)
+    annotate(args)
 
 
 def annotate(args):
