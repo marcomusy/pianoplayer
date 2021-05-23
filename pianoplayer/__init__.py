@@ -150,7 +150,7 @@ def annotate(args):
         lh.lyrics = args.below_beam
 
         lh.noteseq = lh_noteseq
-        lh.generate(args.start_measure, args.n_measures, filename=os.path.splitext(args.filename)[0])
+        lh.generate(args.start_measure, args.n_measures, cost_path=os.path.splitext(args.filename)[0])
 
     # sf.write('xml', fp=args.outputfile)
 
