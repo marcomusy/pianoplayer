@@ -171,8 +171,7 @@ class Hand:
         return out
 
     def _save_fingers(self, an, best_finger, filename):
-        name_fingers = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + '/'.join(
-            ["Fingers"] + filename.split('/')[1:]) + '#fingers#' + self.LR + '.json'
+        name_fingers = os.path.join("Fingers", "pianoplayer", filename.split('/')[-1] + '#fingers#' + self.LR + '.json')
         if os.path.exists(name_fingers):
             with open(name_fingers) as json_file:
                 data = json.load(json_file)
@@ -189,8 +188,7 @@ class Hand:
             json.dump(fingers, outfile)
 
     def _save_velocity(self, vel, filename):
-        name_velocities = '/Users/pedroramonedafranco/PycharmProjects/TFM/' + '/'.join(
-            ["Fingers"] + filename.split('/')[1:]) + '#velocity#' + self.LR + '.json'
+        name_velocities = os.path.join("Fingers", "pianoplayer", filename.split('/')[-1] + '#velocity#' + self.LR + '.json')
         if os.path.exists(name_velocities):
             with open(name_velocities) as json_file:
                 data = json.load(json_file)
@@ -219,8 +217,8 @@ class Hand:
 
             an = self.noteseq[i]
             if an.measure:
-                if an.measure < start_measure : continue
-                if an.measure > start_measure + nmeasures : break
+                if an.measure < start_measure: continue
+                if an.measure > start_measure + nmeasures: break
 
             if i > N-11:
                 self.autodepth = False
