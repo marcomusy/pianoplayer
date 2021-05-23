@@ -137,7 +137,7 @@ def annotate(args):
         rh.lyrics = args.below_beam
 
         rh.noteseq = rh_noteseq
-        rh.generate(args.start_measure, args.n_measures, cost_path=cost_path)
+        rh.generate(args.start_measure, args.n_measures, cost_path=args.cost_path)
 
     if not args.right_only:
         lh = Hand("left", hand_size)
