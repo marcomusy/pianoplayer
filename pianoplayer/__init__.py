@@ -160,23 +160,23 @@ def annotate(args):
     # else:
     #     print("\nTo visualize annotated score with fingering type:\n musescore '" + args.outputfile + "'")
 
-    if args.with_vedo:
-        from pianoplayer.vkeyboard import VirtualKeyboard
-
-        if args.start_measure != 1:
-            print('Sorry, start_measure must be set to 1 when -v option is used. Exit.')
-            exit()
-
-        vk = VirtualKeyboard(songname=xmlfn)
-
-        if not args.left_only:
-            vk.build_RH(rh)
-        if not args.right_only:
-            vk.build_LH(lh)
-
-        if args.sound_off:
-            vk.playsounds = False
-
-        vk.speedfactor = args.vedo_speed
-        vk.play()
-        vk.vp.show(zoom=2, interactive=1)
+    # if args.with_vedo:
+    #     from pianoplayer.vkeyboard import VirtualKeyboard
+    #
+    #     if args.start_measure != 1:
+    #         print('Sorry, start_measure must be set to 1 when -v option is used. Exit.')
+    #         exit()
+    #
+    #     vk = VirtualKeyboard(songname=xmlfn)
+    #
+    #     if not args.left_only:
+    #         vk.build_RH(rh)
+    #     if not args.right_only:
+    #         vk.build_LH(lh)
+    #
+    #     if args.sound_off:
+    #         vk.playsounds = False
+    #
+    #     vk.speedfactor = args.vedo_speed
+    #     vk.play()
+    #     vk.vp.show(zoom=2, interactive=1)
