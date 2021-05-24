@@ -34,6 +34,12 @@ class Hand:
         print('(max relaxed distance between thumb and pinkie)')
         self.cfps = list(self.frest) # hold current finger positions
 
+        self.good_fingers = []
+        self.good_notes = []
+        self.good_velocities = []
+
+
+
 
     #####################################################
     def set_fingers_positions(self, fings, notes, i):
@@ -170,33 +176,12 @@ class Hand:
         # if out[1]==-1: exit() #no combination found
         return out
 
-    def _save_fingers(self, an, best_finger, filename):
-        name_fingers = os.path.join("Fingers", "pianoplayer", filename.split('/')[-1] + '#fingers#' + self.LR + '.json')
-        if os.path.exists(name_fingers):
-            with open(name_fingers) as json_file:
-                data = json.load(json_file)
-            fingers = {
-                "keys": data["keys"] + [an.pitch],
-                "fingers": data["fingers"] + [best_finger]
-            }
-        else:
-            fingers = {
-                "keys": [an.pitch],
-                "fingers": [best_finger]
-            }
-        with open(name_fingers, 'w') as outfile:
-            json.dump(fingers, outfile)
+    def _save_fingers(self, an, best_finger):
+        self.good_fingers.append(best_finger)
+        self.good_notes.append(an.pitch)
 
-    def _save_velocity(self, vel, filename):
-        name_velocities = os.path.join("Fingers", "pianoplayer", filename.split('/')[-1] + '#velocity#' + self.LR + '.json')
-        if os.path.exists(name_velocities):
-            with open(name_velocities) as json_file:
-                data = json.load(json_file)
-            velocities = data + [round(vel, 4)]
-        else:
-            velocities = [round(vel, 4)]
-        with open(name_velocities, 'w') as outfile:
-            json.dump(velocities, outfile)
+    def _save_velocity(self, vel):
+        self.good_velocities.append(round(vel, 4))
 
 
     ###########################################################################################
@@ -254,7 +239,7 @@ class Hand:
                     # else:
                         # an.note21.articulations.append(fng)
             elif best_finger == 0:
-                self._save_fingers(an, best_finger, cost_path)
+                self._save_fingers(an, best_finger)
 
             #---------------------------------------------------------------------------- print
             if self.verbose:
@@ -265,7 +250,7 @@ class Hand:
                 print(f"finger_{best_finger}  plays  {an.pitch: >2}{an.octave}", end=' ')
                 if i < N-10:
                     print(f"  v={round(vel, 1)}", end='')
-                    self._save_velocity(vel, cost_path)
+                    self._save_velocity(vel)
                     if self.autodepth:
                         print("\t " + str(out[0:self.depth]) + " d:" + str(self.depth))
                     else:

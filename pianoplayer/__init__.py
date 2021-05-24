@@ -1,3 +1,4 @@
+import json
 import os, sys
 from music21 import converter, stream
 from pianoplayer.hand import Hand
@@ -151,6 +152,38 @@ def annotate(args):
 
         lh.noteseq = lh_noteseq
         lh.generate(args.start_measure, args.n_measures, cost_path=os.path.splitext(args.filename)[0])
+
+    if args.cost_path is not None:
+        if not args.left_only:
+            name_fingers = os.path.join("Fingers", "pianoplayer", args.cost_path.split('/')[-1] + '#fingers#right.json')
+            fingers = {
+                "keys": [k for k in rh_noteseq.good_notes],
+                "fingers": [f for f in rh_noteseq.good_fingers]
+
+            }
+            with open(name_fingers, 'w') as outfile:
+                json.dump(fingers, outfile)
+            name_velocities = os.path.join("Fingers", "pianoplayer", args.cost_path.split('/')[-1] +
+                                           '#velocity#right.json')
+            velocities = [k for k in rh_noteseq.good_velocities]
+            with open(name_velocities, 'w') as outfile:
+                json.dump(velocities, outfile)
+
+
+        if not args.right_only:
+            name_fingers = os.path.join("Fingers", "pianoplayer", args.cost_path.split('/')[-1] + '#fingers#left.json')
+            fingers = {
+                "keys": [k for k in lh_noteseq.good_notes],
+                "fingers": [f for f in lh_noteseq.good_fingers]
+
+            }
+            with open(name_fingers, 'w') as outfile:
+                json.dump(fingers, outfile)
+            name_velocities = os.path.join("Fingers", "pianoplayer", args.cost_path.split('/')[-1] +
+                                           '#velocity#left.json')
+            velocities = [k for k in lh_noteseq.good_velocities]
+            with open(name_velocities, 'w') as outfile:
+                json.dump(velocities, outfile)
 
     # sf.write('xml', fp=args.outputfile)
 
