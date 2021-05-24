@@ -111,7 +111,6 @@ class Hand:
     #         if axba > 16 and (fa == 1 and fb == 4 or fa == 4 and fb == 1): return True
     #
     #     return False
-    @njit
     def _skip(self, fa, fb, na, nb, hf, LR, level):
         # fa is fingering for note na, level is passed only for debugging
         skipped = False
@@ -133,7 +132,6 @@ class Hand:
             if fa == fb: return True  # play different chord notes w/ same finger, skip
             elif fa < fb and LR == 'left': return True
             elif fa > fb and LR == 'right': return True
-
             # max normalized distance in cm btw 2 consecutive fingers
             elif axba > 5 and (fa == 3 and fb == 4 or fa == 4 and fb == 3): skipped=True
             elif axba > 5 and (fa == 4 and fb == 5 or fa == 5 and fb == 4): skipped=True
