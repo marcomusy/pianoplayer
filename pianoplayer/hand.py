@@ -43,7 +43,6 @@ class Hand:
     #####################################################
     @njit
     def set_fingers_positions(self, fings, notes, i):
-
         fi = fings[i]
         ni = notes[i]
         ifx = self.frest[fi]
@@ -196,7 +195,7 @@ class Hand:
         self.good_velocities.append(round(vel, 4))
 
     ###########################################################################################
-    @njit
+
     def generate(self, start_measure=0, nmeasures=1000):
         if start_measure == 1:
             start_measure = 0  # avoid confusion with python numbering
