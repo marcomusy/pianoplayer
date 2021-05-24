@@ -11,7 +11,7 @@ from music21 import converter
 import pianoplayer
 import sys
 
-from pianoplayer import Hand, reader
+from pianoplayer import Hand, reader, core
 
 if len(sys.argv) < 2:  # no args are passed, pop up GUI
 
@@ -151,5 +151,5 @@ else:  #########################################################################
     pr.add_argument("-XL", "--hand-size-XL", help="Set hand size to XL", action="store_true")
     pr.add_argument("-XXL", "--hand-size-XXL", help="Set hand size to XXL", action="store_true")
     args = pr.parse_args()
-    pianoplayer.annotate(args)
+    core.annotate(args)
 
