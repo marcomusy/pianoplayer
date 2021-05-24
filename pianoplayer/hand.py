@@ -3,8 +3,6 @@
 # Purpose:      Find optimal fingering for piano scores
 # Author:       Marco Musy
 # -------------------------------------------------------------------------------
-import json
-import os
 
 from music21.articulations import Fingering
 
@@ -75,6 +73,7 @@ class Hand:
         return vmean / (self.depth - 1)
 
         # ---------------------------------------------------------
+
     # NOT OPTIMIZED
     # def _skip(self, fa, fb, na, nb, level):
     #     ### two-consecutive-notes movement, skipping rules ###
@@ -119,8 +118,10 @@ class Hand:
             if fa == fb and xba and na.duration < 4:
                 return True  # play different notes w/ same finger, skip
             if fa > 1:  # if a is not thumb
-                if fb > 1 and (fb - fa) * xba < 0: return True  # non-thumb fingers are crossings, skip
-                elif fb == 1 and nb.isBlack and xba > 0: return True  # crossing thumb goes to black, skip
+                if fb > 1 and (fb - fa) * xba < 0:
+                    return True  # non-thumb fingers are crossings, skip
+                elif fb == 1 and nb.isBlack and xba > 0:
+                    return True  # crossing thumb goes to black, skip
             else:  # a is played by thumb:
                 # skip if  a is black  and  b is behind a  and  fb not thumb  and na.duration<2:
                 if na.isBlack and xba < 0 and fb > 1 and na.duration < 2: return True
@@ -128,19 +129,31 @@ class Hand:
         elif na.isChord and nb.isChord and na.chordID == nb.chordID:
             axba = abs(xba) * hf / 0.8
             # na and nb are notes in the same chord
-            if fa == fb: return True  # play different chord notes w/ same finger, skip
-            elif fa < fb and LR == 'left': return True
-            elif fa > fb and LR == 'right': return True
+            if fa == fb:
+                return True  # play different chord notes w/ same finger, skip
+            elif fa < fb and LR == 'left':
+                return True
+            elif fa > fb and LR == 'right':
+                return True
             # max normalized distance in cm btw 2 consecutive fingers
-            elif axba > 5 and (fa == 3 and fb == 4 or fa == 4 and fb == 3): skipped=True
-            elif axba > 5 and (fa == 4 and fb == 5 or fa == 5 and fb == 4): skipped=True
-            elif axba > 6 and (fa == 2 and fb == 3 or fa == 3 and fb == 2): skipped=True
-            elif axba > 7 and (fa == 2 and fb == 4 or fa == 4 and fb == 2): skipped=True
-            elif axba > 8 and (fa == 3 and fb == 5 or fa == 5 and fb == 3): skipped=True
-            elif axba > 11 and (fa == 2 and fb == 5 or fa == 5 and fb == 2): skipped=True
-            elif axba > 12 and (fa == 1 and fb == 2 or fa == 2 and fb == 1): skipped=True
-            elif axba > 14 and (fa == 1 and fb == 3 or fa == 3 and fb == 1): skipped=True
-            elif axba > 16 and (fa == 1 and fb == 4 or fa == 4 and fb == 1): skipped=True
+            elif axba > 5 and (fa == 3 and fb == 4 or fa == 4 and fb == 3):
+                skipped = True
+            elif axba > 5 and (fa == 4 and fb == 5 or fa == 5 and fb == 4):
+                skipped = True
+            elif axba > 6 and (fa == 2 and fb == 3 or fa == 3 and fb == 2):
+                skipped = True
+            elif axba > 7 and (fa == 2 and fb == 4 or fa == 4 and fb == 2):
+                skipped = True
+            elif axba > 8 and (fa == 3 and fb == 5 or fa == 5 and fb == 3):
+                skipped = True
+            elif axba > 11 and (fa == 2 and fb == 5 or fa == 5 and fb == 2):
+                skipped = True
+            elif axba > 12 and (fa == 1 and fb == 2 or fa == 2 and fb == 1):
+                skipped = True
+            elif axba > 14 and (fa == 1 and fb == 3 or fa == 3 and fb == 1):
+                skipped = True
+            elif axba > 16 and (fa == 1 and fb == 4 or fa == 4 and fb == 1):
+                skipped = True
 
         return skipped
         # ---------------------------------------------------------------------------
@@ -298,3 +311,4 @@ class Hand:
                 if i and not i % 100 and an.measure:
                     print('scanned', i, '/', N,
                           'notes, measure', an.measure + 1, ' for the', self.LR, 'hand...')
+        return good_notes, good_fingers, good_velocities
