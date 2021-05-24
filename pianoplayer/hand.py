@@ -224,7 +224,7 @@ class Hand:
 
             if best_finger > 0 and i < N-3:
                 fng = Fingering(best_finger)
-                self._save_fingers(an, best_finger, cost_path)
+                self._save_fingers(an, best_finger)
                 if an.isChord:
                     # if len(an.chord21.pitches) < 3:
                         # dont show fingering in the lyrics line for >3 note-chords
