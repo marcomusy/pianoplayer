@@ -185,7 +185,7 @@ class Hand:
 
 
     ###########################################################################################
-    def generate(self, start_measure=0, nmeasures=1000, cost_path="temp"):
+    def generate(self, start_measure=0, nmeasures=1000):
         if start_measure == 1:
             start_measure=0 # avoid confusion with python numbering
 

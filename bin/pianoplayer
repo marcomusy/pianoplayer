@@ -4,10 +4,14 @@
 # Purpose:      Find optimal fingering for piano scores
 # Author:       Marco Musy
 # -------------------------------------------------------------------------------
+import os
+
+from music21 import converter
 
 import pianoplayer
 import sys
 
+from pianoplayer import Hand, reader
 
 if len(sys.argv) < 2:  # no args are passed, pop up GUI
 
