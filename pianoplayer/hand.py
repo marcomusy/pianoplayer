@@ -7,6 +7,7 @@ import json
 import os
 
 from music21.articulations import Fingering
+from numba import njit
 
 import pianoplayer.utils as utils
 
@@ -75,11 +76,45 @@ class Hand:
         return vmean / (self.depth - 1)
 
         # ---------------------------------------------------------
-
-    def _skip(self, fa, fb, na, nb, level):
-        ### two-consecutive-notes movement, skipping rules ###
+    # NOT OPTIMIZED
+    # def _skip(self, fa, fb, na, nb, level):
+    #     ### two-consecutive-notes movement, skipping rules ###
+    #     # fa is fingering for note na, level is passed only for debugging
+    #
+    #     xba = nb.x - na.x  # physical distance btw the second to first note, in cm
+    #
+    #     if not na.isChord and not nb.isChord:  # neither of the 2 notes live in a chord
+    #         if fa == fb and xba and na.duration < 4:
+    #             return True  # play different notes w/ same finger, skip
+    #         if fa > 1:  # if a is not thumb
+    #             if fb > 1 and (fb - fa) * xba < 0: return True  # non-thumb fingers are crossings, skip
+    #             if fb == 1 and nb.isBlack and xba > 0: return True  # crossing thumb goes to black, skip
+    #         else:  # a is played by thumb:
+    #             # skip if  a is black  and  b is behind a  and  fb not thumb  and na.duration<2:
+    #             if na.isBlack and xba < 0 and fb > 1 and na.duration < 2: return True
+    #
+    #     elif na.isChord and nb.isChord and na.chordID == nb.chordID:
+    #         # na and nb are notes in the same chord
+    #         if fa == fb: return True  # play different chord notes w/ same finger, skip
+    #         if fa < fb and self.LR == 'left': return True
+    #         if fa > fb and self.LR == 'right': return True
+    #         axba = abs(xba) * self.hf / 0.8
+    #         # max normalized distance in cm btw 2 consecutive fingers
+    #         if axba > 5 and (fa == 3 and fb == 4 or fa == 4 and fb == 3): return True
+    #         if axba > 5 and (fa == 4 and fb == 5 or fa == 5 and fb == 4): return True
+    #         if axba > 6 and (fa == 2 and fb == 3 or fa == 3 and fb == 2): return True
+    #         if axba > 7 and (fa == 2 and fb == 4 or fa == 4 and fb == 2): return True
+    #         if axba > 8 and (fa == 3 and fb == 5 or fa == 5 and fb == 3): return True
+    #         if axba > 11 and (fa == 2 and fb == 5 or fa == 5 and fb == 2): return True
+    #         if axba > 12 and (fa == 1 and fb == 2 or fa == 2 and fb == 1): return True
+    #         if axba > 14 and (fa == 1 and fb == 3 or fa == 3 and fb == 1): return True
+    #         if axba > 16 and (fa == 1 and fb == 4 or fa == 4 and fb == 1): return True
+    #
+    #     return False
+    @njit
+    def _skip(self, fa, fb, na, nb, hf, LR, level):
         # fa is fingering for note na, level is passed only for debugging
-
+        skipped = False
         xba = nb.x - na.x  # physical distance btw the second to first note, in cm
 
         if not na.isChord and not nb.isChord:  # neither of the 2 notes live in a chord
@@ -87,29 +122,30 @@ class Hand:
                 return True  # play different notes w/ same finger, skip
             if fa > 1:  # if a is not thumb
                 if fb > 1 and (fb - fa) * xba < 0: return True  # non-thumb fingers are crossings, skip
-                if fb == 1 and nb.isBlack and xba > 0: return True  # crossing thumb goes to black, skip
+                elif fb == 1 and nb.isBlack and xba > 0: return True  # crossing thumb goes to black, skip
             else:  # a is played by thumb:
                 # skip if  a is black  and  b is behind a  and  fb not thumb  and na.duration<2:
                 if na.isBlack and xba < 0 and fb > 1 and na.duration < 2: return True
 
         elif na.isChord and nb.isChord and na.chordID == nb.chordID:
+            axba = abs(xba) * hf / 0.8
             # na and nb are notes in the same chord
             if fa == fb: return True  # play different chord notes w/ same finger, skip
-            if fa < fb and self.LR == 'left': return True
-            if fa > fb and self.LR == 'right': return True
-            axba = abs(xba) * self.hf / 0.8
-            # max normalized distance in cm btw 2 consecutive fingers
-            if axba > 5 and (fa == 3 and fb == 4 or fa == 4 and fb == 3): return True
-            if axba > 5 and (fa == 4 and fb == 5 or fa == 5 and fb == 4): return True
-            if axba > 6 and (fa == 2 and fb == 3 or fa == 3 and fb == 2): return True
-            if axba > 7 and (fa == 2 and fb == 4 or fa == 4 and fb == 2): return True
-            if axba > 8 and (fa == 3 and fb == 5 or fa == 5 and fb == 3): return True
-            if axba > 11 and (fa == 2 and fb == 5 or fa == 5 and fb == 2): return True
-            if axba > 12 and (fa == 1 and fb == 2 or fa == 2 and fb == 1): return True
-            if axba > 14 and (fa == 1 and fb == 3 or fa == 3 and fb == 1): return True
-            if axba > 16 and (fa == 1 and fb == 4 or fa == 4 and fb == 1): return True
+            elif fa < fb and LR == 'left': return True
+            elif fa > fb and LR == 'right': return True
 
-        return False
+            # max normalized distance in cm btw 2 consecutive fingers
+            elif axba > 5 and (fa == 3 and fb == 4 or fa == 4 and fb == 3): skipped=True
+            elif axba > 5 and (fa == 4 and fb == 5 or fa == 5 and fb == 4): skipped=True
+            elif axba > 6 and (fa == 2 and fb == 3 or fa == 3 and fb == 2): skipped=True
+            elif axba > 7 and (fa == 2 and fb == 4 or fa == 4 and fb == 2): skipped=True
+            elif axba > 8 and (fa == 3 and fb == 5 or fa == 5 and fb == 3): skipped=True
+            elif axba > 11 and (fa == 2 and fb == 5 or fa == 5 and fb == 2): skipped=True
+            elif axba > 12 and (fa == 1 and fb == 2 or fa == 2 and fb == 1): skipped=True
+            elif axba > 14 and (fa == 1 and fb == 3 or fa == 3 and fb == 1): skipped=True
+            elif axba > 16 and (fa == 1 and fb == 4 or fa == 4 and fb == 1): skipped=True
+
+        return skipped
         # ---------------------------------------------------------------------------
 
     #####################################################
@@ -138,45 +174,45 @@ class Hand:
         minvel = 1.e+10
         for f1 in u_start:
             for f2 in fingers:
-                if self._skip(f1, f2, n1, n2, 2): continue
+                if self._skip(f1, f2, n1, n2, self.hf, self.LR, 2): continue
                 for f3 in fingers:
-                    if f3 and self._skip(f2, f3, n2, n3, 3): continue
+                    if f3 and self._skip(f2, f3, n2, n3, self.hf, self.LR, 3): continue
                     if depth < 4:
                         u = [False]
                     else:
                         u = fingers
                     for f4 in u:
-                        if f4 and self._skip(f3, f4, n3, n4, 4): continue
+                        if f4 and self._skip(f3, f4, n3, n4, self.hf, self.LR, 4): continue
                         if depth < 5:
                             u = [False]
                         else:
                             u = fingers
                         for f5 in u:
-                            if f5 and self._skip(f4, f5, n4, n5, 5): continue
+                            if f5 and self._skip(f4, f5, n4, n5, self.hf, self.LR, 5): continue
                             if depth < 6:
                                 u = [False]
                             else:
                                 u = fingers
                             for f6 in u:
-                                if f6 and self._skip(f5, f6, n5, n6, 6): continue
+                                if f6 and self._skip(f5, f6, n5, n6, self.hf, self.LR, 6): continue
                                 if depth < 7:
                                     u = [False]
                                 else:
                                     u = fingers
                                 for f7 in u:
-                                    if f7 and self._skip(f6, f7, n6, n7, 7): continue
+                                    if f7 and self._skip(f6, f7, n6, n7, self.hf, self.LR, 7): continue
                                     if depth < 8:
                                         u = [False]
                                     else:
                                         u = fingers
                                     for f8 in u:
-                                        if f8 and self._skip(f7, f8, n7, n8, 8): continue
+                                        if f8 and self._skip(f7, f8, n7, n8, self.hf, self.LR, 8): continue
                                         if depth < 9:
                                             u = [False]
                                         else:
                                             u = fingers
                                         for f9 in u:
-                                            if f9 and self._skip(f8, f9, n8, n9, 9): continue
+                                            if f9 and self._skip(f8, f9, n8, n9, self.hf, self.LR, 9): continue
                                             c = [f1, f2, f3, f4, f5, f6, f7, f8, f9]
                                             v = self.ave_velocity(c, nseq)
                                             if v < minvel:
