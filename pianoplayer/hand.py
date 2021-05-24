@@ -185,16 +185,9 @@ class Hand:
         # if out[1]==-1: exit() #no combination found
         return out
 
-    def _save_fingers(self, an, best_finger):
-        self.good_fingers.append(best_finger)
-        self.good_notes.append(an.pitch)
-
-    def _save_velocity(self, vel):
-        self.good_velocities.append(round(vel, 4))
-
     ###########################################################################################
-
     def generate(self, start_measure=0, nmeasures=1000):
+        good_fingers, good_velocities, good_notes = [], [], []
         if start_measure == 1:
             start_measure = 0  # avoid confusion with python numbering
 
@@ -233,7 +226,8 @@ class Hand:
 
             if best_finger > 0 and i < N - 3:
                 fng = Fingering(best_finger)
-                self._save_fingers(an, best_finger)
+                good_fingers.append(best_finger)
+                good_notes.append(an.pitch)
                 if an.isChord:
                     # if len(an.chord21.pitches) < 3:
                     # dont show fingering in the lyrics line for >3 note-chords
@@ -248,7 +242,8 @@ class Hand:
                     # else:
                     # an.note21.articulations.append(fng)
             elif best_finger == 0:
-                self._save_fingers(an, best_finger)
+                good_fingers.append(best_finger)
+                good_notes.append(an.pitch)
 
             # ---------------------------------------------------------------------------- print
             if self.verbose:
@@ -259,7 +254,7 @@ class Hand:
                 print(f"finger_{best_finger}  plays  {an.pitch: >2}{an.octave}", end=' ')
                 if i < N - 10:
                     print(f"  v={round(vel, 1)}", end='')
-                    self._save_velocity(vel)
+                    good_velocities.append(vel)
                     if self.autodepth:
                         print("\t " + str(out[0:self.depth]) + " d:" + str(self.depth))
                     else:
