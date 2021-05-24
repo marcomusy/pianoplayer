@@ -1,3 +1,11 @@
+
+import json
+import os, sys
+from music21 import converter, stream
+from pianoplayer.hand import Hand
+from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi
+import pretty_midi
+
 ###########################################################
 # Piano Player main analyse and annotate
 ###########################################################
