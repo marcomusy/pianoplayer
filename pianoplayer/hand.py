@@ -7,7 +7,6 @@ import json
 import os
 
 from music21.articulations import Fingering
-from numba import njit
 
 import pianoplayer.utils as utils
 

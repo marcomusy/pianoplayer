@@ -5,7 +5,7 @@ setup(
     version='2.2.0', #change also in __init__.py
     packages=['pianoplayer'],
     scripts=['bin/pianoplayer'],
-    install_requires=['music21', 'vedo', 'pretty_midi', 'numba'],
+    install_requires=['music21', 'vedo', 'pretty_midi'],
     description=
     'Automatic piano fingering generator. Finds and shows in 3D the best fingering combination to play a score.',
     long_description="""Automatic piano fingering generator.
