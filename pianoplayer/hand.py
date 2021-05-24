@@ -7,7 +7,6 @@ import json
 import os
 
 from music21.articulations import Fingering
-from numba import njit
 
 import pianoplayer.utils as utils
 
@@ -41,7 +40,7 @@ class Hand:
         self.good_velocities = []
 
     #####################################################
-    @njit
+
     def set_fingers_positions(self, fings, notes, i):
         fi = fings[i]
         ni = notes[i]
@@ -52,7 +51,7 @@ class Hand:
                 self.cfps[j] = (jfx - ifx) + ni.x
 
     #####################################################
-    @njit
+
     def ave_velocity(self, fingering, notes):
         ###calculate v for playing for notes in a given fingering combination
 
@@ -76,7 +75,7 @@ class Hand:
         return vmean / (self.depth - 1)
 
         # ---------------------------------------------------------
-    @njit
+
     def _skip(self, fa, fb, na, nb, level):
         ### two-consecutive-notes movement, skipping rules ###
         # fa is fingering for note na, level is passed only for debugging
@@ -114,7 +113,6 @@ class Hand:
         # ---------------------------------------------------------------------------
 
     #####################################################
-    @njit
     def optimize_seq(self, nseq, istart):
         '''Generate meaningful fingering for a note sequence of size depth'''
         if self.autodepth:
@@ -136,7 +134,7 @@ class Hand:
             u_start = fingers
 
         #####################################
-        out = ([0 for i in range(depth)], -1)
+        out = ([0 for _ in range(depth)], -1)
         minvel = 1.e+10
         for f1 in u_start:
             for f2 in fingers:
