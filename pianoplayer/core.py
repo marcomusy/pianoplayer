@@ -147,38 +147,6 @@ def annotate(args):
         lh.noteseq = lh_noteseq
         lh_good_notes, lh_good_fingers, lh_good_velocities = lh.generate(args.start_measure, args.n_measures)
 
-    if args.cost_path is not None:
-        if not args.left_only:
-            name_fingers = os.path.join("Fingers", "pianoplayer", args.cost_path.split('/')[-1] + '#fingers#right.json')
-            fingers = {
-                "keys": [k for k in rh_good_notes],
-                "fingers": [f for f in rh_good_fingers]
-
-            }
-            with open(name_fingers, 'w') as outfile:
-                json.dump(fingers, outfile)
-            name_velocities = os.path.join("Fingers", "pianoplayer", args.cost_path.split('/')[-1] +
-                                           '#velocity#right.json')
-            velocities = [k for k in rh_good_velocities]
-            with open(name_velocities, 'w') as outfile:
-                json.dump(velocities, outfile)
-
-
-        if not args.right_only:
-            name_fingers = os.path.join("Fingers", "pianoplayer", args.cost_path.split('/')[-1] + '#fingers#left.json')
-            fingers = {
-                "keys": [k for k in lh_good_notes],
-                "fingers": [f for f in lh_good_fingers]
-
-            }
-            with open(name_fingers, 'w') as outfile:
-                json.dump(fingers, outfile)
-            name_velocities = os.path.join("Fingers", "pianoplayer", args.cost_path.split('/')[-1] +
-                                           '#velocity#left.json')
-            velocities = [k for k in lh_good_velocities]
-            with open(name_velocities, 'w') as outfile:
-                json.dump(velocities, outfile)
-
     if args.outputfile is not None:
         ext = os.path.splitext(args.outputfile)[1]
         # an extended PIG file  (note ID) (onset time) (offset time) (spelled pitch) (onset velocity) (offset velocity) (channel) (finger number) (cost)
