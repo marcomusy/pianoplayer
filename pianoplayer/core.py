@@ -3,7 +3,7 @@ import json
 import os, sys
 from music21 import converter, stream
 from pianoplayer.hand import Hand
-from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi
+from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi, PIG2noteseq
 import pretty_midi
 
 ###########################################################
@@ -70,6 +70,43 @@ def run_annotate(filename,
     annotate(args)
 
 
+def annotate_fingers_xml(sf, hand, args):
+    p0 = sf.parts[args.beam]
+    idx = 0
+    for el in p0:
+        if el.isNote:
+            an = hand.noteseq[idx]
+            if an.isChord:
+                if len(an.chord21.pitches) < 3:
+                    # dont show fingering in the lyrics line for >3 note-chords
+                    if hand.lyrics:
+                        nl = len(an.chord21.pitches) - an.chordnr
+                        an.chord21.addLyric(an.fingering, nl)
+                    else:
+                        an.chord21.articulations.append(an.fingering)
+            else:
+                if hand.lyrics:
+                    an.note21.addLyric(an.fingering)
+                else:
+                    an.note21.articulations.append(an.fingering)
+
+
+def annotate_PIG(hand):
+    ans = []
+    for n in hand.noteseq:
+        onset_time = str(n.onset)
+        offset_time = str(n.onset + n.duration)
+        spelled_pitch = n.name
+        onset_velocity = str(None)
+        offset_velocity = str(None)
+        channel = '0'
+        finger_number = n.finger
+        cost = n.cost_finger
+        ans.extend((onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
+                    finger_number, cost))
+    return ans
+
+
 def annotate(args):
     hand_size = 'M'  # default
     if args.hand_size_XXS: hand_size = 'XXS'
@@ -97,14 +134,12 @@ def annotate(args):
             sys.exit()
 
     elif '.txt' in args.filename:
-        sf = stream.Stream()
-
         if not args.left_only:
-            ptr = PIG2Stream(args.filename, args.rbeam)
-            rh_noteseq = reader(ptr, beam=args.rbeam)
+            rh_noteseq = PIG2noteseq(args.filename, args.rbeam)
         if not args.right_only:
-            ptl = PIG2Stream(args.filename, args.lbeam)
-            lh_noteseq = reader(ptl, beam=args.lbeam)
+            lh_noteseq = PIG2noteseq(args.filename, args.lbeam)
+
+
     elif '.mid' in args.filename or '.midi' in args.filename:
         pm = pretty_midi.PrettyMIDI(args.filename)
         if not args.left_only:
@@ -115,14 +150,14 @@ def annotate(args):
             lh_noteseq = reader_pretty_midi(pm_left, beam=args.lbeam)
 
     else:
-        sf = converter.parse(xmlfn)
+        sc = converter.parse(xmlfn)
         if not args.left_only:
-            rh_noteseq = reader(sf, beam=args.rbeam)
+            rh_noteseq = reader(sc, beam=args.rbeam)
         if not args.right_only:
-            lh_noteseq = reader(sf, beam=args.lbeam)
+            lh_noteseq = reader(sc, beam=args.lbeam)
 
     if not args.left_only:
-        rh = Hand("right", hand_size)
+        rh = Hand(side="right", noteseq=rh_noteseq, size=hand_size)
         rh.verbose = not (args.quiet)
         if args.depth == 0:
             rh.autodepth = True
@@ -131,11 +166,10 @@ def annotate(args):
             rh.depth = args.depth
         rh.lyrics = args.below_beam
 
-        rh.noteseq = rh_noteseq
-        rh_good_notes, rh_good_fingers, rh_good_velocities = rh.generate(args.start_measure, args.n_measures)
+        rh.generate(args.start_measure, args.n_measures)
 
     if not args.right_only:
-        lh = Hand("left", hand_size)
+        lh = Hand(side="left", noteseq=lh_noteseq, size=hand_size)
         lh.verbose = not (args.quiet)
         if args.depth == 0:
             lh.autodepth = True
@@ -145,7 +179,7 @@ def annotate(args):
         lh.lyrics = args.below_beam
 
         lh.noteseq = lh_noteseq
-        lh_good_notes, lh_good_fingers, lh_good_velocities = lh.generate(args.start_measure, args.n_measures)
+        lh.generate(args.start_measure, args.n_measures)
 
     if args.outputfile is not None:
         ext = os.path.splitext(args.outputfile)[1]
@@ -153,32 +187,10 @@ def annotate(args):
         if ext == ".txt":
             pig_notes = []
             if not args.only_left:
-                for n in rh_noteseq:
-                    onset_time = str(n.onset)
-                    offset_time = str(n.onset + n.duration)
-                    spelled_pitch = n.name
-                    onset_velocity = str(None)
-                    offset_velocity = str(None)
-                    channel = '0'
-                    finger_number = n.finger_number
-                    cost = n.cost_finger
-                    pig_notes.append((onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
-                                      finger_number, cost))
+                pig_notes.extend(annotate_PIG(rh))
 
             if not args.only_right:
-                for n in lh_noteseq:
-                    onset_time = str(n.onset)
-                    offset_time = str(n.onset + n.duration)
-                    spelled_pitch = n.name
-                    onset_velocity = str(None)
-                    offset_velocity = str(None)
-                    channel = '1'
-                    finger_number = str(n.finger_number)
-                    cost = n.cost_finger
-                    pig_notes.append((onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
-                                      finger_number, cost))
-
-
+                pig_notes.extend(annotate_PIG(lh))
 
             with open(args.outputfile, 'wt') as out_file:
                 tsv_writer = csv.writer(out_file, delimiter='\t')
@@ -187,32 +199,52 @@ def annotate(args):
                     tsv_writer.writerow([idx, onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity,
                                          channel, finger_number, cost])
         else:
+            ext = os.path.splitext(args.filename)[1]
+            if ext in ['mid', 'midi']:
+                sf = converter.parse(xmlfn)
+            elif ext in ['txt']:
+                sf = stream.Stream()
+                if not args.left_only:
+                    ptr = PIG2Stream(args.filename, 0)
+                    sf.insert(0, ptr)
+                if not args.right_only:
+                    ptl = PIG2Stream(args.filename, 1)
+                    sf.insert(0, ptl)  # 0=offset
+            else:
+                sf = converter.parse(xmlfn)
+
+            # Annotate fingers in XML
+            if not args.left_only:
+                annotate_fingers_xml(sf, rh, args)
+
+            if not args.right_only:
+                annotate_fingers_xml(sf, lh, args)
+
             sf.write('xml', fp=args.outputfile)
 
+            if args.musescore:  # -m option
+                print('Opening musescore with output score:', args.outputfile)
+                os.system('musescore "' + args.outputfile + '" > /dev/null 2>&1')
+            else:
+                print("\nTo visualize annotated score with fingering type:\n musescore '" + args.outputfile + "'")
 
-    # if args.musescore:  # -m option
-    #     print('Opening musescore with output score:', args.outputfile)
-    #     os.system('musescore "' + args.outputfile + '" > /dev/null 2>&1')
-    # else:
-    #     print("\nTo visualize annotated score with fingering type:\n musescore '" + args.outputfile + "'")
+    if args.with_vedo:
+        from pianoplayer.vkeyboard import VirtualKeyboard
 
-    # if args.with_vedo:
-    #     from pianoplayer.vkeyboard import VirtualKeyboard
-    #
-    #     if args.start_measure != 1:
-    #         print('Sorry, start_measure must be set to 1 when -v option is used. Exit.')
-    #         exit()
-    #
-    #     vk = VirtualKeyboard(songname=xmlfn)
-    #
-    #     if not args.left_only:
-    #         vk.build_RH(rh)
-    #     if not args.right_only:
-    #         vk.build_LH(lh)
-    #
-    #     if args.sound_off:
-    #         vk.playsounds = False
-    #
-    #     vk.speedfactor = args.vedo_speed
-    #     vk.play()
-    #     vk.vp.show(zoom=2, interactive=1)
+        if args.start_measure != 1:
+            print('Sorry, start_measure must be set to 1 when -v option is used. Exit.')
+            exit()
+
+        vk = VirtualKeyboard(songname=xmlfn)
+
+        if not args.left_only:
+            vk.build_RH(rh)
+        if not args.right_only:
+            vk.build_LH(lh)
+
+        if args.sound_off:
+            vk.playsounds = False
+
+        vk.speedfactor = args.vedo_speed
+        vk.play()
+        vk.vp.show(zoom=2, interactive=1)

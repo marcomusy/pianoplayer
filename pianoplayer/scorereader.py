@@ -9,7 +9,6 @@ from operator import attrgetter
 #####################################################
 class INote:
     def __init__(self):
-        self.note21   = None
         self.name     = None
         self.isChord  = False
         self.isBlack  = False
@@ -182,10 +181,22 @@ def reader_pretty_midi(pm, beam=0):
     return noteseq
 
 
-def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
+def PIG2noteseq(fname, beam=0):
     """
     Convert a PIG text file to a music21 Stream object.
 
+    time_unit must be multiple of 2.
+    beam = 0, right hand
+    beam = 1, left hand.
+    """
+    # read
+
+    return []
+
+
+def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
+    """
+    Convert a PIG text file to a music21 Stream object.
     time_unit must be multiple of 2.
     beam = 0, right hand
     beam = 1, left hand.

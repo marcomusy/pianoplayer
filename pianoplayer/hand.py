@@ -11,14 +11,14 @@ import pianoplayer.utils as utils
 
 #####################################################
 class Hand:
-    def __init__(self, side="right", size='M'):
+    def __init__(self, noteseq, side="right", size='M'):
 
         self.LR = side
         # fingers pos at rest first is dummy, (cm), asymmetry helps with scales
         self.frest = [None, -7.0, -2.8, 0.0, 2.8, 5.6]
         self.weights = [None, 1.1, 1.0, 1.1, 0.9, 0.8]  # finger relative strength
         self.bfactor = [None, 0.3, 1.0, 1.1, 0.8, 0.7]  # hit of black key bias
-        self.noteseq = []
+        self.noteseq = noteseq
         self.fingerseq = []
         self.depth = 9
         self.autodepth = True
@@ -32,10 +32,7 @@ class Hand:
         print('Your hand span set to size-' + size, 'which is', 21 * self.hf, 'cm')
         print('(max relaxed distance between thumb and pinkie)')
         self.cfps = list(self.frest)  # hold current finger positions
-
-        self.good_fingers = []
-        self.good_notes = []
-        self.good_velocities = []
+        self.cost = -1
 
     #####################################################
 
@@ -116,25 +113,26 @@ class Hand:
 
         if not na.isChord and not nb.isChord:  # neither of the 2 notes live in a chord
             if fa == fb and xba and na.duration < 4:
-                return True  # play different notes w/ same finger, skip
-            if fa > 1:  # if a is not thumb
+                skipped = True  # play different notes w/ same finger, skip
+            elif fa > 1:  # if a is not thumb
                 if fb > 1 and (fb - fa) * xba < 0:
-                    return True  # non-thumb fingers are crossings, skip
+                    skipped = True  # non-thumb fingers are crossings, skip
                 elif fb == 1 and nb.isBlack and xba > 0:
-                    return True  # crossing thumb goes to black, skip
+                    skipped = True  # crossing thumb goes to black, skip
             else:  # a is played by thumb:
                 # skip if  a is black  and  b is behind a  and  fb not thumb  and na.duration<2:
-                if na.isBlack and xba < 0 and fb > 1 and na.duration < 2: return True
+                if na.isBlack and xba < 0 and fb > 1 and na.duration < 2:
+                    skipped = True
 
         elif na.isChord and nb.isChord and na.chordID == nb.chordID:
             axba = abs(xba) * hf / 0.8
             # na and nb are notes in the same chord
             if fa == fb:
-                return True  # play different chord notes w/ same finger, skip
+                skipped = True  # play different chord notes w/ same finger, skip
             elif fa < fb and LR == 'left':
-                return True
+                skipped = True
             elif fa > fb and LR == 'right':
-                return True
+                skipped = True
             # max normalized distance in cm btw 2 consecutive fingers
             elif axba > 5 and (fa == 3 and fb == 4 or fa == 4 and fb == 3):
                 skipped = True
@@ -270,26 +268,11 @@ class Hand:
             self.set_fingers_positions(out, ninenotes, 0)
             self.fingerseq.append(list(self.cfps))
 
-            if best_finger > 0 and i < N - 3:
-                fng = Fingering(best_finger)
-                good_fingers.append(best_finger)
-                good_notes.append(an.pitch)
-                if an.isChord:
-                    # if len(an.chord21.pitches) < 3:
-                    # dont show fingering in the lyrics line for >3 note-chords
-                    if self.lyrics:
-                        nl = len(an.chord21.pitches) - an.chordnr
-                        an.chord21.addLyric(best_finger, nl)
-                    # else:
-                    # an.chord21.articulations.append(fng)
-                else:
-                    if self.lyrics:
-                        an.note21.addLyric(best_finger)
-                    # else:
-                    # an.note21.articulations.append(fng)
-            elif best_finger == 0:
-                good_fingers.append(best_finger)
-                good_notes.append(an.pitch)
+            an.cost = vel
+
+
+
+
 
             # ---------------------------------------------------------------------------- print
             if self.verbose:
@@ -300,7 +283,6 @@ class Hand:
                 print(f"finger_{best_finger}  plays  {an.pitch: >2}{an.octave}", end=' ')
                 if i < N - 10:
                     print(f"  v={round(vel, 1)}", end='')
-                    good_velocities.append(vel)
                     if self.autodepth:
                         print("\t " + str(out[0:self.depth]) + " d:" + str(self.depth))
                     else:
@@ -311,4 +293,3 @@ class Hand:
                 if i and not i % 100 and an.measure:
                     print('scanned', i, '/', N,
                           'notes, measure', an.measure + 1, ' for the', self.LR, 'hand...')
-        return good_notes, good_fingers, good_velocities
