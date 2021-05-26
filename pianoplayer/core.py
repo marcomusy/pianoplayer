@@ -1,4 +1,4 @@
-
+import csv
 import json
 import os, sys
 from music21 import converter, stream
@@ -179,7 +179,48 @@ def annotate(args):
             with open(name_velocities, 'w') as outfile:
                 json.dump(velocities, outfile)
 
-    # sf.write('xml', fp=args.outputfile)
+    if args.outputfile is not None:
+        ext = os.path.splitext(args.outputfile)[1]
+        # an extended PIG file  (note ID) (onset time) (offset time) (spelled pitch) (onset velocity) (offset velocity) (channel) (finger number) (cost)
+        if ext == ".txt":
+            pig_notes = []
+            if not args.only_left:
+                for n in rh_noteseq:
+                    onset_time = str(n.onset)
+                    offset_time = str(n.onset + n.duration)
+                    spelled_pitch = n.name
+                    onset_velocity = str(None)
+                    offset_velocity = str(None)
+                    channel = '0'
+                    finger_number = n.finger_number
+                    cost = n.cost_finger
+                    pig_notes.append((onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
+                                      finger_number, cost))
+
+            if not args.only_right:
+                for n in lh_noteseq:
+                    onset_time = str(n.onset)
+                    offset_time = str(n.onset + n.duration)
+                    spelled_pitch = n.name
+                    onset_velocity = str(None)
+                    offset_velocity = str(None)
+                    channel = '1'
+                    finger_number = str(n.finger_number)
+                    cost = n.cost_finger
+                    pig_notes.append((onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
+                                      finger_number, cost))
+
+
+
+            with open(args.outputfile, 'wt') as out_file:
+                tsv_writer = csv.writer(out_file, delimiter='\t')
+                for idx, (onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
+                          finger_number, cost) in enumerate(sorted(pig_notes)):
+                    tsv_writer.writerow([idx, onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity,
+                                         channel, finger_number, cost])
+        else:
+            sf.write('xml', fp=args.outputfile)
+
 
     # if args.musescore:  # -m option
     #     print('Opening musescore with output score:', args.outputfile)
