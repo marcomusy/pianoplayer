@@ -1,9 +1,13 @@
 import csv
 import json
 import os, sys
+import platform
+
 from music21 import converter, stream
+from music21.articulations import Fingering
+
 from pianoplayer.hand import Hand
-from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi, PIG2noteseq
+from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi, reader_PIG
 import pretty_midi
 
 ###########################################################
@@ -68,39 +72,42 @@ def run_annotate(filename,
     annotate(args)
 
 
-def annotate_fingers_xml(sf, hand):
-    p0 = sf.parts[hand.lyrics]
+def annotate_fingers_xml(sf, hand, args, is_right=True):
+    p0 = sf.parts[args.rbeam if is_right else args.lbeam]
     idx = 0
-    for el in p0.flat.getElementsByClass("Note"):
+    for el in p0.flat.getElementsByClass("GeneralNote"):
         if el.isNote:
-            an = hand.noteseq[idx]
-            if an.isChord:
-                if len(an.chord21.pitches) < 3:
-                    # dont show fingering in the lyrics line for >3 note-chords
-                    if hand.lyrics:
-                        nl = len(an.chord21.pitches) - an.chordnr
-                        an.chord21.addLyric(an.fingering, nl)
-                    else:
-                        an.chord21.articulations.append(an.fingering)
+            n = hand.noteseq[idx]
+            if hand.lyrics:
+                el.addLyric(n.fingering)
             else:
+                el.articulations.append(Fingering(n.fingering))
+            idx += 1
+        elif el.isChord:
+            for j, cn in enumerate(el.pitches):
+                n = hand.noteseq[idx]
                 if hand.lyrics:
-                    an.note21.addLyric(an.fingering)
+                    nl = len(cn.chord21.pitches) - cn.chordnr
+                    el.addLyric(cn.fingering, nl)
                 else:
-                    an.note21.articulations.append(an.fingering)
+                    el.articulations.append(Fingering(n.fingering))
+                idx += 1
+
+    return sf
 
 
-def annotate_PIG(hand):
+def annotate_PIG(hand, is_right=True):
     ans = []
     for n in hand.noteseq:
-        onset_time = str(n.onset)
-        offset_time = str(n.onset + n.duration)
+        onset_time = "{:.4f}".format(n.time)
+        offset_time = "{:.4f}".format(n.time + n.duration)
         spelled_pitch = n.name
         onset_velocity = str(None)
         offset_velocity = str(None)
-        channel = '0'
-        finger_number = n.finger
-        cost = n.cost_finger
-        ans.extend((onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
+        channel = '0' if is_right else '1'
+        finger_number = n.fingering if is_right else -n.fingering
+        cost = n.cost
+        ans.append((onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
                     finger_number, cost))
     return ans
 
@@ -133,10 +140,9 @@ def annotate(args):
 
     elif '.txt' in args.filename:
         if not args.left_only:
-            rh_noteseq = PIG2noteseq(args.filename, args.rbeam)
+            rh_noteseq = reader_PIG(args.filename, args.rbeam)
         if not args.right_only:
-            lh_noteseq = PIG2noteseq(args.filename, args.lbeam)
-
+            lh_noteseq = reader_PIG(args.filename, args.lbeam)
 
     elif '.mid' in args.filename or '.midi' in args.filename:
         pm = pretty_midi.PrettyMIDI(args.filename)
@@ -213,16 +219,18 @@ def annotate(args):
 
             # Annotate fingers in XML
             if not args.left_only:
-                annotate_fingers_xml(sf, rh)
+                sf = annotate_fingers_xml(sf, rh, args, is_right=True)
 
             if not args.right_only:
-                annotate_fingers_xml(sf, lh)
-
-            sf.write('xml', fp=args.outputfile)
+                sf = annotate_fingers_xml(sf, lh, args, is_right=False)
+            sf.write('musicxml', fp=args.outputfile)
 
             if args.musescore:  # -m option
                 print('Opening musescore with output score:', args.outputfile)
-                os.system('musescore "' + args.outputfile + '" > /dev/null 2>&1')
+                if platform.system() == 'Darwin':
+                    os.system('open "' + args.outputfile + '"')
+                else:
+                    os.system('musescore "' + args.outputfile + '" > /dev/null 2>&1')
             else:
                 print("\nTo visualize annotated score with fingering type:\n musescore '" + args.outputfile + "'")
 
@@ -249,4 +257,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/test_chords.xml', outputfile="test_chors_annotated.txt", musescore=True, n_measures=800, depth=9, right_only=True)
+    run_annotate('../scores/test_chords.xml', outputfile="test_chords_annotated.xml", musescore=True, right_only=True, n_measures=800, depth=9)

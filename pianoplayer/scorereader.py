@@ -3,6 +3,8 @@ Created on Thu Nov 26 19:22:20 2015
 
 @author: marco musy
 """
+from music21.articulations import Fingering
+
 from pianoplayer.utils import keypos, keypos_midi
 from operator import attrgetter
 
@@ -26,6 +28,17 @@ class INote:
 
 
 #####################################################
+def get_finger_music21(n, j=0):
+    fingers = []
+    for art in n.articulations:
+        if type(art) == Fingering:
+            fingers.append(art.fingerNumber)
+    finger = 0
+    if len(fingers) > j:
+        finger = fingers[j]
+    return finger
+
+
 def reader(sf, beam=0):
 
     noteseq = []
@@ -48,8 +61,8 @@ def reader(sf, beam=0):
 
     chordID = 0
 
-    for n in strm:
-        if n.duration.quarterLength==0 : continue
+    for n in strm.getElementsByClass("GeneralNote"):
+        if n.duration.quarterLength==0: continue
 
         if hasattr(n, 'tie'): # address bug https://github.com/marcomusy/pianoplayer/issues/29
             if n.tie and (n.tie.type == 'continue' or n.tie.type=='stop'): continue
@@ -74,8 +87,8 @@ def reader(sf, beam=0):
             an.isBlack = False
             if pc in [1, 3, 6, 8, 10]: an.isBlack = True
             if n.lyrics: an.fingering = n.lyric
-            finger = [art.fingerNumber for art in n.articulations if type(art) == Fingering][0]
-            if finger is not None: an.fingering = finger
+
+            an.fingering = get_finger_music21(n)
             noteseq.append(an)
 
         elif n.isChord:
@@ -104,10 +117,8 @@ def reader(sf, beam=0):
                     pc = cn.pitchClass
                 if pc in [1, 3, 6, 8, 10]: an.isBlack = True
                 else: an.isBlack = False
-                finger = [art.fingerNumber for art in n.articulations if type(art) == Fingering][j]
-                if finger is not None: an.fingering = finger
+                an.fingering = get_finger_music21(n, j)
                 noteseq.append(an)
-
             chordID += 1
 
     if len(noteseq)<2:
@@ -160,11 +171,11 @@ def reader_pretty_midi(pm, beam=0):
                 an.noteID += 1
                 an.isChord = True
                 an.chord21 = n
-                an.pitch = cn.pitch
+                an.pitch   = cn.pitch
                 an.note21  = cn
                 an.chordnr = jj
                 an.NinChord = chord_notes
-                an.octave  = cn.pitch //2
+                an.octave  = cn.pitch // 2
                 an.x       = keypos_midi(cn)
                 an.time    = cn.start-sfasam*jj
                 an.duration = cn_duration + sfasam * (jj - 1)
@@ -182,9 +193,9 @@ def reader_pretty_midi(pm, beam=0):
     return noteseq
 
 
-def PIG2noteseq(fname, beam=0):
+def reader_PIG(fname, beam=0):
     """
-    Convert a PIG text file to a music21 Stream object.
+    Convert a PIG text file to a noteseq of type INote.
 
     time_unit must be multiple of 2.
     beam = 0, right hand
@@ -290,8 +301,6 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
                 if d<4:
                     r.duration.quarterLength = 1.0/time_unit/pow(2, d)
                     sf.append(r)
-
-
     return sf
 
 
