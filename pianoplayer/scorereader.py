@@ -66,15 +66,12 @@ def reader(sf, beam=0):
             an.octave = n.octave
             an.measure= n.measureNumber
             an.x      = keypos(n)
-            an.pitch = n.pitch
+            an.pitch  = n.pitch.midi
             an.time   = n.offset
             an.duration = n.duration.quarterLength
             an.isBlack= False
-            if hasattr(n, 'pitch'):
-                pc = n.pitch.pitchClass
-            else:
-                pc = n.pitchClass
-                an.isBlack = False
+            pc = n.pitch.pitchClass
+            an.isBlack = False
             if pc in [1, 3, 6, 8, 10]: an.isBlack = True
             if n.lyrics: an.fingering = n.lyric
             noteseq.append(an)
@@ -92,7 +89,7 @@ def reader(sf, beam=0):
                 an.note21  = cn
                 an.name    = cn.name
                 an.chordnr = j
-                an.pitch   = cn.pitch
+                an.pitch   = cn.midi
                 an.NinChord = len(n.pitches)
                 an.octave  = cn.octave
                 an.measure = n.measureNumber

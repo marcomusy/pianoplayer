@@ -24,11 +24,10 @@ def run_annotate(filename,
                  depth=0,
                  rbeam=0,
                  lbeam=1,
-                 cost_path=None,
                  quiet=False,
                  musescore=False,
                  below_beam=False,
-                 with_vedo=1.5,
+                 with_vedo=0,
                  vedo_speed=False,
                  sound_off=False,
                  left_only=False,
@@ -51,7 +50,6 @@ def run_annotate(filename,
     args.depth = depth
     args.rbeam = rbeam
     args.lbeam = lbeam
-    args.cost_path = cost_path
     args.quiet = quiet
     args.musescore = musescore
     args.below_beam = below_beam
@@ -70,10 +68,10 @@ def run_annotate(filename,
     annotate(args)
 
 
-def annotate_fingers_xml(sf, hand, args):
-    p0 = sf.parts[args.beam]
+def annotate_fingers_xml(sf, hand):
+    p0 = sf.parts[hand.lyrics]
     idx = 0
-    for el in p0:
+    for el in p0.flat.getElementsByClass("Note"):
         if el.isNote:
             an = hand.noteseq[idx]
             if an.isChord:
@@ -186,10 +184,10 @@ def annotate(args):
         # an extended PIG file  (note ID) (onset time) (offset time) (spelled pitch) (onset velocity) (offset velocity) (channel) (finger number) (cost)
         if ext == ".txt":
             pig_notes = []
-            if not args.only_left:
+            if not args.left_only:
                 pig_notes.extend(annotate_PIG(rh))
 
-            if not args.only_right:
+            if not args.right_only:
                 pig_notes.extend(annotate_PIG(lh))
 
             with open(args.outputfile, 'wt') as out_file:
@@ -215,10 +213,10 @@ def annotate(args):
 
             # Annotate fingers in XML
             if not args.left_only:
-                annotate_fingers_xml(sf, rh, args)
+                annotate_fingers_xml(sf, rh)
 
             if not args.right_only:
-                annotate_fingers_xml(sf, lh, args)
+                annotate_fingers_xml(sf, lh)
 
             sf.write('xml', fp=args.outputfile)
 
@@ -248,3 +246,7 @@ def annotate(args):
         vk.speedfactor = args.vedo_speed
         vk.play()
         vk.vp.show(zoom=2, interactive=1)
+
+
+if __name__ == '__main__':
+    run_annotate('../scores/test_chords.xml', outputfile="test_chors_annotated.txt", musescore=True, n_measures=800, depth=9, right_only=True)
