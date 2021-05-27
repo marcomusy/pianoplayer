@@ -258,4 +258,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/test_chords.xml', outputfile="test_chords_annotated.xml", musescore=True, right_only=True, n_measures=800, depth=9)
+    run_annotate('../scores/test_chords.xml', outputfile="test_chords_annotated.txt", musescore=True, right_only=True, n_measures=800, depth=9)
