@@ -290,6 +290,7 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
                     r.duration.quarterLength = 1.0/time_unit/pow(2, d)
                     sf.append(r)
 
+
     return sf
 
 
