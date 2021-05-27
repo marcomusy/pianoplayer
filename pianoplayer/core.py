@@ -10,6 +10,7 @@ from pianoplayer.hand import Hand
 from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi, reader_PIG
 import pretty_midi
 
+
 ###########################################################
 # Piano Player main analyse and annotate
 ###########################################################
