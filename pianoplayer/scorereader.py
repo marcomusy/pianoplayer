@@ -74,12 +74,15 @@ def reader(sf, beam=0):
             an.isBlack = False
             if pc in [1, 3, 6, 8, 10]: an.isBlack = True
             if n.lyrics: an.fingering = n.lyric
+            finger = [art.fingerNumber for art in n.articulations if type(art) == Fingering][0]
+            if finger is not None: an.fingering = finger
             noteseq.append(an)
 
         elif n.isChord:
 
             if n.tie and (n.tie.type=='continue' or n.tie.type=='stop'): continue
             sfasam = 0.05 # sfasa leggermente le note dell'accordo
+
             for j, cn in enumerate(n.pitches):
                 an = INote()
                 an.chordID  = chordID
@@ -89,7 +92,6 @@ def reader(sf, beam=0):
                 an.note21  = cn
                 an.name    = cn.name
                 an.chordnr = j
-                an.pitch   = cn.midi
                 an.NinChord = len(n.pitches)
                 an.octave  = cn.octave
                 an.measure = n.measureNumber
@@ -102,6 +104,8 @@ def reader(sf, beam=0):
                     pc = cn.pitchClass
                 if pc in [1, 3, 6, 8, 10]: an.isBlack = True
                 else: an.isBlack = False
+                finger = [art.fingerNumber for art in n.articulations if type(art) == Fingering][j]
+                if finger is not None: an.fingering = finger
                 noteseq.append(an)
 
             chordID += 1
@@ -113,7 +117,7 @@ def reader(sf, beam=0):
 
 
 def reader_pretty_midi(pm, beam=0):
-    
+
     noteseq = []
     pm_notes = sorted(pm.notes, key=attrgetter('start'))
     pm_onsets = [onset.start for onset in pm_notes]
@@ -147,7 +151,7 @@ def reader_pretty_midi(pm, beam=0):
         else:
             if n_duration == 0: continue
             sfasam = 0.05 # sfasa leggermente le note dell'accordo
-            
+
             for jj in range(chord_notes):
                 cn = pm_notes[ii]
                 cn_duration = cn.end - cn.start
