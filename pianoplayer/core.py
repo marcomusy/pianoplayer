@@ -102,14 +102,14 @@ def annotate_PIG(hand, is_right=True):
     for n in hand.noteseq:
         onset_time = "{:.4f}".format(n.time)
         offset_time = "{:.4f}".format(n.time + n.duration)
-        spelled_pitch = n.name
+        spelled_pitch = n.pitch
         onset_velocity = str(None)
         offset_velocity = str(None)
         channel = '0' if is_right else '1'
         finger_number = n.fingering if is_right else -n.fingering
         cost = n.cost
         ans.append((onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
-                    finger_number, cost))
+                    finger_number, cost, n.noteID))
     return ans
 
 
@@ -195,14 +195,14 @@ def annotate(args):
                 pig_notes.extend(annotate_PIG(rh))
 
             if not args.right_only:
-                pig_notes.extend(annotate_PIG(lh))
+                pig_notes.extend(annotate_PIG(lh, is_right=False))
 
             with open(args.outputfile, 'wt') as out_file:
                 tsv_writer = csv.writer(out_file, delimiter='\t')
                 for idx, (onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
-                          finger_number, cost) in enumerate(sorted(pig_notes)):
+                          finger_number, cost, id_n) in enumerate(sorted(pig_notes, key=lambda tup: (float(tup[0]), int(tup[5]), int(tup[2])))):
                     tsv_writer.writerow([idx, onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity,
-                                         channel, finger_number, cost])
+                                         channel, finger_number, cost, id_n])
         else:
             ext = os.path.splitext(args.filename)[1]
             if ext in ['mid', 'midi']:
@@ -258,4 +258,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/test_chords.xml', outputfile="test_chords_annotated.txt", musescore=True, right_only=True, n_measures=800, depth=9)
+    run_annotate('../scores/test_chord.xml', outputfile="test_chord_annotate.xml", right_only=True, musescore=True, n_measures=800, depth=0)

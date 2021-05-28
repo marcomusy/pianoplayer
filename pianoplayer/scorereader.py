@@ -60,8 +60,9 @@ def reader(sf, beam=0):
     print('Reading beam', beam, 'with', len(strm), 'objects in stream.')
 
     chordID = 0
-
+    noteID = 0
     for n in strm.getElementsByClass("GeneralNote"):
+
         if n.duration.quarterLength==0: continue
 
         if hasattr(n, 'tie'): # address bug https://github.com/marcomusy/pianoplayer/issues/29
@@ -72,7 +73,7 @@ def reader(sf, beam=0):
                 # print "doppia nota", n.name
                 continue
             an        = INote()
-            an.noteID += 1
+            an.noteID = noteID
             an.note21 = n
             an.isChord= False
             an.name   = n.name
@@ -92,6 +93,7 @@ def reader(sf, beam=0):
 
             an.fingering = get_finger_music21(n)
             noteseq.append(an)
+            noteID += 1
 
         elif n.isChord:
 
@@ -101,7 +103,7 @@ def reader(sf, beam=0):
             for j, cn in enumerate(n.pitches):
                 an = INote()
                 an.chordID  = chordID
-                an.noteID += 1
+                an.noteID = noteID
                 an.isChord = True
                 an.pitch = cn.midi
                 an.note21  = cn
@@ -111,7 +113,7 @@ def reader(sf, beam=0):
                 an.octave  = cn.octave
                 an.measure = n.measureNumber
                 an.x       = keypos(cn)
-                an.time    = n.offset-sfasam*j
+                an.time    = n.offset-sfasam*(len(n.pitches)-j-1)
                 an.duration= n.duration.quarterLength+sfasam*(an.NinChord-1)
                 if hasattr(cn, 'pitch'):
                     pc = cn.pitch.pitchClass
@@ -122,10 +124,11 @@ def reader(sf, beam=0):
                 else:
                     an.isBlack = False
                 an.fingering = get_finger_music21(n, j)
+                noteID += 1
                 noteseq.append(an)
             chordID += 1
 
-    if len(noteseq)<2:
+    if len(noteseq) < 2:
         print("Beam is empty.")
         return []
     return noteseq
