@@ -106,7 +106,7 @@ class Hand:
     #         if axba > 16 and (fa == 1 and fb == 4 or fa == 4 and fb == 1): return True
     #
     #     return False
-    def _skip(self, fa, fb, na, nb, level):
+    def _skip(self, fa, fb, na, nb):
         # fa is fingering for note na, level is passed only for debugging
         skipped = False
         xba = nb.x - na.x  # physical distance btw the second to first note, in cm
@@ -156,21 +156,19 @@ class Hand:
         return skipped
         # ---------------------------------------------------------------------------
 
-    def _exploit_fingers(self, f, na, nb, level):
-        return [next_f for next_f in [1, 2, 3, 4, 5] if not self._skip(f, next_f, na, nb, level)]
+    def _exploit_fingers(self, f, na, nb):
+        return [next_f for next_f in [1, 2, 3, 4, 5] if not self._skip(f, next_f, na, nb)]
 
     def combinatorial_optimization(self, nseq, fingers, level, best_sequence):
         if self.depth == level:
-            v = self.ave_velocity(best_sequence, nseq), best_sequence
-            if v < self.minvel:
-                self.best_out = (v, self.best_sequence)
+            v = self.ave_velocity(best_sequence, nseq)
+            if v < self.best_out[0]:
+                self.best_out = (v, best_sequence)
 
         else:
             for f in fingers:
-                v, best_sequence = self.combinatorial_optimization(nseq, self._exploit_fingers(f, nseq[level-1],
-                                                                   nseq[level], level+1), level+1, best_sequence.append(f))
-
-
+                fingers = self._exploit_fingers(f, nseq[level - 1], nseq[level])
+                self.combinatorial_optimization(nseq, fingers, level+1, best_sequence + [f])
 
     #####################################################
     def optimize_seq(self, nseq, istart):
@@ -196,22 +194,9 @@ class Hand:
         #####################################
         out = ([0 for _ in range(depth)], -1)
 
-        minvel = 1.e+10
-        self.combinatorial_optimization(nseq, u_start, level=1)
-        for f1 in u_start:
-            for f2 in self._exploit_fingers(f1, n1, n2, 2):
-                for f3 in self._exploit_fingers(f2, n2, n3, 3):
-                    for f4 in self._exploit_fingers(f3, n3, n4, 4):
-                        for f5 in self._exploit_fingers(f4, n4, n5, 5):
-                            for f6 in self._exploit_fingers(f5, n5, n6, 6):
-                                for f7 in self._exploit_fingers(f6, n6, n7, 7):
-                                    for f8 in self._exploit_fingers(f7, n7, n8, 8):
-                                        for f9 in self._exploit_fingers(f8, n8, n9, 9):
-                                            c = [f1, f2, f3, f4, f5, f6, f7, f8, f9]
-                                            v = self.ave_velocity(c, nseq)
-                                            if v < minvel:
-                                                out = (c, v)
-                                                minvel = v
+        self.best_out = (1.e+10, None)
+        self.combinatorial_optimization(nseq, u_start, level=0, best_sequence=[])
+
         # if out[1]==-1: exit() #no combination found
         return out
 
