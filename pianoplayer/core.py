@@ -2,6 +2,8 @@ import csv
 import json
 import os, sys
 import platform
+import time
+import timeit
 
 from music21 import converter, stream
 from music21.articulations import Fingering
@@ -170,8 +172,10 @@ def annotate(args):
             rh.autodepth = False
             rh.depth = args.depth
         rh.lyrics = args.below_beam
-
+        start = time.time()
         rh.generate(args.start_measure, args.n_measures)
+        end = time.time()
+        print("time", end - start, "secs")
 
     if not args.right_only:
         lh = Hand(side="left", noteseq=lh_noteseq, size=hand_size)
@@ -258,4 +262,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/test_chord.xml', outputfile="test_chord_annotate.xml", right_only=True, musescore=True, n_measures=800, depth=0)
+    run_annotate('../scores/test_chords.xml', outputfile="output.txt", quiet=True, right_only=True, musescore=True, n_measures=800, depth=9)
