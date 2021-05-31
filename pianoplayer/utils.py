@@ -9,9 +9,9 @@ Created on Thu Nov 26 19:22:20 2015
 
 def nameof(n):
     a = n.name + str(n.octave)
-    if "--" in a:                 # order matters
+    if "--" in a:  # order matters
         b = a.replace("B--", "A")
-        b = b.replace("A--", "G") # chain b.replace not a.replace
+        b = b.replace("A--", "G")  # chain b.replace not a.replace
         b = b.replace("G--", "F")
         b = b.replace("E--", "D")
         b = b.replace("D--", "C")
@@ -27,7 +27,7 @@ def nameof(n):
         return b
     elif "##" in a:
         b = a.replace("C##", "D")
-        b = b.replace("D##", "E") # chain b.replace not a.replace
+        b = b.replace("D##", "E")  # chain b.replace not a.replace
         b = b.replace("F##", "G")
         b = b.replace("G##", "A")
         b = b.replace("A##", "B")
@@ -71,27 +71,27 @@ def krelease(f):
 
 
 _kb_layout = {
-    "C"  : 0.5,
-    "D"  : 1.5,
-    "E"  : 2.5,
-    "F"  : 3.5,
-    "G"  : 4.5,
-    "A"  : 5.5,
-    "B"  : 6.5,
-    "B#" : 0.5,
-    "C#" : 1.0,
-    "D#" : 2.0,
-    "E#" : 3.5,
-    "F#" : 4.0,
-    "G#" : 5.0,
-    "A#" : 6.0,
-    "C-" : 6.5,
-    "D-" : 1.0,
-    "E-" : 2.0,
-    "F-" : 2.5,
-    "G-" : 4.0,
-    "A-" : 5.0,
-    "B-" : 6.0,
+    "C": 0.5,
+    "D": 1.5,
+    "E": 2.5,
+    "F": 3.5,
+    "G": 4.5,
+    "A": 5.5,
+    "B": 6.5,
+    "B#": 0.5,
+    "C#": 1.0,
+    "D#": 2.0,
+    "E#": 3.5,
+    "F#": 4.0,
+    "G#": 5.0,
+    "A#": 6.0,
+    "C-": 6.5,
+    "D-": 1.0,
+    "E-": 2.0,
+    "F-": 2.5,
+    "G-": 4.0,
+    "A-": 5.0,
+    "B-": 6.0,
     "C##": 1.5,
     "D##": 2.5,
     "F##": 4.5,
@@ -104,8 +104,8 @@ _kb_layout = {
     "B--": 5.5,
 }
 
-# TODO The assumtion of equal distance between notes is not totally true. (PRamoneda)
 
+# TODO The assumtion of equal distance between notes is not totally true. (PRamoneda)
 def keypos_midi(n):  # position of notes on keyboard
     keybsize = 16.5  # cm
     k = keybsize / 7.0  # 7 notes

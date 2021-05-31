@@ -172,10 +172,13 @@ def annotate(args):
             rh.autodepth = False
             rh.depth = args.depth
         rh.lyrics = args.below_beam
-        start = time.time()
+        # start = time.time()
+        rh.noteseq = rh_noteseq
+        # rh._exploit_fingers(4, rh_noteseq[6], rh_noteseq[7], 0)
+
         rh.generate(args.start_measure, args.n_measures)
-        end = time.time()
-        print("time", end - start, "secs")
+        # end = time.time()
+        # print("time", end - start, "secs")z
 
     if not args.right_only:
         lh = Hand(side="left", noteseq=lh_noteseq, size=hand_size)
@@ -262,4 +265,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/test_chords.xml', outputfile="output.txt", quiet=True, right_only=True, musescore=True, n_measures=800, depth=9)
+    run_annotate('../scores/test_chords.xml', outputfile="output.txt", quiet=False, musescore=True, right_only=True, n_measures=3000, depth=9)
