@@ -265,4 +265,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/couperin_baricades.xml', outputfile="output.xml", musescore=True, n_measures=3000, depth=9)
+    run_annotate('../scores/couperin_baricades.xml', outputfile="output.xml", musescore=False, n_measures=3000, depth=9)
