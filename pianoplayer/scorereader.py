@@ -48,16 +48,16 @@ def reader(sf, beam=0):
     if hasattr(sf, 'parts'):
         if len(sf.parts) <= beam:
             return []
-        strm = sf.parts[beam].flat
+        strm = sf.parts[beam].chordify().flat
     elif hasattr(sf, 'elements'):
         if len(sf.elements) == 1 and beam == 1:
-            strm = sf[0]
+            strm = sf[0].chordify().flat
         else:
             if len(sf) <= beam:
                 return []
-            strm = sf[beam]
+            strm = sf[beam].chordify().flat
     else:
-        strm = sf.flat
+        strm = sf.chordify().flat
 
     print('Reading beam', beam, 'with', len(strm), 'objects in stream.')
 
