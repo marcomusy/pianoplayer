@@ -9,7 +9,7 @@ from music21 import converter, stream
 from music21.articulations import Fingering
 
 from pianoplayer.hand import Hand
-from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi, reader_PIG
+from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi, reader_PIG, strm2map
 import pretty_midi
 
 
@@ -74,29 +74,60 @@ def run_annotate(filename,
     args.hand_size_XXL = hand_size_XXL
     annotate(args)
 
-
 def annotate_fingers_xml(sf, hand, args, is_right=True):
-    p0 = sf.parts[args.rbeam if is_right else args.lbeam]
+    om = strm2map(sf.parts[args.rbeam if is_right else args.lbeam].flat.getElementsByClass("GeneralNote"))
     idx = 0
-    for el in p0.flat.getElementsByClass("GeneralNote"):
-        if el.isNote:
-            n = hand.noteseq[idx]
+    for n, om_note in zip(hand.noteseq, om):
+        el, offset, duration = om_note['element'], om_note['offsetSeconds'], om_note['endTimeSeconds']
+        simultaneous_notes = [(ns, o) for ns, o in zip(hand.noteseq, om) if o['offsetSeconds'] == offset]
+        if len(simultaneous_notes) == 1:
+            if el.tie and (el.tie.type == 'continue' or el.tie.type == 'stop'):
+                idx += 1
             if hand.lyrics:
                 el.addLyric(n.fingering)
             else:
                 el.articulations.append(Fingering(n.fingering))
             idx += 1
-        elif el.isChord:
-            for j, cn in enumerate(el.pitches):
-                n = hand.noteseq[idx]
+            assert n.name == el.name
+        elif len(simultaneous_notes) > 1:
+            for j, (cn_s, cn_o) in enumerate([(cns_ns, cns_o['element']) for cns_ns, cns_o in simultaneous_notes]):
+                if el.tie and (el.tie.type == 'continue' or el.tie.type == 'stop'):
+                    idx += 1
                 if hand.lyrics:
-                    nl = len(cn.chord21.pitches) - cn.chordnr
-                    el.addLyric(cn.fingering, nl)
+                    nl = len(cn_o.chord21.pitches) - cn_o.chordnr
+                    cn_o.addLyric(cn_s.fingering, nl)
                 else:
-                    el.articulations.append(Fingering(n.fingering))
+                    cn_o.articulations.append(Fingering(cn_s.fingering))
                 idx += 1
-
+                assert cn_s.name == cn_o.name
     return sf
+
+# def annotate_fingers_xml(sf, hand, args, is_right=True):
+#     p0 = sf.parts[args.rbeam if is_right else args.lbeam]
+#     idx = 0
+#     for el in p0.flat.getElementsByClass("GeneralNote"):
+#         if el.isNote:
+#             if el.tie and (el.tie.type == 'continue' or el.tie.type == 'stop'):
+#
+#                 continue
+#             n = hand.noteseq[idx]
+#             if hand.lyrics:
+#                 el.addLyric(n.fingering)
+#             else:
+#                 el.articulations.append(Fingering(n.fingering))
+#             idx += 1
+#         elif el.isChord:
+#             for j, cn in enumerate(el.pitches):
+#                 n = hand.noteseq[idx]
+#                 if hand.lyrics:
+#                     nl = len(cn.chord21.pitches) - cn.chordnr
+#                     el.addLyric(cn.fingering, nl)
+#                 else:
+#                     el.articulations.append(Fingering(n.fingering))
+#                 idx += 1
+#
+#     return sf
+
 
 
 def annotate_PIG(hand, is_right=True):
@@ -265,4 +296,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/couperin_baricades.xml', outputfile="output.xml", musescore=False, n_measures=3000, depth=9)
+    run_annotate('../scores/Fugue_No._13_BWV_858_in_F_Major.mxl', outputfile="output.xml", right_only=False, musescore=True, n_measures=100000, depth=9)

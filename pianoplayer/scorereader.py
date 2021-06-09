@@ -3,6 +3,7 @@ Created on Thu Nov 26 19:22:20 2015
 
 @author: marco musy
 """
+import music21
 from music21.articulations import Fingering
 
 from pianoplayer.utils import keypos, keypos_midi
@@ -41,6 +42,19 @@ def get_finger_music21(n, j=0):
         finger = fingers[j]
     return finger
 
+def strm2map(strm):
+    om = []
+    for o in strm.secondsMap:
+        if o['element'].isNote:
+            om.append(o)
+        elif o['element'].isChord:
+            om_chord = [{'element': oc,
+                         'offsetSeconds': o['offsetSeconds'],
+                         'endTimeSeconds': o['endTimeSeconds']} for oc in sorted(o['element'].notes, key=lambda a: a.pitch)]
+            om.extend(om_chord)
+    om = [o for o in om if not (o['element'].tie and (o['element'].tie.type == 'continue' or o['element'].tie.type == 'stop'))]
+    return sorted(om, key=lambda a: (a['offsetSeconds'], a['element'].pitch))
+
 
 def reader(sf, beam=0):
     noteseq = []
@@ -48,97 +62,115 @@ def reader(sf, beam=0):
     if hasattr(sf, 'parts'):
         if len(sf.parts) <= beam:
             return []
-        strm = sf.parts[beam].chordify().flat
+        strm = sf.parts[beam].flat.getElementsByClass("GeneralNote")
     elif hasattr(sf, 'elements'):
         if len(sf.elements) == 1 and beam == 1:
-            strm = sf[0].chordify().flat
+            strm = sf[0].flat.getElementsByClass("GeneralNote")
         else:
             if len(sf) <= beam:
                 return []
-            strm = sf[beam].chordify().flat
+            strm = sf[beam].flat.getElementsByClass("GeneralNote")
     else:
-        strm = sf.chordify().flat
+        strm = sf.flat.getElementsByClass("GeneralNote")
+
+    om = strm2map(strm)
 
     print('Reading beam', beam, 'with', len(strm), 'objects in stream.')
 
     chordID = 0
     noteID = 0
     last_note = None
-    for n in strm.getElementsByClass("GeneralNote"):
+    idx = 0
+    while idx < len(om):
+        om_element = om[idx]
+        n, offset, duration = om_element['element'], om_element['offsetSeconds'], om_element['endTimeSeconds']
 
-        if n.duration.quarterLength == 0: continue
-
-        if hasattr(n, 'tie'):  # address bug https://github.com/marcomusy/pianoplayer/issues/29
-            if n.tie and (n.tie.type == 'continue' or n.tie.type == 'stop'): continue
-
-        if n.isNote:
-            if len(noteseq) and n.offset == noteseq[-1].time:
-                # print "doppia nota", n.name
+        if type(n) in [music21.chord.Chord, music21.note.Note]:
+            if n.duration.quarterLength == 0:
+                idx += 1
                 continue
-            an = INote()
-            an.noteID = noteID
-            an.chordID = chordID
-            an.isChord = False
-            an.name = n.name
-            an.octave = n.octave
-            an.measure = n.measureNumber
-            an.x = keypos(n)
-            an.pitch = n.pitch.midi
-            an.time = n.offset
-            an.duration = n.duration.quarterLength
-            an.isBlack = False
-            pc = n.pitch.pitchClass
-            an.isBlack = False
-            if pc in [1, 3, 6, 8, 10]:
-                an.isBlack = True
-            if n.lyrics:
-                an.fingering = n.lyric
 
-            an.fingering = get_finger_music21(n)
-            an.previous_note = last_note
-            noteseq.append(an)
-            noteID += 1
-            last_note = an
-            chordID += 1
+            if hasattr(n, 'tie'):  # address bug https://github.com/marcomusy/pianoplayer/issues/29
+                if n.tie and (n.tie.type == 'continue' or n.tie.type == 'stop'):
+                    idx += 1
+                    continue
 
-        elif n.isChord:
-            if n.tie and (n.tie.type == 'continue' or n.tie.type == 'stop'): continue
-            sfasam = 0.05  # sfasa leggermente le note dell'accordo
-            chord_notes = []
-            for j, cn in enumerate(n.pitches):
+            simultaneous_notes = [o for o in om if o['offsetSeconds'] == offset]
+
+            if len(simultaneous_notes) == 1:
+                if len(noteseq) and n.offset == noteseq[-1].time:
+                    # print "doppia nota", n.name
+                    idx += 1
+                    continue
                 an = INote()
-                an.chordID = chordID
                 an.noteID = noteID
-                an.isChord = True
-                an.pitch = cn.midi
-                an.note21 = cn
-                an.name = cn.name
-                an.chordnr = j
-                an.NinChord = len(n.pitches)
-                an.octave = cn.octave
+                an.chordID = chordID
+                an.isChord = False
+                an.name = n.name
+                an.octave = n.octave
                 an.measure = n.measureNumber
-                an.x = keypos(cn)
-                an.time = n.offset - sfasam * (len(n.pitches) - j - 1)
-                an.duration = n.duration.quarterLength + sfasam * (an.NinChord - 1)
-                if hasattr(cn, 'pitch'):
-                    pc = cn.pitch.pitchClass
-                else:
-                    pc = cn.pitchClass
+                an.x = keypos(n)
+                an.pitch = n.pitch.midi
+                an.time = n.offset
+                an.duration = n.duration.quarterLength
+                an.isBlack = False
+                pc = n.pitch.pitchClass
+                an.isBlack = False
                 if pc in [1, 3, 6, 8, 10]:
                     an.isBlack = True
-                else:
-                    an.isBlack = False
-                an.fingering = get_finger_music21(n, j)
-                noteID += 1
+                if n.lyrics:
+                    an.fingering = n.lyric
+
+                an.fingering = get_finger_music21(n)
                 an.previous_note = last_note
-                chord_notes.append(an)
-
-            for an in chord_notes:
-                an.chordNotes = chord_notes
                 noteseq.append(an)
+                noteID += 1
+                last_note = an
+                chordID += 1
+                idx += 1
 
-            last_note = chord_notes[-1]
-            chordID += 1
+            elif len(simultaneous_notes) > 1:
+
+                sfasam = 0.05  # sfasa leggermente le note dell'accordo
+                chord_notes = []
+                iterator = []
+
+                for j, cn in enumerate([cns['element'] for cns in simultaneous_notes]):
+                    an = INote()
+                    an.chordID = chordID
+                    an.noteID = noteID
+                    an.isChord = True
+                    an.pitch = cn.pitch.midi
+                    an.name = cn.name
+                    an.chordnr = j
+                    an.NinChord = len(iterator)
+                    an.octave = cn.octave
+                    an.measure = n.measureNumber
+                    an.x = keypos(cn)
+                    an.time = n.offset - sfasam * (len(iterator) - j - 1)
+                    an.duration = n.duration.quarterLength + sfasam * (an.NinChord - 1)
+                    if hasattr(cn, 'pitch'):
+                        pc = cn.pitch.pitchClass
+                    else:
+                        pc = cn.pitchClass
+                    if pc in [1, 3, 6, 8, 10]:
+                        an.isBlack = True
+                    else:
+                        an.isBlack = False
+                    an.fingering = get_finger_music21(n, j)
+                    noteID += 1
+                    an.previous_note = last_note
+                    chord_notes.append(an)
+
+                for an in chord_notes:
+                    an.chordNotes = chord_notes
+                    noteseq.append(an)
+
+                last_note = chord_notes[-1]
+                chordID += 1
+                idx += len(simultaneous_notes)
+        else:
+            idx += 1
 
     if len(noteseq) < 2:
         print("Beam is empty.")
@@ -154,6 +186,8 @@ def reader_pretty_midi(pm, beam=0):
     print('Reading beam', beam, 'with', len(pm_notes), 'objects in stream.')
 
     chordID = 0
+    noteID = 0
+
 
     ii = 0
     while ii < len(pm_notes):
