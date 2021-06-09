@@ -85,7 +85,7 @@ def annotate_fingers_xml(sf, hand, args, is_right=True):
             music21_structure.addLyric(n.fingering)
         else:
             music21_structure.articulations.append(Fingering(n.fingering))
-        assert n.name == om_note['element'].name
+        # assert n.name == om_note['element'].name
     return sf
 
 # def annotate_fingers_xml(sf, hand, args, is_right=True):
@@ -282,4 +282,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/test_octaves.xml', outputfile="output.xml", left_only=False, musescore=True, n_measures=100000, depth=9)
+    run_annotate('../scores/schumann.mid', outputfile="output.xml", left_only=False, musescore=True, n_measures=100000, depth=9)

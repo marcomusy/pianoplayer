@@ -1,6 +1,7 @@
 import json
 import os
 
+import pretty_midi
 from PyPDF2 import PdfFileMerger
 
 from pianoplayer.core import run_annotate
@@ -23,12 +24,10 @@ scores = [
 ]
 
 
-def run_loop(s):
-    score_path = os.path.join('scores', s)
-    output_path = os.path.join('temp', os.path.splitext(s)[0] + '.xml')
+def run_loop(args):
+    score_path, output_path = args
 
-    run_annotate(score_path, outputfile=output_path, musescore=False,
-                 n_measures=100000, depth=9)
+    run_annotate(score_path, outputfile=output_path, musescore=False, n_measures=100000, depth=9)
 
 
 def test_scores():
@@ -53,6 +52,46 @@ def concat_little():
     merger.close()
 
 
+def convert_little2midi():
+
+    xmls = ['scores/' + os.path.splitext(p)[0] + '.xml' for p in scores]
+    midis = ['temp/' + os.path.splitext(p)[0] + '.mid' for p in scores]
+    midis_rh = ['temp/' + os.path.splitext(p)[0] + '_rh.mid' for p in scores]
+    midis_lh = ['temp/' + os.path.splitext(p)[0] + '_lh.mid' for p in scores]
+
+    for xml, midi, midi_rh, midi_lh in zip(xmls, midis, midis_rh, midis_lh):
+        print("'/Applications/MuseScore\ 3.app/Contents/MacOS/mscore' " + xml + ' -o ' + midi)
+
+        os.system("/Applications/MuseScore\ 3.app/Contents/MacOS/mscore " + xml + ' -o' + midi)
+
+
+def test_xmls_midis():
+    num_workers = mp.cpu_count()
+    xmls = ['scores/' + os.path.splitext(p)[0] + '.xml' for p in scores]
+    midis = ['temp/' + os.path.splitext(p)[0] + '.mid' for p in scores]
+    xmls_txt = ['scores/' + os.path.splitext(p)[0] + '_txt.mid' for p in scores]
+    midis_txt = ['temp/' + os.path.splitext(p)[0] + '_txt.txt' for p in scores]
+
+    args_midi = [(midi, xmidi) for midi, xmidi in zip(midis, midis_txt)]
+
+    p = mp.Pool(processes=num_workers)
+    p.map(run_loop, args_midi)
+
+    args_xml = [(xml, xtxt) for xml, xtxt in zip(xmls, xmls_txt)]
+
+    p = mp.Pool(processes=num_workers)
+    p.map(run_loop, args_xml)
+
+
+
+
+
+
+
+
+
 if __name__ == '__main__':
     # test_scores()
-    concat_little()
+    # concat_little()
+    # convert_little2midi()
+    test_xmls_midis()

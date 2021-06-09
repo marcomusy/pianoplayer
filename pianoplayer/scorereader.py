@@ -178,24 +178,26 @@ def reader(sf, beam=0):
 def reader_pretty_midi(pm, beam=0):
     noteseq = []
     pm_notes = sorted(pm.notes, key=attrgetter('start'))
-    pm_onsets = [onset.start for onset in pm_notes]
+    pm_onsets = [float(onset.start) for onset in pm_notes]
 
     print('Reading beam', beam, 'with', len(pm_notes), 'objects in stream.')
 
     chordID = 0
     noteID = 0
+    last_note = None
 
 
     ii = 0
     while ii < len(pm_notes):
         n = pm_notes[ii]
         n_duration = n.end - n.start
-        chord_notes = pm_onsets.count(n.start)
-        if chord_notes != 1:
+        onset_n = n.start
+        simultaneous = list([float(no.start) for no in pm_notes if no.start == onset_n])
+        if len(simultaneous) == 1:
             if n_duration == 0: continue
             an = INote()
-            an.noteID += 1
-            an.note21 = n
+            an.noteID += noteID
+            an.chordID = chordID
             an.pitch = n.pitch
             an.isChord = False
             an.octave = n.pitch // 12
@@ -205,19 +207,25 @@ def reader_pretty_midi(pm, beam=0):
             an.isBlack = False
             pc = n.pitch % 12
             if pc in [1, 3, 6, 8, 10]: an.isBlack = True
+            an.previous_note = last_note
             noteseq.append(an)
             ii += 1
+            chordID += 1
+            noteID += 1
+            last_note = an
+
 
         else:
             if n_duration == 0: continue
             sfasam = 0.05  # sfasa leggermente le note dell'accordo
+            chord_notes = []
 
-            for jj in range(chord_notes):
+            for jj in range(len(simultaneous)):
                 cn = pm_notes[ii]
                 cn_duration = cn.end - cn.start
                 an = INote()
                 an.chordID = chordID
-                an.noteID += 1
+                an.noteID = noteID
                 an.isChord = True
                 an.chord21 = n
                 an.pitch = cn.pitch
@@ -233,9 +241,16 @@ def reader_pretty_midi(pm, beam=0):
                     an.isBlack = True
                 else:
                     an.isBlack = False
-                noteseq.append(an)
+                an.previous_note = last_note
+                noteID += 1
                 ii += 1
+                chord_notes.append(an)
 
+            for an in chord_notes:
+                an.chordNotes = chord_notes
+                noteseq.append(an)
+
+            last_note = chord_notes[-1] if chord_notes[0].time != 0 else None
             chordID += 1
 
     if len(noteseq) < 2:
