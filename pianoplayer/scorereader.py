@@ -50,10 +50,19 @@ def strm2map(strm):
         elif o['element'].isChord:
             om_chord = [{'element': oc,
                          'offsetSeconds': o['offsetSeconds'],
-                         'endTimeSeconds': o['endTimeSeconds']} for oc in sorted(o['element'].notes, key=lambda a: a.pitch)]
+                         'endTimeSeconds': o['endTimeSeconds'],
+                         'chord': o['element']} for oc in sorted(o['element'].notes, key=lambda a: a.pitch)]
             om.extend(om_chord)
-    om = [o for o in om if not (o['element'].tie and (o['element'].tie.type == 'continue' or o['element'].tie.type == 'stop'))]
-    return sorted(om, key=lambda a: (a['offsetSeconds'], a['element'].pitch))
+    om_filtered = []
+    for o in om:
+        if not (o['element'].tie and (o['element'].tie.type == 'continue' or o['element'].tie.type == 'stop')) and \
+                not ((hasattr(o['element'], 'tie') and o['element'].tie
+                      and (o['element'].tie.type == 'continue' or o['element'].tie.type == 'stop'))) and \
+                not (o['element'].duration.quarterLength == 0):
+            om_filtered.append(o)
+
+    return sorted(om_filtered, key=lambda a: (a['offsetSeconds'], a['element'].pitch))
+
 
 
 def reader(sf, beam=0):
@@ -86,22 +95,11 @@ def reader(sf, beam=0):
         n, offset, duration = om_element['element'], om_element['offsetSeconds'], om_element['endTimeSeconds']
 
         if type(n) in [music21.chord.Chord, music21.note.Note]:
-            if n.duration.quarterLength == 0:
-                idx += 1
-                continue
 
-            if hasattr(n, 'tie'):  # address bug https://github.com/marcomusy/pianoplayer/issues/29
-                if n.tie and (n.tie.type == 'continue' or n.tie.type == 'stop'):
-                    idx += 1
-                    continue
-
-            simultaneous_notes = [o for o in om if o['offsetSeconds'] == offset]
+            simultaneous_notes = [o for o in om[idx:] if o['offsetSeconds'] == offset]
 
             if len(simultaneous_notes) == 1:
-                if len(noteseq) and n.offset == noteseq[-1].time:
-                    # print "doppia nota", n.name
-                    idx += 1
-                    continue
+
                 an = INote()
                 an.noteID = noteID
                 an.chordID = chordID
@@ -133,7 +131,6 @@ def reader(sf, beam=0):
 
                 sfasam = 0.05  # sfasa leggermente le note dell'accordo
                 chord_notes = []
-                iterator = []
 
                 for j, cn in enumerate([cns['element'] for cns in simultaneous_notes]):
                     an = INote()
@@ -143,11 +140,11 @@ def reader(sf, beam=0):
                     an.pitch = cn.pitch.midi
                     an.name = cn.name
                     an.chordnr = j
-                    an.NinChord = len(iterator)
+                    an.NinChord = len(simultaneous_notes)
                     an.octave = cn.octave
                     an.measure = n.measureNumber
                     an.x = keypos(cn)
-                    an.time = n.offset - sfasam * (len(iterator) - j - 1)
+                    an.time = n.offset - sfasam * (len(simultaneous_notes) - j - 1)
                     an.duration = n.duration.quarterLength + sfasam * (an.NinChord - 1)
                     if hasattr(cn, 'pitch'):
                         pc = cn.pitch.pitchClass
@@ -166,7 +163,7 @@ def reader(sf, beam=0):
                     an.chordNotes = chord_notes
                     noteseq.append(an)
 
-                last_note = chord_notes[-1]
+                last_note = chord_notes[-1] if chord_notes[0].time != 0 else None
                 chordID += 1
                 idx += len(simultaneous_notes)
         else:

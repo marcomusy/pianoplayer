@@ -56,7 +56,7 @@ class Hand:
             nb = notes[i]
             fb = fingering[i]
             dx = abs(nb.x - self.cfps[fb])  # space travelled by finger fb
-            dt = abs(nb.time - nb.previous_note.time if nb.previous_note is not None else 0) + 0.1  # available time +smoothing term 0.1s
+            dt = abs(nb.time - nb.previous_note.time if nb.previous_note is not None else -10) + 0.1  # available time +smoothing term 0.1s
             v = dx / dt  # velocity
             if nb.isBlack:  # penalty (by increasing speed)
                 v /= self.weights[fb] * self.bfactor[fb]
