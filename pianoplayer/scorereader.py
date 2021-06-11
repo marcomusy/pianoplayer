@@ -42,7 +42,9 @@ def get_finger_music21(n, j=0):
         finger = fingers[j]
     return finger
 
+
 def strm2map(strm):
+    converted = []
     om = []
     for o in strm.secondsMap:
         if o['element'].isNote:
@@ -55,6 +57,16 @@ def strm2map(strm):
             om.extend(om_chord)
     om_filtered = []
     for o in om:
+        offset = o['offsetSeconds']
+        duration = o['endTimeSeconds']
+        pitch = o['element'].pitch
+        simultaneous_notes = [o2 for o2 in om if o2['offsetSeconds'] == offset and o2['element'].pitch.midi == pitch.midi]
+        max_duration = max([float(x['endTimeSeconds']) for x in simultaneous_notes])
+        if len(simultaneous_notes) > 1 and duration < max_duration and str(offset) + ':' + str(pitch) not in converted:
+            continue
+        else:
+            converted.append(str(offset) + ':' + str(pitch))
+
         if not (o['element'].tie and (o['element'].tie.type == 'continue' or o['element'].tie.type == 'stop')) and \
                 not ((hasattr(o['element'], 'tie') and o['element'].tie
                       and (o['element'].tie.type == 'continue' or o['element'].tie.type == 'stop'))) and \
@@ -62,7 +74,6 @@ def strm2map(strm):
             om_filtered.append(o)
 
     return sorted(om_filtered, key=lambda a: (a['offsetSeconds'], a['element'].pitch))
-
 
 
 def reader(sf, beam=0):

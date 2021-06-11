@@ -74,6 +74,7 @@ def run_annotate(filename,
     args.hand_size_XXL = hand_size_XXL
     annotate(args)
 
+
 def annotate_fingers_xml(sf, hand, args, is_right=True):
     om = strm2map(sf.parts[args.rbeam if is_right else args.lbeam].flat.getElementsByClass("GeneralNote"))
     for n, om_note in zip(hand.noteseq, om):
@@ -87,6 +88,7 @@ def annotate_fingers_xml(sf, hand, args, is_right=True):
             music21_structure.articulations.append(Fingering(n.fingering))
         # assert n.name == om_note['element'].name
     return sf
+
 
 # def annotate_fingers_xml(sf, hand, args, is_right=True):
 #     p0 = sf.parts[args.rbeam if is_right else args.lbeam]
@@ -282,4 +284,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/schumann.mid', outputfile="output.xml", left_only=False, musescore=True, n_measures=100000, depth=9)
+    run_annotate('../scores/fugue_bach.mxl', outputfile="output.xml", right_only=False, musescore=True, n_measures=100000, depth=9)
