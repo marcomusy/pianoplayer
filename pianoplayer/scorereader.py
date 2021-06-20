@@ -103,11 +103,11 @@ def reader(sf, beam=0):
     idx = 0
     while idx < len(om):
         om_element = om[idx]
-        n, offset, duration = om_element['element'], om_element['offsetSeconds'], om_element['endTimeSeconds']
-
+        n, onset, end_time = om_element['element'], om_element['offsetSeconds'], om_element['endTimeSeconds']
+        duration = end_time - onset
         if type(n) in [music21.chord.Chord, music21.note.Note]:
 
-            simultaneous_notes = [o for o in om[idx:] if o['offsetSeconds'] == offset]
+            simultaneous_notes = [o for o in om[idx:] if o['offsetSeconds'] == onset]
 
             if len(simultaneous_notes) == 1:
 
@@ -120,8 +120,8 @@ def reader(sf, beam=0):
                 an.measure = n.measureNumber
                 an.x = keypos(n)
                 an.pitch = n.pitch.midi
-                an.time = n.offset
-                an.duration = n.duration.quarterLength
+                an.time = onset
+                an.duration = duration
                 an.isBlack = False
                 pc = n.pitch.pitchClass
                 an.isBlack = False
@@ -143,7 +143,7 @@ def reader(sf, beam=0):
                 sfasam = 0.05  # sfasa leggermente le note dell'accordo
                 chord_notes = []
 
-                for j, cn in enumerate([cns['element'] for cns in simultaneous_notes]):
+                for j, (cn, onset, duration) in enumerate([(cns['element'], cns['offsetSeconds'], cns['endTimeSeconds']) for cns in simultaneous_notes]):
                     an = INote()
                     an.chordID = chordID
                     an.noteID = noteID
@@ -153,10 +153,10 @@ def reader(sf, beam=0):
                     an.chordnr = j
                     an.NinChord = len(simultaneous_notes)
                     an.octave = cn.octave
-                    an.measure = n.measureNumber
+                    an.measure = cn.measureNumber
                     an.x = keypos(cn)
-                    an.time = n.offset - sfasam * (len(simultaneous_notes) - j - 1)
-                    an.duration = n.duration.quarterLength + sfasam * (an.NinChord - 1)
+                    an.time = onset - sfasam * j
+                    an.duration = duration
                     if hasattr(cn, 'pitch'):
                         pc = cn.pitch.pitchClass
                     else:
@@ -188,8 +188,7 @@ def reader(sf, beam=0):
 
 def reader_pretty_midi(pm, beam=0):
     noteseq = []
-    pm_notes = sorted(pm.notes, key=attrgetter('start'))
-    pm_onsets = [float(onset.start) for onset in pm_notes]
+    pm_notes = sorted(pm.notes, key=lambda a: (a.start, a.pitch))
 
     print('Reading beam', beam, 'with', len(pm_notes), 'objects in stream.')
 
@@ -224,8 +223,6 @@ def reader_pretty_midi(pm, beam=0):
             chordID += 1
             noteID += 1
             last_note = an
-
-
         else:
             if n_duration == 0: continue
             sfasam = 0.05  # sfasa leggermente le note dell'accordo
@@ -242,11 +239,11 @@ def reader_pretty_midi(pm, beam=0):
                 an.pitch = cn.pitch
                 an.note21 = cn
                 an.chordnr = jj
-                an.NinChord = chord_notes
+                an.NinChord = len(simultaneous)
                 an.octave = cn.pitch // 2
                 an.x = keypos_midi(cn)
-                an.time = cn.start - sfasam * jj
-                an.duration = cn_duration + sfasam * (jj - 1)
+                an.time = cn.start + sfasam * jj
+                an.duration = cn_duration
                 pc = n.pitch % 12
                 if pc in [1, 3, 6, 8, 10]:
                     an.isBlack = True

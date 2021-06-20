@@ -83,13 +83,6 @@ def test_xmls_midis():
     p.map(run_loop, args_xml)
 
 
-
-
-
-
-
-
-
 if __name__ == '__main__':
     # test_scores()
     # concat_little()

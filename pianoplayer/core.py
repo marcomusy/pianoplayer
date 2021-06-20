@@ -117,20 +117,29 @@ def annotate_fingers_xml(sf, hand, args, is_right=True):
 #     return sf
 
 
+sfasam = 0.05
+
 
 def annotate_PIG(hand, is_right=True):
     ans = []
     for n in hand.noteseq:
-        onset_time = "{:.4f}".format(n.time)
-        offset_time = "{:.4f}".format(n.time + n.duration)
+        if n.isChord:
+            dtime = n.time - sfasam * n.chordnr
+            duration = n.duration
+        else:
+            dtime = n.time
+            duration = n.duration
+        onset_time = "{:.4f}".format(dtime)
+        offset_time = "{:.4f}".format(dtime + duration)
         spelled_pitch = n.pitch
         onset_velocity = str(None)
         offset_velocity = str(None)
         channel = '0' if is_right else '1'
         finger_number = n.fingering if is_right else -n.fingering
+
         cost = n.cost
         ans.append((onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
-                    finger_number, cost, n.noteID))
+                    finger_number, cost))
     return ans
 
 
@@ -226,9 +235,9 @@ def annotate(args):
             with open(args.outputfile, 'wt') as out_file:
                 tsv_writer = csv.writer(out_file, delimiter='\t')
                 for idx, (onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
-                          finger_number, cost, id_n) in enumerate(sorted(pig_notes, key=lambda tup: (float(tup[0]), int(tup[5]), int(tup[2])))):
+                          finger_number, cost) in enumerate(sorted(pig_notes, key=lambda tup: (float(tup[0]), int(tup[5]), int(tup[2])))):
                     tsv_writer.writerow([idx, onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity,
-                                         channel, finger_number, cost, id_n])
+                                         channel, finger_number, cost])
         else:
             ext = os.path.splitext(args.filename)[1]
             if ext in ['mid', 'midi']:
@@ -284,4 +293,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/fugue_bach.mxl', outputfile="output.xml", right_only=False, musescore=True, n_measures=100000, depth=9)
+    run_annotate('../scores/mozart_sonfacile.mid', outputfile="output.txt", right_only=False, musescore=True, n_measures=100000000, depth=9)
