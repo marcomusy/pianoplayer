@@ -293,4 +293,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/mozart_sonfacile.mid', outputfile="output.txt", right_only=False, musescore=True, n_measures=100000000, depth=9)
+    run_annotate('../scores/test.xml', outputfile="output.xml", right_only=True, musescore=True, n_measures=100000000, depth=9)

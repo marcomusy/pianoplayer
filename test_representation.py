@@ -17,7 +17,6 @@ scores = [
     'fugue_bach.mxl',
     'mozart_sonfacile.xml',
     'pachelbel_canon.xml',
-    'schumann.xml',
     'test_chords.xml',
     'test_octaves.xml',
     'test_scales.xml',
@@ -25,12 +24,12 @@ scores = [
 
 
 def run_loop(args):
-    score_path, output_path = args
+    score_path = args
 
-    run_annotate(score_path, outputfile=output_path, musescore=False, n_measures=100000, depth=9)
+    run_annotate('scores/' + score_path, outputfile='temp/' + score_path, musescore=False, n_measures=100000, depth=9)
 
 
-def test_scores():
+def process_pianoplayer_dataset():
     num_workers = mp.cpu_count()
     print("num_workers", num_workers)
 
@@ -84,7 +83,7 @@ def test_xmls_midis():
 
 
 if __name__ == '__main__':
-    # test_scores()
-    # concat_little()
+    process_pianoplayer_dataset()
+    concat_little()
     # convert_little2midi()
-    test_xmls_midis()
+    # test_xmls_midis()

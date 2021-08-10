@@ -9,6 +9,9 @@ import pianoplayer.utils as utils
 
 
 #####################################################
+
+
+
 class Hand:
     def __init__(self, noteseq, side="right", size='M'):
 
@@ -54,7 +57,9 @@ class Hand:
         vmean = 0.
         for i in range(1, self.depth):
             nb = notes[i]
+            na = notes[i-1]
             fb = fingering[i]
+            fa = fingering[i-1]
             dx = abs(nb.x - self.cfps[fb])  # space travelled by finger fb
             dt = abs(nb.time - nb.previous_note.time if nb.previous_note is not None else -10) + 0.1  # available time +smoothing term 0.1s
             v = dx / dt  # velocity
@@ -62,6 +67,13 @@ class Hand:
                 v /= self.weights[fb] * self.bfactor[fb]
             else:
                 v /= self.weights[fb]
+            # penalty for crossing (by increasing speed)
+            if self.LR == 'right':
+                crossing = (na.pitch < nb.pitch and fa > fb) or (na.pitch > nb.pitch and fa < fb)
+            else:  # left
+                crossing = (na.pitch > nb.pitch and fa > fb) or (na.pitch < nb.pitch and fa < fb)
+            if crossing:
+                v = v * 1.5
             vmean += v
             self.set_fingers_positions(fingering, notes, i)  # update all fingers
 
@@ -104,16 +116,52 @@ class Hand:
     #         if axba > 16 and (fa == 1 and fb == 4 or fa == 4 and fb == 1): return True
     #
     #     return False
-    def _skip(self, past_chord, current_chord, fa, fb, na, nb):
-        # fa is fingering for note na, level is passed only for debugging
+
+    def _check_anatomic_distances(self, xba, fa, fb, crossing):
+        skipped = False
+        if not crossing:
+            if xba > 6.5 and (fa == 3 and fb == 4 or fa == 4 and fb == 3):
+                skipped = True
+            elif xba > 9.5 and (fa == 4 and fb == 5 or fa == 5 and fb == 4):
+                skipped = True
+            elif xba > 9.5 and (fa == 2 and fb == 3 or fa == 3 and fb == 2):
+                skipped = True
+            elif xba > 10 and (fa == 2 and fb == 4 or fa == 4 and fb == 2):
+                skipped = True
+            elif xba > 12 and (fa == 3 and fb == 5 or fa == 5 and fb == 3):
+                skipped = True
+            elif xba > 17 and (fa == 2 and fb == 5 or fa == 5 and fb == 2):
+                skipped = True
+            elif xba > 16.5 and (fa == 1 and fb == 2 or fa == 2 and fb == 1):
+                skipped = True
+            elif xba > 17 and (fa == 1 and fb == 3 or fa == 3 and fb == 1):
+                skipped = True
+            elif xba > 18 and (fa == 1 and fb == 4 or fa == 4 and fb == 1):
+                skipped = True
+        else:
+            if (fa == 5 and fb in [1, 2, 3, 4] or fa == 4 and fb in [3, 2] or fa == 3 and fb == 2) or \
+               (fa in [1, 2, 3, 4] and fb == 5 or fa in [3, 2] and fb == 4 or fa == 2 and fb == 3):
+                skipped = True
+            elif xba > 8 and (fa == 2 and fb == 1 or fa == 1 and fb == 2):
+                skipped = True
+            elif xba > 10 and (fa == 3 and fb == 1 or fa == 1 and fb == 3):
+                skipped = True
+            elif xba > 10 and (fa == 4 and fb == 1 or fa == 1 and fb == 4):
+                skipped = True
+        return skipped
+
+    def _skip(self, current_chord, fa, fb, na, nb):
+        # fa is fingering for note na
         skipped = False
         xba = abs(nb.x - na.x)  # physical distance btw the second to first note, in cm
+
+        # compute if crossing
         if self.LR == 'right':
             crossing = (na.pitch < nb.pitch and fa > fb) or (na.pitch > nb.pitch and fa < fb)
         else:  # left
             crossing = (na.pitch > nb.pitch and fa > fb) or (na.pitch < nb.pitch and fa < fb)
 
-        # handle blocks
+        # handle with flatten chords
         if self.LR == 'right' and nb.isChord:
             if nb.chordnr == 0 and nb.NinChord == 2 and fb == 5:
                 skipped = True
@@ -123,7 +171,6 @@ class Hand:
                 skipped = True
             elif nb.NinChord == 5 and fb != nb.chordnr + 1:
                 skipped = True
-
         if self.LR == 'left' and nb.isChord:
             if nb.chordnr == 0 and nb.NinChord == 2 and fb == 1:
                 skipped = True
@@ -135,20 +182,21 @@ class Hand:
                 skipped = True
 
         if not skipped:
+            skipped = self._check_anatomic_distances(xba, fa, fb, crossing)
+
+        if not skipped:
             if not na.isChord and not nb.isChord:  # neither of the 2 notes live in a chord
                 if fa == fb and xba and na.duration < 4:
                     skipped = True  # play different notes w/ same finger, skip
                 elif fa > 1:  # if a is not thumb
-                    if fb > 1 and crossing:
-                        skipped = True  # non-thumb fingers are crossings, skip
-                    elif fb == 1 and nb.isBlack and crossing:
-                        skipped = True  # crossing thumb goes to black, skip
+                    if fb == 1 and nb.isBlack and crossing:
+                        skipped = True  # crossing thumb goes to black, ski
                 else:  # a is played by thumb:
                     # skip if  a is black  and  b is behind a and fb not thumb and na.duration<2:
-                    if na.isBlack and xba < 0 and fb > 1 and na.duration < 2:
+                    if na.isBlack and not nb.isBlack and xba < 0 and fb > 1 and na.duration < 2:
                         skipped = True
-                    elif crossing and nb == 5:
-                        skipped = True
+
+
             elif na.isChord and nb.isChord and na.chordID == nb.chordID:
                 # if na.noteID == 5 and fa == 4 and fb == 5:
                 #     print()
@@ -157,26 +205,8 @@ class Hand:
                     skipped = True  # play different chord notes w/ same finger, skip
                 elif crossing:  # not crossing fingers in a chord
                     skipped = True
-                elif xba > 9.5 and (fa == 3 and fb == 4 or fa == 4 and fb == 3):
-                    skipped = True
-                elif xba > 9.5 and (fa == 4 and fb == 5 or fa == 5 and fb == 4):
-                    skipped = True
-                elif xba > 10 and (fa == 2 and fb == 3 or fa == 3 and fb == 2):
-                    skipped = True
-                elif xba > 12.5 and (fa == 2 and fb == 4 or fa == 4 and fb == 2):
-                    skipped = True
-                elif xba > 15 and (fa == 3 and fb == 5 or fa == 5 and fb == 3):
-                    skipped = True
-                elif xba > 18 and (fa == 2 and fb == 5 or fa == 5 and fb == 2):
-                    skipped = True
-                elif xba > 18.5 and (fa == 1 and fb == 2 or fa == 2 and fb == 1):
-                    skipped = True
-                elif xba > 19 and (fa == 1 and fb == 3 or fa == 3 and fb == 1):
-                    skipped = True
-                elif xba > 21 and (fa == 1 and fb == 4 or fa == 4 and fb == 1):
-                    skipped = True
 
-
+            # handle first chord and second note isolated
             elif not na.isChord and nb.isChord:
                 # respect previous onset
                 if na.pitch != nb.pitch and fa == fb:  # not same fingers
@@ -184,6 +214,7 @@ class Hand:
                 elif crossing:  # not crossing fingers
                     skipped = True
 
+            # handle first note isolated and second chord
             elif na.isChord and not nb.isChord:
                 # if na.noteID == 6 and fa == 4 and fb == 1:
                 #     print()
@@ -200,11 +231,11 @@ class Hand:
         return skipped
         # ---------------------------------------------------------------------------
 
-    def _exploit_fingers(self, past_chord, current_chord, f, na, nb, level):
+    def _exploit_feasible_fingers(self, past_chord, current_chord, f, na, nb, level):
         exploit = []
 
         for next_f in [1, 2, 3, 4, 5]:
-            if not self._skip(past_chord, current_chord, f, next_f, na, nb):
+            if not self._skip(current_chord, f, next_f, na, nb):
                 if na.chordID == nb.chordID:
                     p = past_chord
                     c = current_chord + [next_f]
@@ -216,7 +247,7 @@ class Hand:
         return exploit
 
     #####################################################
-    def optimize_seq(self, nseq, fingers_start):
+    def optimize_seq(self, nseq, fingers_start, ii):
         '''Generate meaningful fingering for a note sequence of size depth'''
         if self.autodepth:
             # choose depth based on time span of 3.5 seconds
@@ -237,18 +268,19 @@ class Hand:
 
         minvel = 1.e+10
         for f1, past_chord1, current_chord1 in fingers_start:
-            for f2, past_chord, current_chord in self._exploit_fingers(past_chord1, current_chord1, f1, n1, n2, 2):
-                for f3, past_chord, current_chord in self._exploit_fingers(past_chord, current_chord, f2, n2, n3, 3):
-                    for f4, past_chord, current_chord in self._exploit_fingers(past_chord, current_chord, f3, n3, n4, 4):
-                        for f5, past_chord, current_chord in self._exploit_fingers(past_chord, current_chord, f4, n4, n5, 5):
-                            for f6, past_chord, current_chord in self._exploit_fingers(past_chord, current_chord, f5, n5, n6, 6):
-                                for f7, past_chord, current_chord in self._exploit_fingers(past_chord, current_chord, f6, n6, n7, 7):
-                                    for f8, past_chord, current_chord in self._exploit_fingers(past_chord, current_chord, f7, n7, n8, 8):
-                                        for f9, past_chord, current_chord in self._exploit_fingers(past_chord, current_chord, f8, n8, n9, 9):
+            for f2, past_chord, current_chord in self._exploit_feasible_fingers(past_chord1, current_chord1, f1, n1, n2, 2):
+                for f3, past_chord, current_chord in self._exploit_feasible_fingers(past_chord, current_chord, f2, n2, n3, 3):
+                    for f4, past_chord, current_chord in self._exploit_feasible_fingers(past_chord, current_chord, f3, n3, n4, 4):
+                        for f5, past_chord, current_chord in self._exploit_feasible_fingers(past_chord, current_chord, f4, n4, n5, 5):
+                            for f6, past_chord, current_chord in self._exploit_feasible_fingers(past_chord, current_chord, f5, n5, n6, 6):
+                                for f7, past_chord, current_chord in self._exploit_feasible_fingers(past_chord, current_chord, f6, n6, n7, 7):
+                                    for f8, past_chord, current_chord in self._exploit_feasible_fingers(past_chord, current_chord, f7, n7, n8, 8):
+                                        for f9, past_chord, current_chord in self._exploit_feasible_fingers(past_chord, current_chord, f8, n8, n9, 9):
                                             c = [f1, f2, f3, f4, f5, f6, f7, f8, f9]
                                             v = self.ave_velocity(c, nseq)
+                                            print(ii, )
                                             if v < minvel:
-                                                out = (c, v, self._exploit_fingers(past_chord1, current_chord1, f1, n1, n2, 2))
+                                                out = (c, v, self._exploit_feasible_fingers(past_chord1, current_chord1, f1, n1, n2, 2))
                                                 minvel = v
 
         return out
@@ -292,7 +324,7 @@ class Hand:
                     fingers_start = possible_fingers
 
                 ninenotes = self.noteseq[i:i + 9]
-                out, vel, possible_fingers = self.optimize_seq(ninenotes, fingers_start)
+                out, vel, possible_fingers = self.optimize_seq(ninenotes, fingers_start, i)
                 best_finger = out[0]
 
             an.fingering = best_finger
