@@ -287,7 +287,6 @@ class Hand:
                                         for f9, past_chord, current_chord in self._exploit_feasible_fingers(past_chord, current_chord, f8, n8, n9, 9):
                                             c = [f1, f2, f3, f4, f5, f6, f7, f8, f9]
                                             v = self.ave_velocity(c, nseq)
-                                            print(ii, )
                                             if v < minvel:
                                                 out = (c, v, self._exploit_feasible_fingers(past_chord1, current_chord1, f1, n1, n2, 2))
                                                 minvel = v
