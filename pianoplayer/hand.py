@@ -233,16 +233,25 @@ class Hand:
 
     def _exploit_feasible_fingers(self, past_chord, current_chord, f, na, nb, level):
         exploit = []
-
-        for next_f in [1, 2, 3, 4, 5]:
-            if not self._skip(current_chord, f, next_f, na, nb):
-                if na.chordID == nb.chordID:
-                    p = past_chord
-                    c = current_chord + [next_f]
-                else:  # na.chord_id != nb.chordID:
-                    p = current_chord
-                    c = [next_f]
-                exploit.append((next_f, p, c))
+        if nb.fingering != 0:
+            next_f = nb.fingering
+            if na.chordID == nb.chordID:
+                p = past_chord
+                c = current_chord + [next_f]
+            else:  # na.chord_id != nb.chordID:
+                p = current_chord
+                c = [next_f]
+            exploit.append((next_f, p, c))
+        else:
+            for next_f in [1, 2, 3, 4, 5]:
+                if not self._skip(current_chord, f, next_f, na, nb):
+                    if na.chordID == nb.chordID:
+                        p = past_chord
+                        c = current_chord + [next_f]
+                    else:  # na.chord_id != nb.chordID:
+                        p = current_chord
+                        c = [next_f]
+                    exploit.append((next_f, p, c))
 
         return exploit
 

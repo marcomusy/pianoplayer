@@ -46,10 +46,10 @@ def get_finger_music21(n, j=0):
 def strm2map(strm):
     converted = []
     om = []
-    for o in strm.secondsMap:
-        if o['element'].isNote:
+    for o in strm.flat.secondsMap:
+        if o['element'].isClassOrSubclass(('Note',)):
             om.append(o)
-        elif o['element'].isChord:
+        elif o['element'].isClassOrSubclass(('Chord',)):
             om_chord = [{'element': oc,
                          'offsetSeconds': o['offsetSeconds'],
                          'endTimeSeconds': o['endTimeSeconds'],
@@ -76,22 +76,51 @@ def strm2map(strm):
     return sorted(om_filtered, key=lambda a: (a['offsetSeconds'], a['element'].pitch))
 
 
+def find_parent(el, class_type):
+    """
+    Returns the first parent of el of type class_type. Both el and class_type must be valid music21 objects
+    If class_type does not exist in the parent chain of el, the outermost object will be returned
+    """
+    temp = el
+    while not isinstance(temp, class_type) and temp.activeSite:
+        temp = temp.activeSite
+    return temp
+
+
+def propagate_metronome_mark_to_parts(m21_stream):
+    """
+    Inserts the Metronome Marks in every part so that .seconds attribute can work correctly
+    """
+    metronome_marks = {}
+    for mm in m21_stream.recurse().getElementsByClass(music21.tempo.MetronomeMark):
+        measure = find_parent(mm, music21.stream.Measure)
+        metronome_marks[measure.number] = mm
+
+    for measure_number, mm in metronome_marks.items():
+        measure_stream = m21_stream.measures(measure_number, measure_number)
+        for measure in measure_stream.recurse().getElementsByClass(music21.stream.Measure):
+            if mm not in measure:
+                measure.insert(0, mm)
+    return m21_stream
+
+
 def reader(sf, beam=0):
     noteseq = []
 
+    sf = propagate_metronome_mark_to_parts(sf)
     if hasattr(sf, 'parts'):
         if len(sf.parts) <= beam:
             return []
-        strm = sf.parts[beam].flat.getElementsByClass("GeneralNote")
+        strm = sf.parts[beam]
     elif hasattr(sf, 'elements'):
         if len(sf.elements) == 1 and beam == 1:
-            strm = sf[0].flat.getElementsByClass("GeneralNote")
+            strm = sf[0]
         else:
             if len(sf) <= beam:
                 return []
-            strm = sf[beam].flat.getElementsByClass("GeneralNote")
+            strm = sf[beam]
     else:
-        strm = sf.flat.getElementsByClass("GeneralNote")
+        strm = sf
 
     om = strm2map(strm)
 

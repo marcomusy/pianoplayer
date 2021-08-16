@@ -8,18 +8,19 @@ from pianoplayer.core import run_annotate
 import multiprocessing as mp
 
 scores = [
-    'bach_airgstring.xml',
-    'bach_invention4.xml',
-    'bach_joy.xml',
-    'bach_prelude.xml',
-    'clayderman_ladyd.xml',
-    'couperin_baricades.xml',
-    'fugue_bach.mxl',
-    'mozart_sonfacile.xml',
-    'pachelbel_canon.xml',
-    'test_chords.xml',
-    'test_octaves.xml',
-    'test_scales.xml',
+    'bach_airgstring.mxl',
+    # 'bach_airgstring.xml',
+    # 'bach_invention4.xml',
+    # 'bach_joy.xml',
+    # 'bach_prelude.xml',
+    # 'clayderman_ladyd.xml',
+    # 'couperin_baricades.xml',
+    # 'fugue_bach.mxl',
+    # 'mozart_sonfacile.xml',
+    # 'pachelbel_canon.xml',
+    # 'test_chords.xml',
+    # 'test_octaves.xml',
+    # 'test_scales.xml',
 ]
 
 

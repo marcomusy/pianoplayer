@@ -91,6 +91,14 @@
           <line>4</line>
           </clef>
         </attributes>
+      <direction placement="above">
+         <direction-type>
+          <metronome relative-y="27" relative-x="-36">
+           <beat-unit>quarter</beat-unit>
+           <per-minute>60</per-minute>
+          </metronome>
+         </direction-type>
+      </direction>
       <note default-x="82.47" default-y="-15.00">
         <pitch>
           <step>C</step>
