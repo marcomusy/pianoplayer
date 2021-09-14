@@ -169,7 +169,7 @@ def reader(sf, beam=0):
 
             elif len(simultaneous_notes) > 1:
 
-                sfasam = 0.05  # sfasa leggermente le note dell'accordo
+                sfasam = 0.00  # sfasa leggermente le note dell'accordo
                 chord_notes = []
 
                 for j, (cn, onset, duration) in enumerate([(cns['element'], cns['offsetSeconds'], cns['endTimeSeconds']) for cns in simultaneous_notes]):
@@ -254,7 +254,7 @@ def reader_pretty_midi(pm, beam=0):
             last_note = an
         else:
             if n_duration == 0: continue
-            sfasam = 0.05  # sfasa leggermente le note dell'accordo
+            sfasam = 0.00  # sfasa leggermente le note dell'accordo
             chord_notes = []
 
             for jj in range(len(simultaneous)):

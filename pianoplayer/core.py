@@ -117,7 +117,7 @@ def annotate_fingers_xml(sf, hand, args, is_right=True):
 #     return sf
 
 
-sfasam = 0.05
+sfasam = 0.00
 
 
 def annotate_PIG(hand, is_right=True):
@@ -293,4 +293,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/test_scales.xml', outputfile="output.xml", right_only=True, musescore=True, n_measures=100000000, depth=9)
+    run_annotate('../scores/test_chords.xml', outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
