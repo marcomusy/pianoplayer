@@ -5,6 +5,7 @@ import platform
 import time
 import timeit
 
+import music21
 from music21 import converter, stream
 from music21.articulations import Fingering
 
@@ -161,6 +162,7 @@ def annotate(args):
             os.system(
                 'musescore -f "' + args.filename + '" -o "' + xmlfn + '"')  # quotes avoid problems w/ spaces in filename
             sf = converter.parse(xmlfn)
+
             if not args.left_only:
                 rh_noteseq = reader(sf, beam=args.rbeam)
             if not args.right_only:
@@ -171,9 +173,15 @@ def annotate(args):
 
     elif '.txt' in args.filename:
         if not args.left_only:
-            rh_noteseq = reader_PIG(args.filename, args.rbeam)
+            sf = PIG2Stream(args.filename, beam=args.rbeam, time_unit=.5, fixtempo=0)
+            sf = music21.stream.Score(sf)
+            rh_noteseq = reader(sf, beam=args.rbeam)
+            # rh_noteseq = reader_PIG(args.filename, args.rbeam)
         if not args.right_only:
-            lh_noteseq = reader_PIG(args.filename, args.lbeam)
+            sf = PIG2Stream(args.filename, beam=args.rbeam, time_unit=.5, fixtempo=0)
+            sf = music21.stream.Score(sf)
+            lh_noteseq = reader(sf, beam=args.lbeam)
+            # lh_noteseq = reader_PIG(args.filename, args.lbeam)
 
     elif '.mid' in args.filename or '.midi' in args.filename:
         pm = pretty_midi.PrettyMIDI(args.filename)
@@ -293,4 +301,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/test_chords.xml', outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
+    run_annotate('../scores/001-1_fingering.txt', right_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
