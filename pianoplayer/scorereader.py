@@ -109,9 +109,12 @@ def reader(sf, beam=0):
 
     sf = propagate_metronome_mark_to_parts(sf)
     if hasattr(sf, 'parts'):
-        if len(sf.parts) <= beam:
+        if len(sf.parts) < beam:
             return []
-        strm = sf.parts[beam]
+        elif len(sf.parts) == 1 and beam == 1:
+            strm = sf.parts
+        else:
+            strm = sf.parts[beam]
     elif hasattr(sf, 'elements'):
         if len(sf.elements) == 1 and beam == 1:
             strm = sf[0]

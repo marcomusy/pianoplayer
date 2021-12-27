@@ -301,4 +301,4 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/001-1_fingering.txt', right_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
+    run_annotate('../scores/001-1_fingering.txt', left_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
