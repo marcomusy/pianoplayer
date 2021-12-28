@@ -384,7 +384,7 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
                 x = Fingering(abs(int(finger)))
                 x.style.absoluteY = 20
             else:  # in the future handle better the note's changes
-                x = Fingering(abs(int(finger.split('_'))))
+                x = Fingering(abs(int(finger.split('_')[0])))
             an.articulations.append(x)
             x.style.absoluteY = 20
 
