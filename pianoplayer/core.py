@@ -173,14 +173,14 @@ def annotate(args):
 
     elif '.txt' in args.filename:
         if not args.left_only:
-            sf = PIG2Stream(args.filename, beam=args.rbeam, time_unit=.5, fixtempo=0)
+            sf = PIG2Stream(args.filename, beam=0, time_unit=.5, fixtempo=0)
             sf = music21.stream.Score(sf)
-            rh_noteseq = reader(sf, beam=args.rbeam)
+            rh_noteseq = reader(sf, beam=0)
             # rh_noteseq = reader_PIG(args.filename, args.rbeam)
         if not args.right_only:
-            sf = PIG2Stream(args.filename, beam=args.rbeam, time_unit=.5, fixtempo=0)
+            sf = PIG2Stream(args.filename, beam=1, time_unit=.5, fixtempo=0)
             sf = music21.stream.Score(sf)
-            lh_noteseq = reader(sf, beam=args.lbeam)
+            lh_noteseq = reader(sf, beam=1)
             # lh_noteseq = reader_PIG(args.filename, args.lbeam)
 
     elif '.mid' in args.filename or '.midi' in args.filename:

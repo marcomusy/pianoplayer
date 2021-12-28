@@ -311,6 +311,13 @@ def reader_PIG(fname, beam=0):
 
     return []
 
+def is_midi(value):
+  try:
+    int(value)
+    return True
+  except ValueError:
+    return False
+
 
 def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
     """
@@ -349,6 +356,7 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
         blines.append(l)
     durations = np.array(durations)
     logdurs = -np.log2(durations)
+
     mindur = np.min(logdurs)
     expos = (logdurs - mindur).astype(int)
     if np.max(expos) > 3:
@@ -368,14 +376,23 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
     n = len(blines)
     for i in range(n):
         if blines[i].startswith('//'): continue
-        _, onset, offset, name, _, _, _, finger = blines[i].split()
+        blines_i = blines[i].split()
+        onset = blines_i[1]
+        offset = blines_i[2]
+        name = blines_i[3]
+        finger = blines_i[7]
         onset, offset = float(onset), float(offset)
         name = name.replace('b', '-')
 
         chordnotes = [name]
         for j in range(1, 5):
             if i + j < n:
-                noteid1, onset1, offset1, name1, _, _, _, finger1 = blines[i + j].split()
+                blines_i_j = blines[i + j].split()
+                noteid1 = blines_i_j[0]
+                onset1 = blines_i_j[1]
+                offset1 = blines_i_j[2]
+                name1 = blines_i_j[3]
+                finger1 = blines_i_j[7]
                 onset1 = float(onset1)
                 if onset1 == onset:
                     name1 = name1.replace('b', '-')
@@ -384,7 +401,10 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
         if len(chordnotes) > 1:
             an = chord.Chord(chordnotes)
         else:
-            an = note.Note(name)
+            if is_midi(name):
+                an = note.Note(int(name))
+            else:
+                an = note.Note(name)
             if '_' not in finger:
                 x = Fingering(abs(int(finger)))
                 x.style.absoluteY = 20
@@ -403,7 +423,7 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
         sf.append(an)
         # rest up to the next
         if i + 1 < n:
-            _, onset1, _, _, _, _, _, _ = blines[i + 1].split()
+            onset1 = blines[i + 1].split()[1]
             onset1 = float(onset1)
             if onset1 - offset > 0:
                 r = note.Rest()
