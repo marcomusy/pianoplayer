@@ -104,9 +104,7 @@ def propagate_metronome_mark_to_parts(m21_stream):
     return m21_stream
 
 
-def reader(sf, beam=0):
-    noteseq = []
-
+def sf2strm(sf, beam):
     sf = propagate_metronome_mark_to_parts(sf)
     if hasattr(sf, 'parts'):
         if len(sf.parts) < beam:
@@ -124,6 +122,13 @@ def reader(sf, beam=0):
             strm = sf[beam]
     else:
         strm = sf
+    return strm
+
+
+def reader(sf, beam=0):
+    noteseq = []
+
+    strm = sf2strm(sf, beam)
 
     om = strm2map(strm)
 
@@ -340,7 +345,8 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
     firstonset = 0
     blines = []
     for l in lines:
-        if l.startswith('//'): continue
+        if l.startswith('//'):
+            continue
         pig_line = l.split()
         onset = pig_line[1]
         offset = pig_line[2]
@@ -348,12 +354,15 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
         channel = pig_line[6]
 
         onset, offset = float(onset), float(offset)
-        if beam != int(channel): continue
+        if beam != int(channel):
+            continue
         if not firstonset:
             firstonset = onset
-        if offset - onset < 0.0001: continue
+        if offset - onset < 0.0001:
+            continue
         durations.append(offset - onset)
         blines.append(l)
+
     durations = np.array(durations)
     logdurs = -np.log2(durations)
 
@@ -374,8 +383,12 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
         sf.append(r)
 
     n = len(blines)
-    for i in range(n):
-        if blines[i].startswith('//'): continue
+    i = 0
+    while i < n:
+        if blines[i].startswith('//'):
+            i += 1
+            continue
+
         blines_i = blines[i].split()
         onset = blines_i[1]
         offset = blines_i[2]
@@ -385,6 +398,7 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
         name = name.replace('b', '-')
 
         chordnotes = [name]
+        chordfingers = [finger]
         for j in range(1, 5):
             if i + j < n:
                 blines_i_j = blines[i + j].split()
@@ -397,9 +411,17 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
                 if onset1 == onset:
                     name1 = name1.replace('b', '-')
                     chordnotes.append(name1)
+                    chordfingers.append(finger1)
+                    i += 1
 
         if len(chordnotes) > 1:
-            an = chord.Chord(chordnotes)
+            if is_midi(chordnotes[0]):
+                an = chord.Chord([int(c) for c in chordnotes])
+                for finger in chordfingers:
+                    f = music21.articulations.Fingering(finger)
+                    an.articulations = [f] + an.articulations
+            else:
+                an = chord.Chord(chordnotes)
         else:
             if is_midi(name):
                 an = note.Note(int(name))
@@ -408,7 +430,7 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
             if '_' not in finger:
                 x = Fingering(abs(int(finger)))
                 x.style.absoluteY = 20
-            else:  # in the future handle better the note's changes
+            else:  # TODO in the future handle better the note's changes
                 x = Fingering(abs(int(finger.split('_')[0])))
             an.articulations.append(x)
             x.style.absoluteY = 20
@@ -434,4 +456,5 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
                 if d < 4:
                     r.duration.quarterLength = 1.0 / time_unit / pow(2, d)
                     sf.append(r)
+        i += 1
     return sf

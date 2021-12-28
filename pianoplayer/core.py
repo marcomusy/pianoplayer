@@ -10,7 +10,7 @@ from music21 import converter, stream
 from music21.articulations import Fingering
 
 from pianoplayer.hand import Hand
-from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi, reader_PIG, strm2map
+from pianoplayer.scorereader import reader, PIG2Stream, reader_pretty_midi, reader_PIG, strm2map, sf2strm
 import pretty_midi
 
 
@@ -89,33 +89,6 @@ def annotate_fingers_xml(sf, hand, args, is_right=True):
             music21_structure.articulations.append(Fingering(n.fingering))
         # assert n.name == om_note['element'].name
     return sf
-
-
-# def annotate_fingers_xml(sf, hand, args, is_right=True):
-#     p0 = sf.parts[args.rbeam if is_right else args.lbeam]
-#     idx = 0
-#     for el in p0.flat.getElementsByClass("GeneralNote"):
-#         if el.isNote:
-#             if el.tie and (el.tie.type == 'continue' or el.tie.type == 'stop'):
-#
-#                 continue
-#             n = hand.noteseq[idx]
-#             if hand.lyrics:
-#                 el.addLyric(n.fingering)
-#             else:
-#                 el.articulations.append(Fingering(n.fingering))
-#             idx += 1
-#         elif el.isChord:
-#             for j, cn in enumerate(el.pitches):
-#                 n = hand.noteseq[idx]
-#                 if hand.lyrics:
-#                     nl = len(cn.chord21.pitches) - cn.chordnr
-#                     el.addLyric(cn.fingering, nl)
-#                 else:
-#                     el.articulations.append(Fingering(n.fingering))
-#                 idx += 1
-#
-#     return sf
 
 
 sfasam = 0.00
@@ -246,12 +219,13 @@ def annotate(args):
                           finger_number, cost) in enumerate(sorted(pig_notes, key=lambda tup: (float(tup[0]), int(tup[5]), int(tup[2])))):
                     tsv_writer.writerow([idx, onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity,
                                          channel, finger_number, cost])
+                print('done')
         else:
             ext = os.path.splitext(args.filename)[1]
-            if ext in ['mid', 'midi']:
+            if ext in ['.mid', '.midi']:
                 sf = converter.parse(xmlfn)
-            elif ext in ['txt']:
-                sf = stream.Stream()
+            elif ext in ['.txt']:
+                sf = stream.Score()
                 if not args.left_only:
                     ptr = PIG2Stream(args.filename, 0)
                     sf.insert(0, ptr)
@@ -301,4 +275,6 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/001-1_fingering.txt', left_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
+    run_annotate('../scores/test_tonto.musicxml', right_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
+    sc = PIG2Stream(fname='output.txt')
+    sc.show()
