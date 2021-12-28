@@ -334,7 +334,12 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
     blines = []
     for l in lines:
         if l.startswith('//'): continue
-        _, onset, offset, name, _, _, channel, _ = l.split()
+        pig_line = l.split()
+        onset = pig_line[1]
+        offset = pig_line[2]
+        name = pig_line[3]
+        channel = pig_line[6]
+
         onset, offset = float(onset), float(offset)
         if beam != int(channel): continue
         if not firstonset:
@@ -396,7 +401,6 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
         # print('note/chord:', an, an.duration.quarterLength, an.duration.type, 't=',onset)
 
         sf.append(an)
-
         # rest up to the next
         if i + 1 < n:
             _, onset1, _, _, _, _, _, _ = blines[i + 1].split()
