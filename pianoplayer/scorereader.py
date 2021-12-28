@@ -383,7 +383,10 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
             if '_' not in finger:
                 x = Fingering(abs(int(finger)))
                 x.style.absoluteY = 20
+            else:  # in the future handle better the note's changes
+                x = Fingering(abs(int(finger.split('_'))))
             an.articulations.append(x)
+            x.style.absoluteY = 20
 
         if fixtempo:
             an.duration.quarterLength = fixtempo
