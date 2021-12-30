@@ -148,12 +148,12 @@ def annotate(args):
         if not args.left_only:
             sf = PIG2Stream(args.filename, beam=0, time_unit=.5, fixtempo=0)
             sf = music21.stream.Score(sf)
-            rh_noteseq = reader(sf, beam=0)
+            rh_noteseq = reader(sf, beam=0, fingers=False)
             # rh_noteseq = reader_PIG(args.filename, args.rbeam)
         if not args.right_only:
             sf = PIG2Stream(args.filename, beam=1, time_unit=.5, fixtempo=0)
             sf = music21.stream.Score(sf)
-            lh_noteseq = reader(sf, beam=1)
+            lh_noteseq = reader(sf, beam=1, fingers=False)
             # lh_noteseq = reader_PIG(args.filename, args.lbeam)
 
     elif '.mid' in args.filename or '.midi' in args.filename:
@@ -275,6 +275,6 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/test_tonto.musicxml', right_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
+    run_annotate('../scores/005-1_fingering.txt', right_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
     sc = PIG2Stream(fname='output.txt')
     sc.show()

@@ -125,7 +125,7 @@ def sf2strm(sf, beam):
     return strm
 
 
-def reader(sf, beam=0):
+def reader(sf, beam=0, fingers=True):
     noteseq = []
 
     strm = sf2strm(sf, beam)
@@ -164,10 +164,12 @@ def reader(sf, beam=0):
                 an.isBlack = False
                 if pc in [1, 3, 6, 8, 10]:
                     an.isBlack = True
-                if n.lyrics:
-                    an.fingering = n.lyric
-
-                an.fingering = get_finger_music21(n)
+                an.fingering = 0
+                if fingers:
+                    if n.lyrics:
+                        an.fingering = n.lyric
+                    else:
+                        an.fingering = get_finger_music21(n)
                 an.previous_note = last_note
                 noteseq.append(an)
                 noteID += 1
@@ -202,7 +204,11 @@ def reader(sf, beam=0):
                         an.isBlack = True
                     else:
                         an.isBlack = False
-                    an.fingering = get_finger_music21(n, j)
+
+                    an.fingering = 0
+                    if fingers:
+                        an.fingering = get_finger_music21(n, j)
+
                     noteID += 1
                     an.previous_note = last_note
                     chord_notes.append(an)
