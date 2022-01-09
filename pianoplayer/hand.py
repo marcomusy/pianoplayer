@@ -326,12 +326,15 @@ class Hand:
             if i > N - 10:
                 if len(out) > 1: best_finger = out.pop(1)
             else:
-                if i == 0:
+                ninenotes = self.noteseq[i:i + 9]
+                if ninenotes[0].fingering != 0:
+                    fingers_start = [(ninenotes[0].fingering, [], [ninenotes[0].fingering])]
+                elif i == 0:
                     fingers_start = [(ii, [], [ii]) for ii in range(1, 6)]
                 else:
                     fingers_start = possible_fingers
 
-                ninenotes = self.noteseq[i:i + 9]
+
                 out, vel, possible_fingers = self.optimize_seq(ninenotes, fingers_start, i)
                 best_finger = out[0]
 

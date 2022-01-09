@@ -327,7 +327,7 @@ class note:
         self.offset = float(offset)
         self.pitch = int(pitch)
         self.channel = int(channel)
-        self.finger = int(finger.split('_')[0])
+        self.finger = abs(int(finger.split('_')[0]))
 
 
 def reader_PIG(filename, beam=0, fingers=True):

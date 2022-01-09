@@ -273,6 +273,6 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/029-1_fingering.txt', consider_fingers=True, right_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
+    run_annotate('../scores/029-1_fingering.txt', consider_fingers=False, right_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
     sc = PIG2Stream(filename='output.txt', beam=0)
     sc.show()
