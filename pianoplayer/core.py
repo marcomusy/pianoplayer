@@ -214,7 +214,7 @@ def annotate(args):
             with open(args.outputfile, 'wt') as out_file:
                 tsv_writer = csv.writer(out_file, delimiter='\t')
                 for idx, (onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity, channel,
-                          finger_number, cost) in enumerate(sorted(pig_notes, key=lambda tup: (float(tup[0]), int(tup[5]), int(tup[2])))):
+                          finger_number, cost) in enumerate(sorted(pig_notes, key=lambda tup: (float(tup[0]), int(tup[5])))):
                     tsv_writer.writerow([idx, onset_time, offset_time, spelled_pitch, onset_velocity, offset_velocity,
                                          channel, finger_number, cost])
                 print('done')
