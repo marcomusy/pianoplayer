@@ -3,6 +3,9 @@ Created on Thu Nov 26 19:22:20 2015
 
 @author: marco musy
 """
+import csv
+from dataclasses import dataclass
+
 import music21
 from music21.articulations import Fingering
 
@@ -10,7 +13,7 @@ from pianoplayer.utils import keypos, keypos_midi
 from operator import attrgetter
 
 
-#####################################################
+####################### ##############################
 class INote:
     def __init__(self):
         self.name = None
@@ -230,8 +233,123 @@ def reader(sf, beam=0, fingers=True):
 
 
 def reader_pretty_midi(pm, beam=0):
+
     noteseq = []
-    pm_notes = sorted(pm.notes, key=lambda a: (a.start, a.pitch))
+    pm_notes = sorted(pm.notes, key=attrgetter('start'))
+    pm_onsets = [onset.start for onset in pm_notes]
+
+    print('Reading beam', beam, 'with', len(pm_notes), 'objects in stream.')
+
+    chordID = 0
+
+    ii = 0
+    while ii < len(pm_notes):
+        n = pm_notes[ii]
+        n_duration = n.end - n.start
+        chord_notes = pm_onsets.count(n.start)
+        if chord_notes != 1:
+            if n_duration == 0: continue
+            an        = INote()
+            an.noteID += 1
+            an.note21 = n
+            an.pitch = n.pitch
+            an.isChord= False
+            an.octave = n.pitch // 12
+            an.x      = keypos_midi(n)
+            an.time   = n.start
+            an.duration = n_duration
+            an.isBlack= False
+            pc = n.pitch % 12
+            if pc in [1, 3, 6, 8, 10]: an.isBlack = True
+            noteseq.append(an)
+            ii += 1
+
+        else:
+            if n_duration == 0: continue
+            sfasam = 0.05 # sfasa leggermente le note dell'accordo
+
+            for jj in range(chord_notes):
+                cn = pm_notes[ii]
+                cn_duration = cn.end - cn.start
+                an = INote()
+                an.chordID = chordID
+                an.noteID += 1
+                an.isChord = True
+                an.chord21 = n
+                an.pitch   = cn.pitch
+                an.note21  = cn
+                an.chordnr = jj
+                an.NinChord = chord_notes
+                an.octave  = cn.pitch // 2
+                an.x       = keypos_midi(cn)
+                an.time    = cn.start-sfasam*jj
+                an.duration = cn_duration + sfasam * (jj - 1)
+                pc = n.pitch % 12
+                if pc in [1, 3, 6, 8, 10]: an.isBlack = True
+                else: an.isBlack = False
+                noteseq.append(an)
+                ii += 1
+
+            chordID += 1
+
+    if len(noteseq)<2:
+        print("Beam is empty.")
+        return []
+    return noteseq
+
+
+
+
+KEY_TO_SEMITONE = {'c': 0, 'c#': 1, 'db': 1, 'd-': 1, 'c##': 2, 'd': 2, 'e--': 2, 'd#': 3, 'eb': 3, 'e-': 3, 'd##': 4,
+                   'e': 4, 'f-': 4, 'e#': 5, 'f': 5, 'g--': 5, 'e##': 6, 'f#': 6, 'gb': 6, 'g-': 6, 'f##': 7, 'g': 7,
+                   'a--': 7, 'g#': 8, 'ab': 8, 'a-': 8, 'g##': 9, 'a': 9, 'b--': 9, 'a#': 10, 'bb': 10, 'b-': 10,
+                   'a##': 11, 'b': 11, 'b#': 12, 'c-': -1, 'x': None}
+
+
+class note:
+    idx: int
+    onset: float
+    offset: float
+    pitch: int
+    v1: float
+    v2: float
+    channel: int
+    finger: int
+
+    def __init__(self, n):
+        if len(n) == 9:
+            idx, onset, offset, pitch, v1, v2, channel, finger, _ = n
+        elif len(n) == 8:
+            idx, onset, offset, pitch, v1, v2, channel, finger = n
+
+        self.idx = int(idx)
+        self.onset = float(onset)
+        self.offset = float(offset)
+        self.pitch = int(pitch)
+        self.channel = int(channel)
+        self.finger = int(finger.split('_')[0])
+
+
+def reader_PIG(filename, beam=0, fingers=True):
+    """
+        Convert a PIG text file to a noteseq of type INote.
+
+        time_unit must be multiple of 2.
+        beam = 0, right hand
+        beam = 1, left hand.
+    """
+    noteseq = []
+
+    with open(filename, mode='r') as csvfile:
+        r = list(csv.reader(csvfile, delimiter='\t'))
+
+    if len(r[0]) == 1:
+        r = r[1:]
+
+    for idx in range(len(r)):
+        r[idx][3] = KEY_TO_SEMITONE[r[idx][3][:-1].lower()] + int(r[idx][3][-1]) * 12
+
+    pm_notes = [row for row in r if row[6] == str(beam)]
 
     print('Reading beam', beam, 'with', len(pm_notes), 'objects in stream.')
 
@@ -239,15 +357,16 @@ def reader_pretty_midi(pm, beam=0):
     noteID = 0
     last_note = None
 
-
     ii = 0
     while ii < len(pm_notes):
-        n = pm_notes[ii]
-        n_duration = n.end - n.start
-        onset_n = n.start
-        simultaneous = list([float(no.start) for no in pm_notes if no.start == onset_n])
+        n = note(pm_notes[ii])
+        n_duration = n.offset - n.onset
+        onset_n = n.onset
+        simultaneous = list([note(no).onset for no in pm_notes if note(no).onset == onset_n])
         if len(simultaneous) == 1:
-            if n_duration == 0: continue
+            if n_duration == 0:
+                ii += 1
+                continue
             an = INote()
             an.noteID += noteID
             an.chordID = chordID
@@ -255,9 +374,11 @@ def reader_pretty_midi(pm, beam=0):
             an.isChord = False
             an.octave = n.pitch // 12
             an.x = keypos_midi(n)
-            an.time = n.start
+            an.time = n.onset
             an.duration = n_duration
             an.isBlack = False
+            if fingers:
+                an.fingering = n.finger
             pc = n.pitch % 12
             if pc in [1, 3, 6, 8, 10]: an.isBlack = True
             an.previous_note = last_note
@@ -267,13 +388,15 @@ def reader_pretty_midi(pm, beam=0):
             noteID += 1
             last_note = an
         else:
-            if n_duration == 0: continue
+            if n_duration == 0:
+                ii += 1
+                continue
             sfasam = 0.00  # sfasa leggermente le note dell'accordo
             chord_notes = []
 
             for jj in range(len(simultaneous)):
-                cn = pm_notes[ii]
-                cn_duration = cn.end - cn.start
+                cn = note(pm_notes[ii])
+                cn_duration = cn.offset - cn.onset
                 an = INote()
                 an.chordID = chordID
                 an.noteID = noteID
@@ -285,8 +408,10 @@ def reader_pretty_midi(pm, beam=0):
                 an.NinChord = len(simultaneous)
                 an.octave = cn.pitch // 2
                 an.x = keypos_midi(cn)
-                an.time = cn.start + sfasam * jj
+                an.time = cn.onset + sfasam * jj
                 an.duration = cn_duration
+                if fingers:
+                    an.fingering = cn.finger
                 pc = n.pitch % 12
                 if pc in [1, 3, 6, 8, 10]:
                     an.isBlack = True
@@ -310,18 +435,6 @@ def reader_pretty_midi(pm, beam=0):
     return noteseq
 
 
-def reader_PIG(fname, beam=0):
-    """
-    Convert a PIG text file to a noteseq of type INote.
-
-    time_unit must be multiple of 2.
-    beam = 0, right hand
-    beam = 1, left hand.
-    """
-    # read
-
-    return []
-
 def is_midi(value):
   try:
     int(value)
@@ -330,137 +443,50 @@ def is_midi(value):
     return False
 
 
-def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
-    """
-    Convert a PIG text file to a music21 Stream object.
-    time_unit must be multiple of 2.
-    beam = 0, right hand
-    beam = 1, left hand.
-    """
-    from music21 import stream, note, chord
-    from music21.articulations import Fingering
-    import numpy as np
+def PIG2Stream(filename, beam, fingers=True):
+    sc = music21.stream.Part()
 
-    f = open(fname, "r")
-    lines = f.readlines()
-    f.close()
+    with open(filename, mode='r') as csvfile:
+        r = list(csv.reader(csvfile, delimiter='\t'))
 
-    # work out note type from distribution of durations
-    # triplets are squashed to the closest figure
-    durations = []
-    firstonset = 0
-    blines = []
-    for l in lines:
-        if l.startswith('//'):
-            continue
-        pig_line = l.split()
-        onset = pig_line[1]
-        offset = pig_line[2]
-        name = pig_line[3]
-        channel = pig_line[6]
+    if len(r[0]) == 1:
+        r = r[1:]
 
-        onset, offset = float(onset), float(offset)
-        if beam != int(channel):
-            continue
-        if not firstonset:
-            firstonset = onset
-        if offset - onset < 0.0001:
-            continue
-        durations.append(offset - onset)
-        blines.append(l)
+    is_int = True
+    try:
+        check = int(r[0][3])
+    except:
+        is_int = False
 
-    durations = np.array(durations)
-    logdurs = -np.log2(durations)
+    if not is_int:
+        for idx in range(len(r)):
+            r[idx][3] = KEY_TO_SEMITONE[r[idx][3][:-1].lower()] + int(r[idx][3][-1]) * 12
 
-    mindur = np.min(logdurs)
-    expos = (logdurs - mindur).astype(int)
-    if np.max(expos) > 3:
-        mindur = mindur + 1
-    # print(durations, '\nexpos=',expos, '\nmindur=', mindur)
+    pm_notes = [row for row in r if row[6] == str(beam)]
 
-    sf = stream.Part()
-    sf.id = beam
+    print('Reading beam', beam, 'with', len(pm_notes), 'objects in stream.')
 
-    # first rest
-    if not fixtempo and firstonset:
-        r = note.Rest()
-        logdur = -np.log2(firstonset)
-        r.duration.quarterLength = 1.0 / time_unit / pow(2, int(logdur - mindur))
-        sf.append(r)
-
-    n = len(blines)
-    i = 0
-    while i < n:
-        if blines[i].startswith('//'):
-            i += 1
-            continue
-
-        blines_i = blines[i].split()
-        onset = blines_i[1]
-        offset = blines_i[2]
-        name = blines_i[3]
-        finger = blines_i[7]
-        onset, offset = float(onset), float(offset)
-        name = name.replace('b', '-')
-
-        chordnotes = [name]
-        chordfingers = [finger]
-        for j in range(1, 5):
-            if i + j < n:
-                blines_i_j = blines[i + j].split()
-                noteid1 = blines_i_j[0]
-                onset1 = blines_i_j[1]
-                offset1 = blines_i_j[2]
-                name1 = blines_i_j[3]
-                finger1 = blines_i_j[7]
-                onset1 = float(onset1)
-                if onset1 == onset:
-                    name1 = name1.replace('b', '-')
-                    chordnotes.append(name1)
-                    chordfingers.append(finger1)
-                    i += 1
-
-        if len(chordnotes) > 1:
-            if is_midi(chordnotes[0]):
-                an = chord.Chord([int(c) for c in chordnotes])
-                for finger in chordfingers:
-                    f = music21.articulations.Fingering(finger)
-                    an.articulations = [f] + an.articulations
-            else:
-                an = chord.Chord(chordnotes)
+    ii = 0
+    while ii < len(pm_notes):
+        n = note(pm_notes[ii])
+        simultaneous = list([note(no).onset for no in pm_notes if note(no).onset == n.onset])
+        if len(simultaneous) == 1:
+            note1 = music21.note.Note(n.pitch + 12)
+            note1.duration.type = 'quarter'
+            if fingers:
+                note1.articulations = [music21.articulations.Fingering(n.finger)]
+            sc.append(note1)
+            ii += 1
         else:
-            if is_midi(name):
-                an = note.Note(int(name))
-            else:
-                an = note.Note(name)
-            if '_' not in finger:
-                x = Fingering(abs(int(finger)))
-                x.style.absoluteY = 20
-            else:  # TODO in the future handle better the note's changes
-                x = Fingering(abs(int(finger.split('_')[0])))
-            an.articulations.append(x)
-            x.style.absoluteY = 20
+            ch = music21.chord.Chord([note(pm_notes[ii + jj]).pitch + 12 for jj in range(len(simultaneous))])
+            ch.duration.type = 'quarter'
+            if fingers:
+                ch.articulations = [music21.articulations.Fingering(note(pm_notes[ii + jj]).finger)
+                                    for jj in range(len(simultaneous))]
+            sc.append(ch)
+            ii += len(simultaneous)
+    return sc
 
-        if fixtempo:
-            an.duration.quarterLength = fixtempo
-        else:
-            logdur = -np.log2(offset - onset)
-            an.duration.quarterLength = 1.0 / time_unit / pow(2, int(logdur - mindur))
-        # print('note/chord:', an, an.duration.quarterLength, an.duration.type, 't=',onset)
 
-        sf.append(an)
-        # rest up to the next
-        if i + 1 < n:
-            onset1 = blines[i + 1].split()[1]
-            onset1 = float(onset1)
-            if onset1 - offset > 0:
-                r = note.Rest()
-                if fixtempo:
-                    r.duration.quarterLength = fixtempo
-                logdur = -np.log2(onset1 - offset)
-                d = int(logdur - mindur)
-                if d < 4:
-                    r.duration.quarterLength = 1.0 / time_unit / pow(2, d)
-                    sf.append(r)
-        i += 1
-    return sf
+
+

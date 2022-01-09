@@ -40,6 +40,7 @@ def run_annotate(filename,
                  sound_off=False,
                  left_only=False,
                  right_only=False,
+                 consider_fingers=True,
                  hand_size_XXS=False,
                  hand_size_XS=False,
                  hand_size_S=False,
@@ -66,6 +67,7 @@ def run_annotate(filename,
     args.sound_off = sound_off
     args.left_only = left_only
     args.right_only = right_only
+    args.consider_fingers = consider_fingers
     args.hand_size_XXS = hand_size_XXS
     args.hand_size_XS = hand_size_XS
     args.hand_size_S = hand_size_S
@@ -146,14 +148,10 @@ def annotate(args):
 
     elif '.txt' in args.filename:
         if not args.left_only:
-            sf = PIG2Stream(args.filename, beam=0, time_unit=.5, fixtempo=0)
-            sf = music21.stream.Score(sf)
-            rh_noteseq = reader(sf, beam=0, fingers=False)
+            rh_noteseq = reader_PIG(args.filename, beam=args.rbeam, fingers=args.consider_fingers)
             # rh_noteseq = reader_PIG(args.filename, args.rbeam)
         if not args.right_only:
-            sf = PIG2Stream(args.filename, beam=1, time_unit=.5, fixtempo=0)
-            sf = music21.stream.Score(sf)
-            lh_noteseq = reader(sf, beam=1, fingers=False)
+            lh_noteseq = reader_PIG(args.filename, beam=args.lbeam, fingers=args.consider_fingers)
             # lh_noteseq = reader_PIG(args.filename, args.lbeam)
 
     elif '.mid' in args.filename or '.midi' in args.filename:
@@ -168,9 +166,9 @@ def annotate(args):
     else:
         sc = converter.parse(xmlfn)
         if not args.left_only:
-            rh_noteseq = reader(sc, beam=args.rbeam)
+            rh_noteseq = reader(sc, beam=args.rbeam, fingers=args.consider_fingers)
         if not args.right_only:
-            lh_noteseq = reader(sc, beam=args.lbeam)
+            lh_noteseq = reader(sc, beam=args.lbeam, fingers=args.consider_fingers)
 
     if not args.left_only:
         rh = Hand(side="right", noteseq=rh_noteseq, size=hand_size)
@@ -275,6 +273,6 @@ def annotate(args):
 
 
 if __name__ == '__main__':
-    run_annotate('../scores/005-1_fingering.txt', right_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
-    sc = PIG2Stream(fname='output.txt')
+    run_annotate('../scores/029-1_fingering.txt', consider_fingers=True, right_only=True, outputfile="output.txt", musescore=True, n_measures=100000000, depth=9)
+    sc = PIG2Stream(filename='output.txt', beam=0)
     sc.show()
