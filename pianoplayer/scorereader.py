@@ -38,10 +38,10 @@ class INote:
 def get_finger_music21(n, j=0):
     fingers = []
     for art in n.articulations:
-        if type(art) == Fingering:
+        if type(art) == Fingering and art.fingerNumber == ['1', '2', '3', '4', '5']:
             fingers.append(art.fingerNumber)
     finger = 0
-    if len(fingers) > j:
+    if len(fingers) > j and fingers[j] == ['1', '2', '3', '4', '5']:
         finger = fingers[j]
     return finger
 
