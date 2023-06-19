@@ -32,7 +32,7 @@ def reader(sf, beam=0):
     if hasattr(sf, 'parts'):
         if len(sf.parts) <= beam:
             return []
-        strm = sf.parts[beam].flat
+        strm = sf.parts[beam].flatten()
     elif hasattr(sf, 'elements'):
         if len(sf.elements)==1 and beam==1:
             strm = sf[0]

@@ -14,11 +14,8 @@ Optionally visualize it in 3D with [vedo](https://github.com/marcomusy/vedo).<br
 ```bash
 pip install pianoplayer
 ```
-to enable sound you may need to:
-```bash
-sudo apt install libasound2-dev
-pip install simpleaudio
-```
+
+Note that this will install the version
 
 #### Installing without 3D rendering
 To only install the core functionality and skip everything else, use the following:

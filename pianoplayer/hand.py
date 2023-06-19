@@ -195,8 +195,11 @@ class Hand:
                 self.depth = 9
 
             best_finger = 0
+            ninenotes = None
             if i > N-10:
-                if len(out)>1: best_finger = out.pop(1)
+                if len(out)>1: 
+                    best_finger = out.pop(1)
+                ninenotes = self.noteseq[N-9 : N]
             else:
                 ninenotes = self.noteseq[i : i+9]
                 out, vel  = self.optimize_seq(ninenotes, start_finger)
@@ -210,7 +213,7 @@ class Hand:
             if best_finger>0 and i < N-3:
                 fng = Fingering(best_finger)
                 if an.isChord:
-                    if len(an.chord21.pitches) < 3:
+                    if len(an.chord21.pitches) < 4:
                         # dont show fingering in the lyrics line for >3 note-chords
                         if self.lyrics:
                             nl = len(an.chord21.pitches) - an.chordnr
