@@ -44,24 +44,24 @@ def nameof(n):
 
 def fpress(f, color):
     f.rotate(-20, axis=(1, 0, 0), point=f.pos())
-    f.addPos([0, 0, -1])
+    f.shift([0, 0, -1])
     f.color(color)
 
 
 def frelease(f):
-    f.addPos([0, 0, 1])
+    f.shift([0, 0, 1])
     f.rotate(20, axis=(1, 0, 0), point=f.pos())
     f.color((0.7, 0.3, 0.3))
 
 
 def kpress(f, color):
     f.rotate(4, axis=(1, 0, 0), point=f.pos())
-    f.addPos([0, 0, -0.4])
+    f.shift([0, 0, -0.4])
     f.color(color)
 
 
 def krelease(f):
-    f.addPos([0, 0, 0.4])
+    f.shift([0, 0, 0.4])
     p = f.pos()
     f.rotate(-4, axis=(1, 0, 0), point=p)
     if p[2] > 0.5:

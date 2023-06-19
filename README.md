@@ -15,7 +15,7 @@ Optionally visualize it in 3D with [vedo](https://github.com/marcomusy/vedo).<br
 pip install pianoplayer
 ```
 
-Note that this will install the version
+Note that this will install the `ninenotes_patch` branch.
 
 #### Installing without 3D rendering
 To only install the core functionality and skip everything else, use the following:
@@ -38,7 +38,7 @@ installation problems.
 
 ## CLI Usage:
 Example command line from terminal:<br />
-`pianoplayer scores/bach_invention4.xml --verbose -n10 -rvzm`<br />
+`pianoplayer scores/bach_invention4.xml -n10 -rvzm`<br />
 will find the right hand fingering for the first 10 measures,
 pop up a 3D rendering window and invoke *musescore*.
 
