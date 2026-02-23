@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pianoplayer"
+version = "2.2.0"
+description = "Automatic piano fingering generator. Finds and shows in 3D the best fingering combination to play a score."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Marco Musy", email = "marco.musy@gmail.com" }]
+keywords = ["piano", "fingering", "music21"]
+classifiers = [
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Education",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: Visualization",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+  "music21>=6.5.0",
+  "pretty_midi>=0.2.9",
+  "vedo>=2020.4.2",
+]
+
+[project.optional-dependencies]
+sound = ["simpleaudio>=1.0.4"]
+
+[project.urls]
+Homepage = "https://github.com/marcomusy/pianoplayer"
+Repository = "https://github.com/marcomusy/pianoplayer"
+
+[project.scripts]
+pianoplayer = "pianoplayer.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["pianoplayer*"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = []
