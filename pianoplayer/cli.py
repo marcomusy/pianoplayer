@@ -46,17 +46,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="[auto] Depth of combinatorial search, [4-9]",
         default=0,
     )
-    parser.add_argument("-rbeam", metavar="", type=int, help="[0] Specify Right Hand beam number", default=0)
-    parser.add_argument("-lbeam", metavar="", type=int, help="[1] Specify Left Hand beam number", default=1)
-    parser.add_argument("--cost-path", metavar="", type=str, help="Path to save cost function", default=None)
+    parser.add_argument(
+        "-rbeam", metavar="", type=int, help="[0] Specify Right Hand beam number", default=0
+    )
+    parser.add_argument(
+        "-lbeam", metavar="", type=int, help="[1] Specify Left Hand beam number", default=1
+    )
+    parser.add_argument(
+        "--cost-path", metavar="", type=str, help="Path to save cost function", default=None
+    )
     parser.add_argument("--quiet", help="Switch off verbosity", action="store_true")
-    parser.add_argument("-m", "--musescore", help="Open output in musescore after processing", action="store_true")
-    parser.add_argument("-b", "--below-beam", help="Show fingering numbers below beam line", action="store_true")
-    parser.add_argument("-v", "--with-vedo", help="Play 3D scene after processing", action="store_true")
-    parser.add_argument("--vedo-speed", metavar="", type=float, help="[1] Speed factor of rendering", default=1.5)
+    parser.add_argument(
+        "-m", "--musescore", help="Open output in musescore after processing", action="store_true"
+    )
+    parser.add_argument(
+        "-b", "--below-beam", help="Show fingering numbers below beam line", action="store_true"
+    )
+    parser.add_argument(
+        "-v", "--with-vedo", help="Play 3D scene after processing", action="store_true"
+    )
+    parser.add_argument(
+        "--vedo-speed", metavar="", type=float, help="[1] Speed factor of rendering", default=1.5
+    )
     parser.add_argument("-z", "--sound-off", help="Disable sound", action="store_true")
-    parser.add_argument("-l", "--left-only", help="Fingering for left hand only", action="store_true")
-    parser.add_argument("-r", "--right-only", help="Fingering for right hand only", action="store_true")
+    parser.add_argument(
+        "-l", "--left-only", help="Fingering for left hand only", action="store_true"
+    )
+    parser.add_argument(
+        "-r", "--right-only", help="Fingering for right hand only", action="store_true"
+    )
     parser.add_argument("-XXS", "--hand-size-XXS", help="Set hand size to XXS", action="store_true")
     parser.add_argument("-XS", "--hand-size-XS", help="Set hand size to XS", action="store_true")
     parser.add_argument("-S", "--hand-size-S", help="Set hand size to S", action="store_true")

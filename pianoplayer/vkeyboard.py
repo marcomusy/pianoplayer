@@ -8,18 +8,17 @@
 import logging
 
 try:
-    from vedo import Plotter, Assembly, printc
-    from vedo import Ellipsoid, Box, Cylinder, Text
+    from vedo import Assembly, Box, Cylinder, Ellipsoid, Plotter, Text, printc
 except ImportError as exc:
     Plotter = Assembly = printc = Ellipsoid = Box = Cylinder = Text = None
     _VEDO_IMPORT_ERROR = exc
 else:
     _VEDO_IMPORT_ERROR = None
 
+import pianoplayer.utils as utils
 from pianoplayer import __version__
 from pianoplayer.utils import fpress, frelease, kpress, krelease, nameof
 from pianoplayer.wavegenerator import playSound
-import pianoplayer.utils as utils
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +111,7 @@ class VirtualKeyboard:
                 tb = Box(pos=(x,-2,0), length=wb-tol, height=1, width=12, c='white')
                 self.KB.update({nts[ik]+str(ioct+1) : tb})
                 self.vp += tb
-                if not nts[ik] in ("E","B"): #black keys
+                if nts[ik] not in ("E","B"): #black keys
                     tn = Box(pos=(x+wb/2,0,1), length=wb*.6, height=1, width=8, c='black')
                     self.KB.update({nts[ik]+"#"+str(ioct+1) : tn})
                     self.vp += tn
@@ -138,12 +137,16 @@ class VirtualKeyboard:
 
         t=0.0
         while True:
-            if self.rightHand: self._moveHand( 1, t)
-            if self.leftHand:  self._moveHand(-1, t)
-            if t > 1000: break
+            if self.rightHand:
+                self._moveHand(1, t)
+            if self.leftHand:
+                self._moveHand(-1, t)
+            if t > 1000:
+                break
             t += self.dt                      # absolute time flows
 
-        if self.verbose: printc('End of note sequence reached.')
+        if self.verbose:
+            printc('End of note sequence reached.')
         self.vp.keyPressFunction = None       # disable observer
 
     ###################################################################
@@ -164,7 +167,8 @@ class VirtualKeyboard:
 
         for i, n in enumerate(H.noteseq):#####################
             start, stop, f = n.time, n.time+n.duration, n.fingering
-            if isinstance(f, str): continue
+            if isinstance(f, str):
+                continue
             if f and stop <= t <= stop+self.dt and engagedkeys[i]: #release key
                 engagedkeys[i]    = False
                 engagedfingers[f] = False
@@ -177,11 +181,14 @@ class VirtualKeyboard:
         for i, n in enumerate(H.noteseq):#####################
             start, stop, f = n.time, n.time+n.duration, n.fingering
             if isinstance(f, str):
-                logger.warning("Cannot understand lyrics fingering '%s'; skipping note index %s", f, i)
+                logger.warning(
+                    "Cannot understand lyrics fingering '%s'; skipping note index %s", f, i
+                )
                 continue
             if f and start <= t < stop and not engagedkeys[i] and not engagedfingers[f]:
                 # press key
-                if i >= len(H.fingerseq): return
+                if i >= len(H.fingerseq):
+                    return
                 engagedkeys[i]    = True
                 engagedfingers[f] = True
                 name = nameof(n)
@@ -199,8 +206,10 @@ class VirtualKeyboard:
 
                 if self.verbose:
                     msg = 'meas.'+str(n.measure)+' t='+str(round(t,2))
-                    if side==1: printc(msg,'\t\t\t\tRH.finger', f, 'hit', name, c='b')
-                    else:       printc(msg,      '\tLH.finger', f, 'hit', name, c='m')
+                    if side==1:
+                        printc(msg,'\t\t\t\tRH.finger', f, 'hit', name, c='b')
+                    else:
+                        printc(msg, '\tLH.finger', f, 'hit', name, c='m')
 
                 if self.playsounds:
                     self.vp.show(interactive=False, resetcam=False)
@@ -215,4 +224,3 @@ class VirtualKeyboard:
 if __name__ == "__main__":
     vk = VirtualKeyboard('Chopin Valse in A minor')
     vk.vp.show(interactive=1, resetcam=0)
-

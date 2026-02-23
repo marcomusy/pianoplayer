@@ -169,7 +169,9 @@ class Hand:
                                             continue
                                         u = [False] if depth < 9 else fingers
                                         for f9 in u:
-                                            if f9 and self._skip(f8, f9, n8, n9, self.hf, self.LR, 9):
+                                            if f9 and self._skip(
+                                                f8, f9, n8, n9, self.hf, self.LR, 9
+                                            ):
                                                 continue
                                             c = [f1, f2, f3, f4, f5, f6, f7, f8, f9]
                                             v = self.ave_velocity(c, nseq)
@@ -229,11 +231,15 @@ class Hand:
                         an.octave,
                     )
                 else:
-                    logger.info("finger_%s plays Pitch:%s Octave:%s", best_finger, an.pitch, an.octave)
+                    logger.info(
+                        "finger_%s plays Pitch:%s Octave:%s", best_finger, an.pitch, an.octave
+                    )
 
                 if i < n_total - 10:
                     if self.autodepth:
-                        logger.info("v=%s\t%s d:%s", round(vel, 1), str(out[0 : self.depth]), self.depth)
+                        logger.info(
+                            "v=%s\t%s d:%s", round(vel, 1), str(out[0 : self.depth]), self.depth
+                        )
                     else:
                         logger.info(
                             "v=%s\t%s%s",

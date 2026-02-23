@@ -6,9 +6,8 @@ import os
 import platform
 import subprocess
 from pathlib import Path
-from tkinter import BOTH, BooleanVar, Frame, Label, Scale, Tk
+from tkinter import BOTH, BooleanVar, Frame, Label, Scale, Tk, messagebox
 from tkinter import filedialog as tk_filedialog
-from tkinter import messagebox
 from tkinter.ttk import Button, Combobox, Style
 
 from pianoplayer import core
