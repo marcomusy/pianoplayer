@@ -82,7 +82,20 @@ def annotate_fingers_xml(sf, hand, args, is_right=True):
     p0 = sf.parts[args.rbeam if is_right else args.lbeam]
     idx = 0
     for el in p0.flat.getElementsByClass("GeneralNote"):
+        if el.duration.quarterLength == 0:
+            continue
+        if hasattr(el, "tie") and el.tie and el.tie.type in {"continue", "stop"}:
+            continue
+
         if el.isNote:
+            if idx >= len(hand.noteseq):
+                logger.warning(
+                    "Not enough generated notes to annotate part=%s at index=%s (len=%s).",
+                    "right" if is_right else "left",
+                    idx,
+                    len(hand.noteseq),
+                )
+                break
             n = hand.noteseq[idx]
             if hand.lyrics:
                 el.addLyric(n.fingering)
@@ -91,6 +104,17 @@ def annotate_fingers_xml(sf, hand, args, is_right=True):
             idx += 1
         elif el.isChord:
             for _, cn in enumerate(el.pitches):
+                if idx >= len(hand.noteseq):
+                    logger.warning(
+                        (
+                            "Not enough generated notes to annotate chord in part=%s "
+                            "at index=%s (len=%s)."
+                        ),
+                        "right" if is_right else "left",
+                        idx,
+                        len(hand.noteseq),
+                    )
+                    return sf
                 n = hand.noteseq[idx]
                 if hand.lyrics:
                     nl = len(cn.chord21.pitches) - cn.chordnr
