@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import csv
 import os
 import platform
 import sys
+from types import SimpleNamespace
+from typing import Any
 
 from music21 import converter, stream
 from music21.articulations import Fingering
 
 from pianoplayer.hand import Hand
+from pianoplayer.models import AnnotateOptions
 from pianoplayer.scorereader import PIG2Stream, reader, reader_PIG, reader_pretty_midi
 
 
@@ -34,33 +39,39 @@ def run_annotate(
     hand_size_XL=True,
     hand_size_XXL=False,
 ):
-    class Args:
-        pass
+    options = AnnotateOptions(
+        filename=filename,
+        outputfile=outputfile,
+        n_measures=n_measures,
+        start_measure=start_measure,
+        depth=depth,
+        rbeam=rbeam,
+        lbeam=lbeam,
+        quiet=quiet,
+        musescore=musescore,
+        below_beam=below_beam,
+        with_vedo=with_vedo,
+        vedo_speed=vedo_speed,
+        sound_off=sound_off,
+        left_only=left_only,
+        right_only=right_only,
+        hand_size_XXS=hand_size_XXS,
+        hand_size_XS=hand_size_XS,
+        hand_size_S=hand_size_S,
+        hand_size_M=hand_size_M,
+        hand_size_L=hand_size_L,
+        hand_size_XL=hand_size_XL,
+        hand_size_XXL=hand_size_XXL,
+    )
+    annotate(options)
 
-    args = Args()
-    args.filename = filename
-    args.outputfile = outputfile
-    args.n_measures = n_measures
-    args.start_measure = start_measure
-    args.depth = depth
-    args.rbeam = rbeam
-    args.lbeam = lbeam
-    args.quiet = quiet
-    args.musescore = musescore
-    args.below_beam = below_beam
-    args.with_vedo = with_vedo
-    args.vedo_speed = vedo_speed
-    args.sound_off = sound_off
-    args.left_only = left_only
-    args.right_only = right_only
-    args.hand_size_XXS = hand_size_XXS
-    args.hand_size_XS = hand_size_XS
-    args.hand_size_S = hand_size_S
-    args.hand_size_M = hand_size_M
-    args.hand_size_L = hand_size_L
-    args.hand_size_XL = hand_size_XL
-    args.hand_size_XXL = hand_size_XXL
-    annotate(args)
+
+def _as_namespace(args: Any) -> SimpleNamespace:
+    if isinstance(args, AnnotateOptions):
+        return args.to_namespace()
+    if isinstance(args, SimpleNamespace):
+        return args
+    return AnnotateOptions.from_namespace(args).to_namespace()
 
 
 def annotate_fingers_xml(sf, hand, args, is_right=True):
@@ -134,6 +145,7 @@ def _hand_size_from_args(args):
 
 
 def load_note_sequences(args):
+    args = _as_namespace(args)
     xmlfn = args.filename
     rh_noteseq = None
     lh_noteseq = None
@@ -177,6 +189,7 @@ def load_note_sequences(args):
 
 
 def generate_hands(args, rh_noteseq, lh_noteseq):
+    args = _as_namespace(args)
     hand_size = _hand_size_from_args(args)
     rh = None
     lh = None
@@ -203,6 +216,7 @@ def generate_hands(args, rh_noteseq, lh_noteseq):
 
 
 def build_output_stream(args, xmlfn):
+    args = _as_namespace(args)
     ext = os.path.splitext(args.filename)[1]
     if ext in ["mid", "midi"]:
         return converter.parse(xmlfn)
@@ -219,6 +233,7 @@ def build_output_stream(args, xmlfn):
 
 
 def write_annotated_output(args, xmlfn, rh, lh):
+    args = _as_namespace(args)
     if args.outputfile is None:
         return
 
@@ -279,6 +294,7 @@ def write_annotated_output(args, xmlfn, rh, lh):
 
 
 def maybe_play_vedo(args, xmlfn, rh, lh):
+    args = _as_namespace(args)
     if not args.with_vedo:
         return
 
@@ -302,7 +318,8 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
     vk.vp.show(zoom=2, interactive=1)
 
 
-def annotate(args):
+def annotate(args: AnnotateOptions | SimpleNamespace | Any):
+    args = _as_namespace(args)
     xmlfn, rh_noteseq, lh_noteseq = load_note_sequences(args)
     rh, lh = generate_hands(args, rh_noteseq, lh_noteseq)
     write_annotated_output(args, xmlfn, rh, lh)

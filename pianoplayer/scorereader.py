@@ -5,27 +5,9 @@ Created on Thu Nov 26 19:22:20 2015
 """
 from music21.articulations import Fingering
 
+from pianoplayer.models import INote
 from pianoplayer.utils import keypos, keypos_midi
 from operator import attrgetter
-
-#####################################################
-class INote:
-    def __init__(self):
-        self.name     = None
-        self.isChord  = False
-        self.isBlack  = False
-        self.pitch = 0
-        self.octave   = 0
-        self.x        = 0.0
-        self.time     = 0.0
-        self.duration = 0.0
-        self.fingering= 0
-        self.measure  = 0
-        self.chordnr  = 0
-        self.NinChord = 0
-        self.chordID  = 0
-        self.noteID   = 0
-
 
 #####################################################
 def get_finger_music21(n, j=0):
@@ -309,7 +291,6 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
                     r.duration.quarterLength = 1.0/time_unit/pow(2, d)
                     sf.append(r)
     return sf
-
 
 
 
