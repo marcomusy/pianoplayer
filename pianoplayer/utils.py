@@ -5,6 +5,9 @@ Created on Thu Nov 26 19:22:20 2015
 
 @author: marco musy
 """
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def nameof(n):
@@ -120,7 +123,7 @@ def keypos(n):  # position of notes on keyboard
     if n.name in _kb_layout.keys():
         step = _kb_layout[n.name] * k
     else:
-        print("ERROR note not found", n.name)
+        logger.warning("Note not found in keyboard layout: %s", n.name)
     return keybsize * n.octave + step
 
 

@@ -3,10 +3,13 @@
 # Purpose:      Find optimal fingering for piano scores
 # Author:       Marco Musy
 # -------------------------------------------------------------------------------
+import logging
 
 from music21.articulations import Fingering
 
 import pianoplayer.utils as utils
+
+logger = logging.getLogger(__name__)
 
 
 #####################################################
@@ -29,8 +32,8 @@ class Hand:
         self.hf = utils.handSizeFactor(size)
         for i in (1, 2, 3, 4, 5):
             if self.frest[i]: self.frest[i] *= self.hf
-        print('Your hand span set to size-' + size, 'which is', 21 * self.hf, 'cm')
-        print('(max relaxed distance between thumb and pinkie)')
+        logger.info("Your hand span set to size-%s which is %s cm", size, 21 * self.hf)
+        logger.info("(max relaxed distance between thumb and pinkie)")
         self.cfps = list(self.frest)  # hold current finger positions
         self.cost = -1
 
@@ -279,17 +282,20 @@ class Hand:
                 if not best_finger:
                     best_finger = 0
                 if an.measure:
-                    print(f"meas.{an.measure: <3}", end=' ')
-                print(f"finger_{best_finger}  plays  Pitch:{an.pitch} Octave:{an.octave}", end=' ')
-                if i < N - 10:
-                    print(f"  v={round(vel, 1)}", end='')
-                    if self.autodepth:
-                        print("\t " + str(out[0:self.depth]) + " d:" + str(self.depth))
-                    else:
-                        print("\t" + ("   " * (i % self.depth)) + str(out[0:self.depth]))
+                    logger.info("meas.%-3s finger_%s plays Pitch:%s Octave:%s", an.measure, best_finger, an.pitch, an.octave)
                 else:
-                    print()
+                    logger.info("finger_%s plays Pitch:%s Octave:%s", best_finger, an.pitch, an.octave)
+                if i < N - 10:
+                    if self.autodepth:
+                        logger.info("v=%s\t%s d:%s", round(vel, 1), str(out[0:self.depth]), self.depth)
+                    else:
+                        logger.info("v=%s\t%s%s", round(vel, 1), ("   " * (i % self.depth)), str(out[0:self.depth]))
             else:
                 if i and not i % 100 and an.measure:
-                    print('scanned', i, '/', N,
-                          'notes, measure', an.measure + 1, ' for the', self.LR, 'hand...')
+                    logger.info(
+                        "scanned %s / %s notes, measure %s for the %s hand...",
+                        i,
+                        N,
+                        an.measure + 1,
+                        self.LR,
+                    )

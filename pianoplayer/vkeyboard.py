@@ -5,23 +5,31 @@
 # URL:          https://github.com/marcomusy/pianoplayer
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
+import logging
+
 try:
     from vedo import Plotter, Assembly, printc
     from vedo import Ellipsoid, Box, Cylinder, Text
-except:
-    pass
+except ImportError as exc:
+    Plotter = Assembly = printc = Ellipsoid = Box = Cylinder = Text = None
+    _VEDO_IMPORT_ERROR = exc
+else:
+    _VEDO_IMPORT_ERROR = None
 
 from pianoplayer import __version__
 from pianoplayer.utils import fpress, frelease, kpress, krelease, nameof
 from pianoplayer.wavegenerator import playSound
 import pianoplayer.utils as utils
 
+logger = logging.getLogger(__name__)
 
 
 ###########################################################
 class VirtualKeyboard:
 
     def __init__(self, songname=''):
+        if Plotter is None:
+            raise ImportError("vedo is required for 3D playback") from _VEDO_IMPORT_ERROR
 
         self.KB = dict()
         self.vp = None
@@ -169,7 +177,7 @@ class VirtualKeyboard:
         for i, n in enumerate(H.noteseq):#####################
             start, stop, f = n.time, n.time+n.duration, n.fingering
             if isinstance(f, str):
-                print('Warning: cannot understand lyrics:',f, 'skip note',i)
+                logger.warning("Cannot understand lyrics fingering '%s'; skipping note index %s", f, i)
                 continue
             if f and start <= t < stop and not engagedkeys[i] and not engagedfingers[f]:
                 # press key
@@ -207,5 +215,4 @@ class VirtualKeyboard:
 if __name__ == "__main__":
     vk = VirtualKeyboard('Chopin Valse in A minor')
     vk.vp.show(interactive=1, resetcam=0)
-
 

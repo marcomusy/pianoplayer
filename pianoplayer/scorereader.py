@@ -3,11 +3,15 @@ Created on Thu Nov 26 19:22:20 2015
 
 @author: marco musy
 """
+import logging
+
 from music21.articulations import Fingering
 
 from pianoplayer.models import INote
 from pianoplayer.utils import keypos, keypos_midi
 from operator import attrgetter
+
+logger = logging.getLogger(__name__)
 
 #####################################################
 def get_finger_music21(n, j=0):
@@ -39,7 +43,7 @@ def reader(sf, beam=0):
     else:
         strm = sf.flat
 
-    print('Reading beam', beam, 'with', len(strm), 'objects in stream.')
+    logger.info("Reading beam %s with %s objects in stream.", beam, len(strm))
 
     chordID = 0
     noteID = 0
@@ -111,7 +115,7 @@ def reader(sf, beam=0):
             chordID += 1
 
     if len(noteseq) < 2:
-        print("Beam is empty.")
+        logger.info("Beam is empty.")
         return []
     return noteseq
 
@@ -122,7 +126,7 @@ def reader_pretty_midi(pm, beam=0):
     pm_notes = sorted(pm.notes, key=attrgetter('start'))
     pm_onsets = [onset.start for onset in pm_notes]
 
-    print('Reading beam', beam, 'with', len(pm_notes), 'objects in stream.')
+    logger.info("Reading beam %s with %s objects in stream.", beam, len(pm_notes))
 
     chordID = 0
 
@@ -177,7 +181,7 @@ def reader_pretty_midi(pm, beam=0):
             chordID += 1
 
     if len(noteseq)<2:
-        print("Beam is empty.")
+        logger.info("Beam is empty.")
         return []
     return noteseq
 
@@ -291,7 +295,6 @@ def PIG2Stream(fname, beam=0, time_unit=.5, fixtempo=0):
                     r.duration.quarterLength = 1.0/time_unit/pow(2, d)
                     sf.append(r)
     return sf
-
 
 
 

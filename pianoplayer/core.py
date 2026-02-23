@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 import csv
+import logging
 import os
 import platform
-import sys
+import subprocess
 from types import SimpleNamespace
 from typing import Any
 
 from music21 import converter, stream
 from music21.articulations import Fingering
 
+from pianoplayer.errors import ConversionError, ExternalToolError
 from pianoplayer.hand import Hand
 from pianoplayer.models import AnnotateOptions
 from pianoplayer.scorereader import PIG2Stream, reader, reader_PIG, reader_pretty_midi
+
+logger = logging.getLogger(__name__)
 
 
 def run_annotate(
@@ -144,46 +148,56 @@ def _hand_size_from_args(args):
     return hand_size
 
 
+def _run_external(cmd: list[str], context: str) -> None:
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except FileNotFoundError as exc:
+        raise ExternalToolError(f"Required executable not found for {context}: {cmd[0]}") from exc
+    except subprocess.CalledProcessError as exc:
+        raise ExternalToolError(f"External command failed for {context}: {' '.join(cmd)}") from exc
+
+
 def load_note_sequences(args):
     args = _as_namespace(args)
     xmlfn = args.filename
     rh_noteseq = None
     lh_noteseq = None
 
-    if ".msc" in args.filename:
-        try:
+    try:
+        if ".msc" in args.filename:
             xmlfn = str(args.filename).replace(".mscz", ".xml").replace(".mscx", ".xml")
-            print("..trying to convert your musescore file to", xmlfn)
-            os.system('musescore -f "' + args.filename + '" -o "' + xmlfn + '"')
+            logger.info("Converting MuseScore file %s -> %s", args.filename, xmlfn)
+            _run_external(["musescore", "-f", args.filename, "-o", xmlfn], "MuseScore conversion")
             score = converter.parse(xmlfn)
             if not args.left_only:
                 rh_noteseq = reader(score, beam=args.rbeam)
             if not args.right_only:
                 lh_noteseq = reader(score, beam=args.lbeam)
-        except:
-            print("Unable to convert file, try to do it from musescore.")
-            sys.exit()
-    elif ".txt" in args.filename:
-        if not args.left_only:
-            rh_noteseq = reader_PIG(args.filename, args.rbeam)
-        if not args.right_only:
-            lh_noteseq = reader_PIG(args.filename, args.lbeam)
-    elif ".mid" in args.filename or ".midi" in args.filename:
-        import pretty_midi
+        elif ".txt" in args.filename:
+            if not args.left_only:
+                rh_noteseq = reader_PIG(args.filename, args.rbeam)
+            if not args.right_only:
+                lh_noteseq = reader_PIG(args.filename, args.lbeam)
+        elif ".mid" in args.filename or ".midi" in args.filename:
+            import pretty_midi
 
-        pm = pretty_midi.PrettyMIDI(args.filename)
-        if not args.left_only:
-            pm_right = pm.instruments[args.rbeam]
-            rh_noteseq = reader_pretty_midi(pm_right, beam=args.rbeam)
-        if not args.right_only:
-            pm_left = pm.instruments[args.lbeam]
-            lh_noteseq = reader_pretty_midi(pm_left, beam=args.lbeam)
-    else:
-        score = converter.parse(xmlfn)
-        if not args.left_only:
-            rh_noteseq = reader(score, beam=args.rbeam)
-        if not args.right_only:
-            lh_noteseq = reader(score, beam=args.lbeam)
+            pm = pretty_midi.PrettyMIDI(args.filename)
+            if not args.left_only:
+                pm_right = pm.instruments[args.rbeam]
+                rh_noteseq = reader_pretty_midi(pm_right, beam=args.rbeam)
+            if not args.right_only:
+                pm_left = pm.instruments[args.lbeam]
+                lh_noteseq = reader_pretty_midi(pm_left, beam=args.lbeam)
+        else:
+            score = converter.parse(xmlfn)
+            if not args.left_only:
+                rh_noteseq = reader(score, beam=args.rbeam)
+            if not args.right_only:
+                lh_noteseq = reader(score, beam=args.lbeam)
+    except ExternalToolError:
+        raise
+    except Exception as exc:
+        raise ConversionError(f"Unable to parse/convert input score: {args.filename}") from exc
 
     return xmlfn, rh_noteseq, lh_noteseq
 
@@ -245,7 +259,7 @@ def write_annotated_output(args, xmlfn, rh, lh):
         if not args.right_only and lh is not None:
             pig_notes.extend(annotate_PIG(lh, is_right=False))
 
-        with open(args.outputfile, "wt") as out_file:
+        with open(args.outputfile, "wt", encoding="utf-8") as out_file:
             tsv_writer = csv.writer(out_file, delimiter="\t")
             for idx, (
                 onset_time,
@@ -274,6 +288,7 @@ def write_annotated_output(args, xmlfn, rh, lh):
                         id_n,
                     ]
                 )
+        logger.info("Wrote annotated PIG output to %s", args.outputfile)
         return
 
     sf = build_output_stream(args, xmlfn)
@@ -282,15 +297,16 @@ def write_annotated_output(args, xmlfn, rh, lh):
     if not args.right_only and lh is not None:
         sf = annotate_fingers_xml(sf, lh, args, is_right=False)
     sf.write("musicxml", fp=args.outputfile)
+    logger.info("Wrote annotated score to %s", args.outputfile)
 
     if args.musescore:
-        print("Opening musescore with output score:", args.outputfile)
+        logger.info("Opening MuseScore with output score: %s", args.outputfile)
         if platform.system() == "Darwin":
-            os.system('open "' + args.outputfile + '"')
+            _run_external(["open", args.outputfile], "open output score")
         else:
-            os.system('musescore "' + args.outputfile + '" > /dev/null 2>&1')
+            _run_external(["musescore", args.outputfile], "open MuseScore")
     else:
-        print("\nTo visualize annotated score with fingering type:\n musescore '" + args.outputfile + "'")
+        logger.info("To visualize annotated score with fingering: musescore '%s'", args.outputfile)
 
 
 def maybe_play_vedo(args, xmlfn, rh, lh):
@@ -298,11 +314,10 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
     if not args.with_vedo:
         return
 
-    from pianoplayer.vkeyboard import VirtualKeyboard
-
     if args.start_measure != 1:
-        print("Sorry, start_measure must be set to 1 when -v option is used. Exit.")
-        exit()
+        raise ValueError("start_measure must be set to 1 when -v/--with-vedo is used")
+
+    from pianoplayer.vkeyboard import VirtualKeyboard
 
     vk = VirtualKeyboard(songname=xmlfn)
     if not args.left_only and rh is not None:
@@ -324,14 +339,3 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
     rh, lh = generate_hands(args, rh_noteseq, lh_noteseq)
     write_annotated_output(args, xmlfn, rh, lh)
     maybe_play_vedo(args, xmlfn, rh, lh)
-
-
-if __name__ == "__main__":
-    run_annotate(
-        "../scores/test_chord.xml",
-        outputfile="test_chord_annotate.xml",
-        right_only=True,
-        musescore=True,
-        n_measures=800,
-        depth=0,
-    )

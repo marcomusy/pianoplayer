@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import logging
+
+from pianoplayer.errors import PianoPlayerError
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -67,6 +70,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+    logging.basicConfig(
+        level=logging.WARNING if getattr(args, "quiet", False) else logging.INFO,
+        format="%(levelname)s %(message)s",
+    )
 
     if args.gui or args.filename is None:
         from pianoplayer.gui import launch
@@ -76,7 +83,10 @@ def main() -> None:
 
     from pianoplayer import core
 
-    core.annotate(args)
+    try:
+        core.annotate(args)
+    except (PianoPlayerError, ValueError) as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 if __name__ == "__main__":
