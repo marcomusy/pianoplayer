@@ -24,11 +24,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-visual = ["vedo>=2020.4.2"]
+visual = ["vedo>=2026.6.1"]
 midi = ["pretty_midi>=0.2.9"]
 sound = ["simpleaudio>=1.0.4"]
 all = [
-  "vedo>=2020.4.2",
+  "vedo>=2026.6.1",
   "pretty_midi>=0.2.9",
   "simpleaudio>=1.0.4",
 ]

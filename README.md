@@ -41,7 +41,7 @@ file with name `output.xml`.<br />
 pianoplayer         # if no argument is given a GUI will pop up
 # Or
 pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-b] [-v] [--vedo-speed]
-            [-z] [-l] [-r] [-XXS] [-XS] [-S] [-M] [-L] [-XL] [-XXL]
+            [-z] [-l] [-r] [--hand-size {XXS,XS,S,M,L,XL,XXL}]
             filename
 # Valid file formats: MusicXML, musescore, midi (.xml, .mscz, .mscx, .mid)
 #
@@ -61,13 +61,7 @@ pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-
 #   -z, --sound-off       Disable sound
 #   -l, --left-only       Fingering for left hand only
 #   -r, --right-only      Fingering for right hand only
-#   -XXS, --hand-size-XXS Set hand size to XXS
-#   -XS, --hand-size-XS   Set hand size to XS
-#   -S, --hand-size-S     Set hand size to S
-#   -M, --hand-size-M     Set hand size to M
-#   -L, --hand-size-L     Set hand size to L
-#   -XL, --hand-size-XL   Set hand size to XL
-#   -XXL, --hand-size-XXL Set hand size to XXL
+#   --hand-size           Hand size preset [XXS, XS, S, M, L, XL, XXL]
 ```
 
 ### GUI Usage:<br />
@@ -121,4 +115,3 @@ default the algorithm selects this number automatically based on the duration of
 - In the 3D representation with sounds enabled, notes are played one after the other (no chords),
 so the tempo within the measure is not always respected.
 - Small notes/ornaments are ignored.
-

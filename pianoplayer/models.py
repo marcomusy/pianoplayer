@@ -45,13 +45,7 @@ class AnnotateOptions:
     sound_off: bool = False
     left_only: bool = False
     right_only: bool = False
-    hand_size_XXS: bool = False
-    hand_size_XS: bool = False
-    hand_size_S: bool = False
-    hand_size_M: bool = False
-    hand_size_L: bool = False
-    hand_size_XL: bool = True
-    hand_size_XXL: bool = False
+    hand_size: str = "M"
     cost_path: str | None = None
 
     @classmethod
@@ -60,6 +54,13 @@ class AnnotateOptions:
         for field_name in cls.__dataclass_fields__:  # type: ignore[attr-defined]
             if hasattr(args, field_name):
                 payload[field_name] = getattr(args, field_name)
+
+        # Backward compatibility for legacy boolean hand-size flags.
+        if "hand_size" not in payload:
+            for size in ("XXS", "XS", "S", "M", "L", "XL", "XXL"):
+                if getattr(args, f"hand_size_{size}", False):
+                    payload["hand_size"] = size
+                    break
         return cls(**payload)
 
     def to_namespace(self) -> SimpleNamespace:

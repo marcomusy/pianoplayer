@@ -75,13 +75,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-r", "--right-only", help="Fingering for right hand only", action="store_true"
     )
-    parser.add_argument("-XXS", "--hand-size-XXS", help="Set hand size to XXS", action="store_true")
-    parser.add_argument("-XS", "--hand-size-XS", help="Set hand size to XS", action="store_true")
-    parser.add_argument("-S", "--hand-size-S", help="Set hand size to S", action="store_true")
-    parser.add_argument("-M", "--hand-size-M", help="Set hand size to M", action="store_true")
-    parser.add_argument("-L", "--hand-size-L", help="Set hand size to L", action="store_true")
-    parser.add_argument("-XL", "--hand-size-XL", help="Set hand size to XL", action="store_true")
-    parser.add_argument("-XXL", "--hand-size-XXL", help="Set hand size to XXL", action="store_true")
+    parser.add_argument(
+        "--hand-size",
+        type=str,
+        choices=["XXS", "XS", "S", "M", "L", "XL", "XXL"],
+        default="M",
+        help="Hand size preset",
+    )
     return parser
 
 

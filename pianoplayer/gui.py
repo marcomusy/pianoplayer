@@ -70,17 +70,8 @@ class PianoGUI(Frame):
             self.filename = filename
             print("Input File is", self.filename)
 
-    def _size_flags(self):
-        selected = self.hand_size.get()
-        return {
-            "hand_size_XXS": selected == "XXS",
-            "hand_size_XS": selected == "XS",
-            "hand_size_S": selected == "S",
-            "hand_size_M": selected == "M",
-            "hand_size_L": selected == "L",
-            "hand_size_XL": selected == "XL",
-            "hand_size_XXL": selected == "XXL",
-        }
+    def _selected_hand_size(self) -> str:
+        return self.hand_size.get() or "M"
 
     def generate_cmd(self) -> None:
         if not self.filename:
@@ -96,7 +87,7 @@ class PianoGUI(Frame):
                 lbeam=self.left_beam,
                 left_only=not self.left_enabled.get(),
                 right_only=not self.right_enabled.get(),
-                **self._size_flags(),
+                hand_size=self._selected_hand_size(),
             )
         except (PianoPlayerError, ValueError) as exc:
             messagebox.showerror("PianoPlayer", str(exc))
@@ -116,7 +107,7 @@ class PianoGUI(Frame):
                 left_only=not self.left_enabled.get(),
                 right_only=not self.right_enabled.get(),
                 with_vedo=True,
-                **self._size_flags(),
+                hand_size=self._selected_hand_size(),
             )
         except (PianoPlayerError, ValueError) as exc:
             messagebox.showerror("PianoPlayer", str(exc))

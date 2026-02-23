@@ -35,13 +35,7 @@ def run_annotate(
     sound_off=False,
     left_only=False,
     right_only=False,
-    hand_size_XXS=False,
-    hand_size_XS=False,
-    hand_size_S=False,
-    hand_size_M=False,
-    hand_size_L=False,
-    hand_size_XL=True,
-    hand_size_XXL=False,
+    hand_size="M",
 ):
     options = AnnotateOptions(
         filename=filename,
@@ -59,13 +53,7 @@ def run_annotate(
         sound_off=sound_off,
         left_only=left_only,
         right_only=right_only,
-        hand_size_XXS=hand_size_XXS,
-        hand_size_XS=hand_size_XS,
-        hand_size_S=hand_size_S,
-        hand_size_M=hand_size_M,
-        hand_size_L=hand_size_L,
-        hand_size_XL=hand_size_XL,
-        hand_size_XXL=hand_size_XXL,
+        hand_size=hand_size,
     )
     annotate(options)
 
@@ -153,25 +141,6 @@ def annotate_PIG(hand, is_right=True):
     return ans
 
 
-def _hand_size_from_args(args):
-    hand_size = "M"
-    if args.hand_size_XXS:
-        hand_size = "XXS"
-    if args.hand_size_XS:
-        hand_size = "XS"
-    if args.hand_size_S:
-        hand_size = "S"
-    if args.hand_size_M:
-        hand_size = "M"
-    if args.hand_size_L:
-        hand_size = "L"
-    if args.hand_size_XL:
-        hand_size = "XL"
-    if args.hand_size_XXL:
-        hand_size = "XXL"
-    return hand_size
-
-
 def _run_external(cmd: list[str], context: str) -> None:
     try:
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -234,7 +203,9 @@ def load_note_sequences(args):
 
 def generate_hands(args, rh_noteseq, lh_noteseq):
     args = _as_namespace(args)
-    hand_size = _hand_size_from_args(args)
+    hand_size = str(getattr(args, "hand_size", "M")).upper()
+    if hand_size not in {"XXS", "XS", "S", "M", "L", "XL", "XXL"}:
+        hand_size = "M"
     rh = None
     lh = None
 

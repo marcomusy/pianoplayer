@@ -55,11 +55,12 @@ class VirtualKeyboard:
         self.engagedfingersL = [False]*6
         self.engagedkeysR    = []
         self.engagedkeysL    = []
+        self._abort_playback = False
         self.build_keyboard()
 
     ################################################################################
     def makeHandActor(self, f=1):
-        a1, a2, a3, c = (10*f,0,0), (0,7*f,0), (0,0,3*f), (.7,0.3,0.3)
+        a1, a2, a3, c = (5*f,0,0), (0,3.5*f,0), (0,0,1.5*f), (.7,0.3,0.3)
         palm = Ellipsoid(pos=(0,-3,0), axis1=a1, axis2=a2, axis3=a3, alpha=0.6, c=c)
         wrist= Box(pos=(0,-9,0), length=6*f, width=5, height=2, alpha=0.4, c=c)
         arm  = Assembly([palm,wrist])
@@ -163,6 +164,8 @@ class VirtualKeyboard:
 
         t=0.0
         while True:
+            if self._abort_playback:
+                break
             if self.rightHand:
                 self._moveHand(1, t)
             if self.leftHand:
@@ -174,6 +177,45 @@ class VirtualKeyboard:
         if self.verbose:
             printc('End of note sequence reached.')
         self.vp.keyPressFunction = None       # disable observer
+
+    def _wait_for_advance_key(self):
+        """Block until Space (advance) or Esc (abort) is pressed."""
+        interactor = getattr(self.vp, "interactor", None)
+        if interactor is None:
+            return
+
+        state = {"abort": False}
+
+        def _on_key(evt):
+            key = getattr(evt, "keypress", "") or getattr(evt, "keyPressed", "")
+            if key in ("Escape", "Esc"):
+                state["abort"] = True
+                try:
+                    interactor.ExitCallback()
+                except Exception:
+                    pass
+                return
+            if key in ("space", " ", "Return", "KP_Enter"):
+                try:
+                    interactor.ExitCallback()
+                except Exception:
+                    pass
+
+        cid = None
+        try:
+            cid = self.vp.add_callback("KeyPress", _on_key)
+            interactor.Start()
+        except Exception:
+            return
+        finally:
+            if cid is not None:
+                try:
+                    self.vp.remove_callback(cid)
+                except Exception:
+                    pass
+
+        if state["abort"]:
+            self._abort_playback = True
 
     def _safe_refresh(self, interactive=False):
         """Refresh viewport without crashing on renderer lifecycle differences."""
@@ -251,13 +293,8 @@ class VirtualKeyboard:
                 if self.playsounds:
                     self._safe_refresh(interactive=False)
                     playSound(n, self.speedfactor, wait=True)
-                    interactor = getattr(self.vp, "interactor", None)
-                    if interactor is None:
-                        return
-                    try:
-                        interactor.Start()
-                    except Exception:
-                        # Window/interactor may be gone after user presses Esc.
+                    self._wait_for_advance_key()
+                    if self._abort_playback:
                         return
                 else:
                     self._safe_refresh(interactive=True)

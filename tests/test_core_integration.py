@@ -25,13 +25,7 @@ def test_core_annotate_writes_output(tmp_path) -> None:
         sound_off=True,
         left_only=False,
         right_only=False,
-        hand_size_XXS=False,
-        hand_size_XS=False,
-        hand_size_S=False,
-        hand_size_M=True,
-        hand_size_L=False,
-        hand_size_XL=False,
-        hand_size_XXL=False,
+        hand_size="M",
         cost_path=None,
     )
     core.annotate(args)

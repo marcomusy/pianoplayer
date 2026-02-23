@@ -4,6 +4,7 @@ import music21
 import numpy as np
 
 logger = logging.getLogger(__name__)
+_warned_realtime_playback = False
 
 try:
     import simpleaudio
@@ -85,5 +86,8 @@ def playSound(n, speedfactor=1.0, wait=True):
             s.append(n.note21)
         sp = music21.midi.realtime.StreamPlayer(s)
         sp.play()
-    except Exception as exc:
-        logger.warning("Unable to play sounds; run with -z/--sound-off (%s)", exc)
+    except Exception:
+        global _warned_realtime_playback
+        if not _warned_realtime_playback:
+            logger.info("Realtime sound playback unavailable; continuing without sound.")
+            _warned_realtime_playback = True
