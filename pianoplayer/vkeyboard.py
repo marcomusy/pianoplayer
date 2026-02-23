@@ -25,7 +25,7 @@ else:
 
 import pianoplayer.utils as utils
 from pianoplayer import __version__
-from pianoplayer.utils import fpress, frelease, kpress, krelease, nameof
+from pianoplayer.utils import _actor_shift, fpress, frelease, kpress, krelease, nameof
 from pianoplayer.wavegenerator import playSound
 
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ class VirtualKeyboard:
         self.vpRH = self.makeHandActor(f)
         for limb in self.vpRH: # initial x positions are superseded later
             limb.x( limb.x()* 2.5 )
-            limb.addPos([16.5*5+1, -7.5, 3] )
+            _actor_shift(limb, [16.5 * 5 + 1, -7.5, 3])
 
     def build_LH(self, hand): ########################Build Left Hand
         self.leftHand = hand
@@ -84,7 +84,7 @@ class VirtualKeyboard:
         self.vpLH = self.makeHandActor(f)
         for limb in self.vpLH:
             limb.x( limb.x()* 2.5 )
-            limb.addPos([16.5*3+1, -7.5, 3] )
+            _actor_shift(limb, [16.5 * 3 + 1, -7.5, 3])
 
 
     #######################################################Build Keyboard
@@ -113,7 +113,9 @@ class VirtualKeyboard:
                 italic=0.8,
             )
         leggio = Box(pos=(span/1.55,8,10),
-                     length=span/2, height=span/8, width=0.08, c=(1,1,0.9)).rotateX(-20)
+                     length=span/2, height=span/8, width=0.08, c=(1,1,0.9)).rotate(
+            -20, axis=(1, 0, 0)
+        )
         self.vp += leggio.texture('paper1')
         if _TextActor is not None:
             self.vp += _TextActor(
@@ -124,7 +126,7 @@ class VirtualKeyboard:
                 s=1.35,
                 c='k',
                 italic=0.5,
-            ).rotateX(70).pos([55,10,6])
+            ).rotate(70, axis=(1, 0, 0)).pos([55,10,6])
 
         for ioct in range(nr_octaves):
             for ik in range(7):              #white keys

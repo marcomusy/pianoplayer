@@ -10,6 +10,27 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _actor_shift(actor, delta):
+    if hasattr(actor, "addPos"):
+        actor.addPos(delta)
+    else:
+        actor.shift(*delta)
+
+
+def _actor_rotate_x(actor, angle, point=None):
+    if hasattr(actor, "rotateX"):
+        if point is None:
+            actor.rotateX(angle)
+        else:
+            actor.rotateX(angle, point=point)
+    elif hasattr(actor, "rotate_x"):
+        actor.rotate_x(angle, around=point)
+    else:
+        if point is None:
+            point = (0, 0, 0)
+        actor.rotate(angle, axis=(1, 0, 0), point=point)
+
+
 def nameof(n):
     a = n.name + str(n.octave)
     if "--" in a:                 # order matters
@@ -47,26 +68,26 @@ def nameof(n):
 
 def fpress(f, color):
     f.rotate(-20, axis=(1, 0, 0), point=f.pos())
-    f.addPos([0, 0, -1])
+    _actor_shift(f, [0, 0, -1])
     f.color(color)
 
 
 def frelease(f):
-    f.addPos([0, 0, 1])
+    _actor_shift(f, [0, 0, 1])
     f.rotate(20, axis=(1, 0, 0), point=f.pos())
     f.color((0.7, 0.3, 0.3))
 
 
 def kpress(f, color):
-    f.rotate(4, axis=(1, 0, 0), point=f.pos())
-    f.addPos([0, 0, -0.4])
+    _actor_rotate_x(f, 4, point=f.pos())
+    _actor_shift(f, [0, 0, -0.4])
     f.color(color)
 
 
 def krelease(f):
-    f.addPos([0, 0, 0.4])
+    _actor_shift(f, [0, 0, 0.4])
     p = f.pos()
-    f.rotate(-4, axis=(1, 0, 0), point=p)
+    _actor_rotate_x(f, -4, point=p)
     if p[2] > 0.5:
         f.color("k")
     else:
