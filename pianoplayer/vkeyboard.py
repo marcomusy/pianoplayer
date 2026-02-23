@@ -8,12 +8,20 @@
 import logging
 
 try:
-    from vedo import Assembly, Box, Cylinder, Ellipsoid, Plotter, Text, printc
+    from vedo import Assembly, Box, Cylinder, Ellipsoid, Plotter, printc
 except ImportError as exc:
-    Plotter = Assembly = printc = Ellipsoid = Box = Cylinder = Text = None
+    Plotter = Assembly = printc = Ellipsoid = Box = Cylinder = None
+    _TextActor = None
     _VEDO_IMPORT_ERROR = exc
 else:
     _VEDO_IMPORT_ERROR = None
+    try:
+        from vedo import Text3D as _TextActor
+    except ImportError:
+        try:
+            from vedo import Text as _TextActor  # older vedo
+        except ImportError:
+            _TextActor = None
 
 import pianoplayer.utils as utils
 from pianoplayer import __version__
@@ -96,14 +104,27 @@ class VirtualKeyboard:
                        length=span+1, height=3, width= 5).texture('wood1')
         self.vp += Box(pos=(span/2+keybsize, 0, -1),
                        length=span+1, height=1, width=17).texture('wood1')
-        self.vp += Text('PianoPlayer ^'+__version__+" ",
-                        pos=(18, 5., 2.3), depth=.5, c='silver', italic=0.8)
+        if _TextActor is not None:
+            self.vp += _TextActor(
+                'PianoPlayer ^'+__version__+" ",
+                pos=(18, 5., 2.3),
+                depth=.5,
+                c='silver',
+                italic=0.8,
+            )
         leggio = Box(pos=(span/1.55,8,10),
                      length=span/2, height=span/8, width=0.08, c=(1,1,0.9)).rotateX(-20)
         self.vp += leggio.texture('paper1')
-        self.vp += Text('Playing:\n'+self.songname[-30:].replace('_',"\\_"), font="Theemim",
-                        vspacing=3, depth=0.04, s=1.35, c='k', italic=0.5
-                       ).rotateX(70).pos([55,10,6])
+        if _TextActor is not None:
+            self.vp += _TextActor(
+                'Playing:\n'+self.songname[-30:].replace('_',"\\_"),
+                font="Theemim",
+                vspacing=3,
+                depth=0.04,
+                s=1.35,
+                c='k',
+                italic=0.5,
+            ).rotateX(70).pos([55,10,6])
 
         for ioct in range(nr_octaves):
             for ik in range(7):              #white keys
