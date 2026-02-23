@@ -172,6 +172,17 @@ class VirtualKeyboard:
             printc('End of note sequence reached.')
         self.vp.keyPressFunction = None       # disable observer
 
+    def _safe_refresh(self, interactive=False):
+        """Refresh viewport without crashing on renderer lifecycle differences."""
+        try:
+            if hasattr(self.vp, "renderer") and self.vp.renderer is not None:
+                self.vp.render()
+            else:
+                self.vp.show(interactive=interactive, resetcam=False)
+        except AttributeError:
+            # Some vedo versions transiently expose a None renderer during updates.
+            pass
+
     ###################################################################
     def _moveHand(self, side, t):############# runs inside play() loop
 
@@ -218,7 +229,7 @@ class VirtualKeyboard:
 
                 if t> self.t0 + self.vp.clock:
                     self.t0 = t
-                    self.vp.show(interactive=False, resetcam=False)
+                    self._safe_refresh(interactive=False)
 
                 for g in [1,2,3,4,5]:
                     vpH[g].x( side * H.fingerseq[i][g] )
@@ -235,12 +246,12 @@ class VirtualKeyboard:
                         printc(msg, '\tLH.finger', f, 'hit', name, c='m')
 
                 if self.playsounds:
-                    self.vp.show(interactive=False, resetcam=False)
+                    self._safe_refresh(interactive=False)
                     playSound(n, self.speedfactor, wait=True)
                     if hasattr(self.vp, 'interactor'):
                         self.vp.interactor.Start()
                 else:
-                    self.vp.show(interactive=1, resetcam=0)
+                    self._safe_refresh(interactive=True)
 
 
 ############################ test
