@@ -89,20 +89,6 @@ class VirtualKeyboard:
 
 
     #######################################################Build Keyboard
-    def _texture_url(self, stem):
-        return f"{dataurl}textures/{stem}.jpg"
-
-    def _apply_texture(self, actor, stem):
-        """Apply texture with compatibility fallback across vedo versions/resources."""
-        try:
-            return actor.texture(self._texture_url(stem))
-        except Exception:
-            try:
-                return actor.texture(stem)
-            except Exception:
-                logger.warning("Texture '%s' not available, continuing without it.", stem)
-                return actor
-
     def build_keyboard(self):
         nts = ("C","D","E","F","G","A","B")
         tol = 0.12
@@ -115,14 +101,12 @@ class VirtualKeyboard:
                           axes=0, size=(1400,700), bg='cornsilk', bg2='lb')
 
         #wooden top and base
-        self.vp += self._apply_texture(
-            Box(pos=(span/2+keybsize, 6, 1), length=span+1, height=3, width=5),
-            "wood1",
+        self.vp += Box(pos=(span / 2 + keybsize, 6, 1), length=span + 1, height=3, width=5).texture(
+            dataurl + "textures/wood1.jpg"
         )
-        self.vp += self._apply_texture(
-            Box(pos=(span/2+keybsize, 0, -1), length=span+1, height=1, width=17),
-            "wood1",
-        )
+        self.vp += Box(
+            pos=(span / 2 + keybsize, 0, -1), length=span + 1, height=1, width=17
+        ).texture(dataurl + "textures/wood1.jpg")
         if _TextActor is not None:
             self.vp += _TextActor(
                 'PianoPlayer ^'+__version__+" ",
@@ -135,7 +119,7 @@ class VirtualKeyboard:
                      length=span/2, height=span/8, width=0.08, c=(1,1,0.9)).rotate(
             -20, axis=(1, 0, 0)
         )
-        self.vp += self._apply_texture(leggio, "paper1")
+        self.vp += leggio.texture(dataurl + "textures/paper1.jpg")
         if _TextActor is not None:
             self.vp += _TextActor(
                 'Playing:\n'+self.songname[-30:].replace('_',"\\_"),

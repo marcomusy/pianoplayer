@@ -349,11 +349,12 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
 
     try:
         from pianoplayer.vkeyboard import VirtualKeyboard
-    except ImportError as exc:
-        raise MissingDependencyError(
-            "3D playback requires optional dependency 'vedo'. "
+    except ImportError:
+        logger.warning(
+            "vedo is not available, skipping 3D playback. "
             "Install with: pip install 'pianoplayer[visual]'"
-        ) from exc
+        )
+        return
 
     vk = VirtualKeyboard(songname=xmlfn)
     if not args.left_only and rh is not None:
