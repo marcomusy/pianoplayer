@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import argparse
 
-from pianoplayer import core
-
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="PianoPlayer, check out home page https://github.com/marcomusy/pianoplayer"
     )
-    parser.add_argument("filename", type=str, help="Input music xml/midi file name")
+    parser.add_argument("filename", nargs="?", type=str, help="Input music xml/midi file name")
+    parser.add_argument("--gui", action="store_true", help="Launch the Tkinter GUI")
     parser.add_argument(
         "-o",
         "--outputfile",
@@ -68,6 +67,15 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.gui or args.filename is None:
+        from pianoplayer.gui import launch
+
+        launch()
+        return
+
+    from pianoplayer import core
+
     core.annotate(args)
 
 
