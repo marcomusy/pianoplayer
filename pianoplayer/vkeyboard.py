@@ -267,8 +267,14 @@ class VirtualKeyboard:
                 if self.playsounds:
                     self._safe_refresh(interactive=False)
                     playSound(n, self.speedfactor, wait=True)
-                    if hasattr(self.vp, 'interactor'):
-                        self.vp.interactor.Start()
+                    interactor = getattr(self.vp, "interactor", None)
+                    if interactor is None:
+                        return
+                    try:
+                        interactor.Start()
+                    except Exception:
+                        # Window/interactor may be gone after user presses Esc.
+                        return
                 else:
                     self._safe_refresh(interactive=True)
 
