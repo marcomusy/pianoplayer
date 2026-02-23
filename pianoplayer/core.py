@@ -11,7 +11,7 @@ from typing import Any
 from music21 import converter, stream
 from music21.articulations import Fingering
 
-from pianoplayer.errors import ConversionError, ExternalToolError
+from pianoplayer.errors import ConversionError, ExternalToolError, MissingDependencyError
 from pianoplayer.hand import Hand
 from pianoplayer.models import AnnotateOptions
 from pianoplayer.scorereader import PIG2Stream, reader, reader_PIG, reader_pretty_midi
@@ -179,7 +179,13 @@ def load_note_sequences(args):
             if not args.right_only:
                 lh_noteseq = reader_PIG(args.filename, args.lbeam)
         elif ".mid" in args.filename or ".midi" in args.filename:
-            import pretty_midi
+            try:
+                import pretty_midi
+            except ImportError as exc:
+                raise MissingDependencyError(
+                    "MIDI input requires optional dependency 'pretty_midi'. "
+                    "Install with: pip install 'pianoplayer[midi]'"
+                ) from exc
 
             pm = pretty_midi.PrettyMIDI(args.filename)
             if not args.left_only:
@@ -317,7 +323,13 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
     if args.start_measure != 1:
         raise ValueError("start_measure must be set to 1 when -v/--with-vedo is used")
 
-    from pianoplayer.vkeyboard import VirtualKeyboard
+    try:
+        from pianoplayer.vkeyboard import VirtualKeyboard
+    except ImportError as exc:
+        raise MissingDependencyError(
+            "3D playback requires optional dependency 'vedo'. "
+            "Install with: pip install 'pianoplayer[visual]'"
+        ) from exc
 
     vk = VirtualKeyboard(songname=xmlfn)
     if not args.left_only and rh is not None:

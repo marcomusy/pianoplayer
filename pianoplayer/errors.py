@@ -11,3 +11,7 @@ class ConversionError(PianoPlayerError):
 
 class ExternalToolError(PianoPlayerError):
     """Raised when an external tool invocation fails."""
+
+
+class MissingDependencyError(PianoPlayerError):
+    """Raised when an optional dependency is required but not installed."""

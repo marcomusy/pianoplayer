@@ -12,6 +12,7 @@ from tkinter import messagebox
 from tkinter.ttk import Button, Combobox, Style
 
 from pianoplayer import core
+from pianoplayer.errors import PianoPlayerError
 
 
 class PianoGUI(Frame):
@@ -87,33 +88,39 @@ class PianoGUI(Frame):
             messagebox.showerror("PianoPlayer", "Please choose an input score first.")
             return
 
-        core.run_annotate(
-            filename=self.filename,
-            outputfile=self.output_file,
-            n_measures=self.measures.get(),
-            rbeam=self.right_beam,
-            lbeam=self.left_beam,
-            left_only=not self.left_enabled.get(),
-            right_only=not self.right_enabled.get(),
-            **self._size_flags(),
-        )
+        try:
+            core.run_annotate(
+                filename=self.filename,
+                outputfile=self.output_file,
+                n_measures=self.measures.get(),
+                rbeam=self.right_beam,
+                lbeam=self.left_beam,
+                left_only=not self.left_enabled.get(),
+                right_only=not self.right_enabled.get(),
+                **self._size_flags(),
+            )
+        except (PianoPlayerError, ValueError) as exc:
+            messagebox.showerror("PianoPlayer", str(exc))
 
     def vp_cmd(self) -> None:
         if not self.filename:
             messagebox.showerror("PianoPlayer", "Please choose an input score first.")
             return
 
-        core.run_annotate(
-            filename=self.filename,
-            outputfile=self.output_file,
-            n_measures=self.measures.get(),
-            rbeam=self.right_beam,
-            lbeam=self.left_beam,
-            left_only=not self.left_enabled.get(),
-            right_only=not self.right_enabled.get(),
-            with_vedo=True,
-            **self._size_flags(),
-        )
+        try:
+            core.run_annotate(
+                filename=self.filename,
+                outputfile=self.output_file,
+                n_measures=self.measures.get(),
+                rbeam=self.right_beam,
+                lbeam=self.left_beam,
+                left_only=not self.left_enabled.get(),
+                right_only=not self.right_enabled.get(),
+                with_vedo=True,
+                **self._size_flags(),
+            )
+        except (PianoPlayerError, ValueError) as exc:
+            messagebox.showerror("PianoPlayer", str(exc))
 
     def musescore_cmd(self) -> None:
         if not Path(self.output_file).exists():

@@ -21,12 +21,17 @@ classifiers = [
 ]
 dependencies = [
   "music21>=6.5.0",
-  "pretty_midi>=0.2.9",
-  "vedo>=2020.4.2",
 ]
 
 [project.optional-dependencies]
+visual = ["vedo>=2020.4.2"]
+midi = ["pretty_midi>=0.2.9"]
 sound = ["simpleaudio>=1.0.4"]
+all = [
+  "vedo>=2020.4.2",
+  "pretty_midi>=0.2.9",
+  "simpleaudio>=1.0.4",
+]
 
 [project.urls]
 Homepage = "https://github.com/marcomusy/pianoplayer"
