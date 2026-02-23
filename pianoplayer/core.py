@@ -367,7 +367,14 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
 
     vk.speedfactor = args.vedo_speed
     vk.play()
-    vk.vp.show(zoom=2, interactive=1)
+    renderer = getattr(vk.vp, "renderer", None)
+    if renderer is None:
+        logger.info("3D viewport already closed; skipping final show().")
+        return
+    try:
+        vk.vp.show(zoom=2, interactive=1)
+    except AttributeError:
+        logger.info("3D viewport renderer unavailable; exiting 3D playback cleanly.")
 
 
 def annotate(args: AnnotateOptions | SimpleNamespace | Any):
