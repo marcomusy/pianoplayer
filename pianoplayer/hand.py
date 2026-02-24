@@ -194,78 +194,108 @@ class Hand:
                                                 minvel = v
         return out
 
+    @staticmethod
+    def _window9(notes: Sequence[INote], start: int) -> list[INote]:
+        """Return a 9-note optimization window, padding with the last note when needed."""
+        window = list(notes[start : start + 9])
+        if not window:
+            return []
+        if len(window) < 9:
+            window.extend([window[-1]] * (9 - len(window)))
+        return window
+
     def generate(self, start_measure: int = 0, nmeasures: int = 1000) -> None:
+        initial_autodepth = self.autodepth
+        initial_depth = self.depth
+        original_x = None
+
         if start_measure == 1:
             start_measure = 0
 
         if self.LR == "left":
+            original_x = [anote.x for anote in self.noteseq]
             for anote in self.noteseq:
                 anote.x = -anote.x
 
-        start_finger = 0
-        out: list[int] = [0 for _ in range(9)]
-        vel = 0.0
-        n_total = len(self.noteseq)
-        self.depth = max(3, min(self.depth, 9))
+        self.fingerseq = []
+        try:
+            start_finger = 0
+            out: list[int] = []
+            vel = 0.0
+            n_total = len(self.noteseq)
+            self.depth = max(3, min(self.depth, 9))
 
-        for i in range(n_total):
-            an = self.noteseq[i]
-            if an.measure:
-                if an.measure < start_measure:
-                    continue
-                if an.measure > start_measure + nmeasures:
+            for i in range(n_total):
+                an = self.noteseq[i]
+                if an.measure:
+                    if an.measure < start_measure:
+                        continue
+                    if an.measure > start_measure + nmeasures:
+                        break
+
+                if i > n_total - 11:
+                    self.autodepth = False
+                    self.depth = 9
+
+                ninenotes = self._window9(self.noteseq, i)
+                if not ninenotes:
                     break
 
-            if i > n_total - 11:
-                self.autodepth = False
-                self.depth = 9
-
-            ninenotes = self.noteseq[i : i + 9]
-            best_finger = 0
-            if i > n_total - 10:
-                if len(out) > 1:
-                    best_finger = out.pop(1)
-            else:
-                out, vel = self.optimize_seq(ninenotes, start_finger)
-                best_finger = out[0]
-                start_finger = out[1]
-
-            an.fingering = best_finger
-            self.set_fingers_positions(out, ninenotes, 0)
-            self.fingerseq.append(list(self.cfps))
-            an.cost = vel
-
-            if self.verbose:
-                if an.measure:
-                    logger.info(
-                        "meas.%-3s finger_%s plays Pitch:%s Octave:%s",
-                        an.measure,
-                        best_finger,
-                        an.pitch,
-                        an.octave,
-                    )
+                best_finger = 0
+                if i > n_total - 10:
+                    if len(out) > 1:
+                        best_finger = out.pop(1)
+                    else:
+                        out, vel = self.optimize_seq(ninenotes, start_finger)
+                        best_finger = out[0]
+                        start_finger = out[1] if len(out) > 1 else out[0]
                 else:
-                    logger.info(
-                        "finger_%s plays Pitch:%s Octave:%s", best_finger, an.pitch, an.octave
-                    )
+                    out, vel = self.optimize_seq(ninenotes, start_finger)
+                    best_finger = out[0]
+                    start_finger = out[1] if len(out) > 1 else out[0]
 
-                if i < n_total - 10:
-                    if self.autodepth:
+                an.fingering = best_finger
+                self.set_fingers_positions(out, ninenotes, 0)
+                self.fingerseq.append(list(self.cfps))
+                an.cost = vel
+
+                if self.verbose:
+                    if an.measure:
                         logger.info(
-                            "v=%s\t%s d:%s", round(vel, 1), str(out[0 : self.depth]), self.depth
+                            "meas.%-3s finger_%s plays Pitch:%s Octave:%s",
+                            an.measure,
+                            best_finger,
+                            an.pitch,
+                            an.octave,
                         )
                     else:
                         logger.info(
-                            "v=%s\t%s%s",
-                            round(vel, 1),
-                            "   " * (i % self.depth),
-                            str(out[0 : self.depth]),
+                            "finger_%s plays Pitch:%s Octave:%s", best_finger, an.pitch, an.octave
                         )
-            elif i and not i % 100 and an.measure:
-                logger.info(
-                    "scanned %s / %s notes, measure %s for the %s hand...",
-                    i,
-                    n_total,
-                    an.measure + 1,
-                    self.LR,
-                )
+
+                    if i < n_total - 10:
+                        if self.autodepth:
+                            logger.info(
+                                "v=%s\t%s d:%s", round(vel, 1), str(out[0 : self.depth]), self.depth
+                            )
+                        else:
+                            logger.info(
+                                "v=%s\t%s%s",
+                                round(vel, 1),
+                                "   " * (i % self.depth),
+                                str(out[0 : self.depth]),
+                            )
+                elif i and not i % 100 and an.measure:
+                    logger.info(
+                        "scanned %s / %s notes, measure %s for the %s hand...",
+                        i,
+                        n_total,
+                        an.measure + 1,
+                        self.LR,
+                    )
+        finally:
+            self.autodepth = initial_autodepth
+            self.depth = initial_depth
+            if original_x is not None:
+                for anote, x in zip(self.noteseq, original_x):
+                    anote.x = x
