@@ -8,21 +8,13 @@
 import logging
 
 try:
-    from vedo import Assembly, Box, Cylinder, Ellipsoid, Plotter, dataurl, printc
+    from vedo import Assembly, Box, Cylinder, Ellipsoid, Plotter, Text3D, dataurl, printc
 except ImportError as exc:
-    Plotter = Assembly = printc = Ellipsoid = Box = Cylinder = None
+    Plotter = Assembly = printc = Ellipsoid = Box = Cylinder = Text3D = None
     dataurl = ""
-    _TextActor = None
     _VEDO_IMPORT_ERROR = exc
 else:
     _VEDO_IMPORT_ERROR = None
-    try:
-        from vedo import Text3D as _TextActor
-    except ImportError:
-        try:
-            from vedo import Text as _TextActor  # older vedo
-        except ImportError:
-            _TextActor = None
 
 import pianoplayer.utils as utils
 from pianoplayer import __version__
@@ -55,6 +47,10 @@ class VirtualKeyboard:
         self.engagedfingersL = [False]*6
         self.engagedkeysR    = []
         self.engagedkeysL    = []
+        self._release_idx_R = 0
+        self._release_idx_L = 0
+        self._press_idx_R = 0
+        self._press_idx_L = 0
         self._abort_playback = False
         self.build_keyboard()
 
@@ -108,29 +104,27 @@ class VirtualKeyboard:
         self.vp += Box(
             pos=(span / 2 + keybsize, 0, -1), length=span + 1, height=1, width=17
         ).texture(dataurl + "textures/wood1.jpg")
-        if _TextActor is not None:
-            self.vp += _TextActor(
-                'PianoPlayer ^'+__version__+" ",
-                pos=(18, 5., 2.3),
-                depth=.5,
-                c='silver',
-                italic=0.8,
-            )
+        self.vp += Text3D(
+            'PianoPlayer ^'+__version__+" ",
+            pos=(18, 5., 2.3),
+            depth=.5,
+            c='silver',
+            italic=0.8,
+        )
         leggio = Box(pos=(span/1.55,8,10),
                      length=span/2, height=span/8, width=0.08, c=(1,1,0.9)).rotate(
             -20, axis=(1, 0, 0)
         )
         self.vp += leggio.texture(dataurl + "textures/paper1.jpg")
-        if _TextActor is not None:
-            self.vp += _TextActor(
-                'Playing:\n'+self.songname[-30:].replace('_',"\\_"),
-                font="Theemim",
-                vspacing=3,
-                depth=0.04,
-                s=1.35,
-                c='k',
-                italic=0.5,
-            ).rotate(70, axis=(1, 0, 0)).pos([55,10,6])
+        self.vp += Text3D(
+            'Playing:\n'+self.songname[-30:].replace('_',"\\_"),
+            font="Theemim",
+            vspacing=3,
+            depth=0.04,
+            s=1.35,
+            c='k',
+            italic=0.5,
+        ).rotate(70, axis=(1, 0, 0)).pos([55,10,6])
 
         for ioct in range(nr_octaves):
             for ik in range(7):              #white keys
@@ -158,9 +152,13 @@ class VirtualKeyboard:
         if self.rightHand:
             self.engagedkeysR    = [False]*len(self.rightHand.noteseq)
             self.engagedfingersR = [False]*6  # element 0 is dummy
+            self._release_idx_R = 0
+            self._press_idx_R = 0
         if self.leftHand:
             self.engagedkeysL    = [False]*len(self.leftHand.noteseq)
             self.engagedfingersL = [False]*6
+            self._release_idx_L = 0
+            self._press_idx_L = 0
 
         t=0.0
         while True:
@@ -205,14 +203,15 @@ class VirtualKeyboard:
         try:
             cid = self.vp.add_callback("KeyPress", _on_key)
             interactor.Start()
-        except Exception:
+        except (AttributeError, RuntimeError) as exc:
+            logger.debug("Key wait unavailable: %s", exc)
             return
         finally:
             if cid is not None:
                 try:
                     self.vp.remove_callback(cid)
-                except Exception:
-                    pass
+                except (AttributeError, RuntimeError):
+                    logger.debug("Unable to remove key callback.")
 
         if state["abort"]:
             self._abort_playback = True
@@ -224,9 +223,9 @@ class VirtualKeyboard:
                 self.vp.render()
             else:
                 self.vp.show(interactive=interactive, resetcam=False)
-        except AttributeError:
+        except (AttributeError, RuntimeError):
             # Some vedo versions transiently expose a None renderer during updates.
-            pass
+            logger.debug("Viewport refresh skipped: renderer/interactor unavailable.")
 
     ###################################################################
     def _moveHand(self, side, t):############# runs inside play() loop
@@ -237,67 +236,94 @@ class VirtualKeyboard:
             engagedfingers = self.engagedfingersR
             H              = self.rightHand
             vpH            = self.vpRH
+            release_idx = self._release_idx_R
+            press_idx = self._press_idx_R
         else:
             c1, c2         = 'purple', 'mediumpurple'
             engagedkeys    = self.engagedkeysL
             engagedfingers = self.engagedfingersL
             H              = self.leftHand
             vpH            = self.vpLH
+            release_idx = self._release_idx_L
+            press_idx = self._press_idx_L
+        notes = H.noteseq
+        total = len(notes)
 
-        for i, n in enumerate(H.noteseq):#####################
-            start, stop, f = n.time, n.time+n.duration, n.fingering
+        while release_idx < total:
+            n = notes[release_idx]
+            stop = n.time + n.duration
+            f = n.fingering
             if isinstance(f, str):
+                release_idx += 1
                 continue
-            if f and stop <= t <= stop+self.dt and engagedkeys[i]: #release key
-                engagedkeys[i]    = False
+            if stop > t:
+                break
+            if f and engagedkeys[release_idx]:
+                engagedkeys[release_idx] = False
                 engagedfingers[f] = False
                 name = nameof(n)
                 krelease(self.KB[name])
                 frelease(vpH[f])
-                if hasattr(self.vp, 'interactor'):
-                    self.vp.render()
+                self._safe_refresh(interactive=False)
+            release_idx += 1
 
-        for i, n in enumerate(H.noteseq):#####################
-            start, stop, f = n.time, n.time+n.duration, n.fingering
+        while press_idx < total:
+            n = notes[press_idx]
+            start, stop, f = n.time, n.time + n.duration, n.fingering
             if isinstance(f, str):
                 logger.warning(
-                    "Cannot understand lyrics fingering '%s'; skipping note index %s", f, i
+                    "Cannot understand lyrics fingering '%s'; skipping note index %s", f, press_idx
                 )
+                press_idx += 1
                 continue
-            if f and start <= t < stop and not engagedkeys[i] and not engagedfingers[f]:
-                # press key
-                if i >= len(H.fingerseq):
-                    return
-                engagedkeys[i]    = True
-                engagedfingers[f] = True
-                name = nameof(n)
 
-                if t> self.t0 + self.vp.clock:
-                    self.t0 = t
-                    self._safe_refresh(interactive=False)
+            if start > t:
+                break
+            if t >= stop:
+                press_idx += 1
+                continue
+            if not (f and not engagedkeys[press_idx] and not engagedfingers[f]):
+                break
 
-                for g in [1,2,3,4,5]:
-                    vpH[g].x( side * H.fingerseq[i][g] )
-                vpH[0].x(vpH[3].x()) # index 0 is arm, put it where middle finger is
+            if press_idx >= len(H.fingerseq):
+                break
+            engagedkeys[press_idx] = True
+            engagedfingers[f] = True
+            name = nameof(n)
 
-                fpress(vpH[f],  c1)
-                kpress(self.KB[name], c2)
+            if t > self.t0 + self.vp.clock:
+                self.t0 = t
+                self._safe_refresh(interactive=False)
 
-                if self.verbose:
-                    msg = 'meas.'+str(n.measure)+' t='+str(round(t,2))
-                    if side==1:
-                        printc(msg,'\t\t\t\tRH.finger', f, 'hit', name, c='b')
-                    else:
-                        printc(msg, '\tLH.finger', f, 'hit', name, c='m')
+            for g in [1, 2, 3, 4, 5]:
+                vpH[g].x(side * H.fingerseq[press_idx][g])
+            vpH[0].x(vpH[3].x())
 
-                if self.playsounds:
-                    self._safe_refresh(interactive=False)
-                    playSound(n, self.speedfactor, wait=True)
-                    self._wait_for_advance_key()
-                    if self._abort_playback:
-                        return
+            fpress(vpH[f], c1)
+            kpress(self.KB[name], c2)
+
+            if self.verbose:
+                msg = 'meas.' + str(n.measure) + ' t=' + str(round(t, 2))
+                if side == 1:
+                    printc(msg, '\t\t\t\tRH.finger', f, 'hit', name, c='b')
                 else:
-                    self._safe_refresh(interactive=True)
+                    printc(msg, '\tLH.finger', f, 'hit', name, c='m')
+
+            self._safe_refresh(interactive=False)
+            if self.playsounds:
+                playSound(n, self.speedfactor, wait=True)
+
+            self._wait_for_advance_key()
+            press_idx += 1
+            if self._abort_playback:
+                break
+
+        if side == 1:
+            self._release_idx_R = release_idx
+            self._press_idx_R = press_idx
+        else:
+            self._release_idx_L = release_idx
+            self._press_idx_L = press_idx
 
 
 ############################ test
