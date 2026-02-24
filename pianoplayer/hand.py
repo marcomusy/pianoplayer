@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class Hand:
+    """Finger-assignment optimizer for one hand over a note sequence."""
 
     _SIZE_FACTORS = {
         "XXS": 0.33,
@@ -27,9 +28,11 @@ class Hand:
 
     @classmethod
     def size_factor(cls, size: str) -> float:
+        """Return the scaling factor for a named hand-size preset."""
         return cls._SIZE_FACTORS.get(size, cls._SIZE_FACTORS["M"])
 
     def __init__(self, noteseq: Sequence[INote], side: str = "right", size: str = "M") -> None:
+        """Initialize hand geometry and optimization state."""
         self.LR = side
         # fingers pos at rest first is dummy, (cm), asymmetry helps with scales
         self.frest: list[float | None] = [None, -7.0, -2.8, 0.0, 2.8, 5.6]
@@ -53,6 +56,7 @@ class Hand:
         self.cost = -1.0
 
     def set_fingers_positions(self, fings: Sequence[int], notes: Sequence[INote], i: int) -> None:
+        """Update current finger positions after assigning note index ``i``."""
         fi = fings[i]
         ni = notes[i]
         ifx = self.frest[fi]
@@ -63,6 +67,7 @@ class Hand:
             self.cfps[j] = (jfx - ifx) + ni.x if jfx is not None else None
 
     def ave_velocity(self, fingering: Sequence[int], notes: Sequence[INote]) -> float:
+        """Compute average weighted finger velocity for a candidate fingering."""
         self.set_fingers_positions(fingering, notes, 0)
 
         vmean = 0.0
@@ -91,6 +96,7 @@ class Hand:
         return vmean / (self.depth - 1)
 
     def _skip(self, fa: int, fb: int, na: INote, nb: INote, hf: float, lr: str, level: int) -> bool:
+        """Return True when a local finger transition is considered invalid/unlikely."""
         del level
         skipped = False
         xba = nb.x - na.x
@@ -136,6 +142,7 @@ class Hand:
         return skipped
 
     def optimize_seq(self, nseq: Sequence[INote], istart: int) -> tuple[list[int], float]:
+        """Search the best fingering for a 9-note window under local constraints."""
         if self.autodepth:
             if nseq[0].isChord:
                 self.depth = max(3, nseq[0].NinChord - nseq[0].chordnr + 1)
@@ -148,51 +155,54 @@ class Hand:
 
         depth = self.depth
         fingers = (1, 2, 3, 4, 5)
-        n1, n2, n3, n4, n5, n6, n7, n8, n9 = nseq
 
         u_start = list(fingers) if istart == 0 else [istart]
-        out: tuple[list[int], float] = ([0 for _ in range(depth)], -1.0)
+        best_fingering = [0 for _ in range(9)]
         minvel = 1.0e10
 
-        for f1 in u_start:
-            for f2 in fingers:
-                if self._skip(f1, f2, n1, n2, self.hf, self.LR, 2):
+        candidate = [0 for _ in range(9)]
+
+        def backtrack(level: int) -> None:
+            nonlocal best_fingering, minvel
+            # Depth-first search over finger assignments for the current look-ahead window.
+            #
+            # - `level` is the note index currently being assigned a finger.
+            # - `candidate` stores the in-progress sequence of chosen fingers.
+            # - At `level == depth` we have a full candidate for the active window size,
+            #   so we evaluate its motion cost (`ave_velocity`) and keep it if better.
+            # - For intermediate levels, we enumerate possible fingers:
+            #     * first note: constrained by `u_start` (either the previous carry-over
+            #       finger, or all fingers when no carry-over exists),
+            #     * subsequent notes: all fingers 1..5.
+            # - Before recursing, we apply `_skip(...)` as a local feasibility/pruning rule
+            #   between the previous and current note/finger pair. This avoids exploring
+            #   branches that are physically implausible or explicitly disallowed.
+            # - The recursion mutates `candidate[level]`, then descends to `level + 1`.
+            #   Backtracking is implicit: the next loop iteration overwrites that slot.
+            if level == depth:
+                velocity = self.ave_velocity(candidate, nseq)
+                if velocity < minvel:
+                    best_fingering = list(candidate)
+                    minvel = velocity
+                return
+
+            choices = u_start if level == 0 else fingers
+            for finger in choices:
+                if level > 0 and self._skip(
+                    candidate[level - 1],
+                    finger,
+                    nseq[level - 1],
+                    nseq[level],
+                    self.hf,
+                    self.LR,
+                    level + 1,
+                ):
                     continue
-                for f3 in fingers:
-                    if f3 and self._skip(f2, f3, n2, n3, self.hf, self.LR, 3):
-                        continue
-                    u = [False] if depth < 4 else fingers
-                    for f4 in u:
-                        if f4 and self._skip(f3, f4, n3, n4, self.hf, self.LR, 4):
-                            continue
-                        u = [False] if depth < 5 else fingers
-                        for f5 in u:
-                            if f5 and self._skip(f4, f5, n4, n5, self.hf, self.LR, 5):
-                                continue
-                            u = [False] if depth < 6 else fingers
-                            for f6 in u:
-                                if f6 and self._skip(f5, f6, n5, n6, self.hf, self.LR, 6):
-                                    continue
-                                u = [False] if depth < 7 else fingers
-                                for f7 in u:
-                                    if f7 and self._skip(f6, f7, n6, n7, self.hf, self.LR, 7):
-                                        continue
-                                    u = [False] if depth < 8 else fingers
-                                    for f8 in u:
-                                        if f8 and self._skip(f7, f8, n7, n8, self.hf, self.LR, 8):
-                                            continue
-                                        u = [False] if depth < 9 else fingers
-                                        for f9 in u:
-                                            if f9 and self._skip(
-                                                f8, f9, n8, n9, self.hf, self.LR, 9
-                                            ):
-                                                continue
-                                            c = [f1, f2, f3, f4, f5, f6, f7, f8, f9]
-                                            v = self.ave_velocity(c, nseq)
-                                            if v < minvel:
-                                                out = (c, v)
-                                                minvel = v
-        return out
+                candidate[level] = finger
+                backtrack(level + 1)
+
+        backtrack(0)
+        return best_fingering, minvel
 
     @staticmethod
     def _window9(notes: Sequence[INote], start: int) -> list[INote]:
@@ -205,6 +215,7 @@ class Hand:
         return window
 
     def generate(self, start_measure: int = 0, nmeasures: int = 1000) -> None:
+        """Generate fingering assignments for the configured note sequence."""
         initial_autodepth = self.autodepth
         initial_depth = self.depth
         original_x = None
