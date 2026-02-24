@@ -8,13 +8,27 @@ from __future__ import annotations
 import logging
 from typing import Sequence
 
-import pianoplayer.utils as utils
 from pianoplayer.models import INote
 
 logger = logging.getLogger(__name__)
 
 
 class Hand:
+
+    _SIZE_FACTORS = {
+        "XXS": 0.33,
+        "XS": 0.46,
+        "S": 0.64,
+        "M": 0.82,
+        "L": 1.0,
+        "XL": 1.1,
+        "XXL": 1.2,
+    }
+
+    @classmethod
+    def size_factor(cls, size: str) -> float:
+        return cls._SIZE_FACTORS.get(size, cls._SIZE_FACTORS["M"])
+
     def __init__(self, noteseq: Sequence[INote], side: str = "right", size: str = "M") -> None:
         self.LR = side
         # fingers pos at rest first is dummy, (cm), asymmetry helps with scales
@@ -29,7 +43,7 @@ class Hand:
         self.lyrics = False
         self.size = size
 
-        self.hf = utils.handSizeFactor(size)
+        self.hf = self.size_factor(size)
         for i in (1, 2, 3, 4, 5):
             if self.frest[i]:
                 self.frest[i] *= self.hf

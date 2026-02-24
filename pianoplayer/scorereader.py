@@ -8,8 +8,7 @@ from typing import Any
 
 from music21.articulations import Fingering
 
-from pianoplayer.models import INote
-from pianoplayer.utils import keypos, keypos_midi
+from pianoplayer.models import INote, keypos, keypos_midi
 
 logger = logging.getLogger(__name__)
 
