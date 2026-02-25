@@ -35,9 +35,10 @@ class Hand:
         """Initialize hand geometry and optimization state."""
         self.LR = side
         # fingers pos at rest first is dummy, (cm), asymmetry helps with scales
-        self.frest: list[float | None] = [None, -7.0, -2.8, 0.0, 2.8, 5.6]
+        self.frest: list[float | None]   = [None, -7.0, -2.8, 0.0, 2.8, 5.6]
         self.weights: list[float | None] = [None, 1.1, 1.0, 1.1, 0.9, 0.8]  # finger strength
         self.bfactor: list[float | None] = [None, 0.3, 1.0, 1.1, 0.8, 0.7]  # black key bias
+        self.fingers = (1, 2, 3, 4, 5)
         self.noteseq = list(noteseq)
         self.fingerseq: list[list[float | None]] = []
         self.depth = 9
@@ -95,51 +96,54 @@ class Hand:
 
         return vmean / (self.depth - 1)
 
-    def _skip(self, fa: int, fb: int, na: INote, nb: INote, hf: float, lr: str, level: int) -> bool:
+    def skip(self, fa: int, fb: int, na: INote, nb: INote, hf: float, lr: str, level: int) -> bool:
         """Return True when a local finger transition is considered invalid/unlikely."""
         del level
-        skipped = False
         xba = nb.x - na.x
 
         if not na.isChord and not nb.isChord:
+            # Same-finger repetitions on different notes are discouraged for short notes.
             if fa == fb and xba and na.duration < 4:
-                skipped = True
-            elif fa > 1:
+                return True
+            if fa > 1:
+                # Non-thumb crossing against melodic direction is disallowed.
                 if fb > 1 and (fb - fa) * xba < 0:
-                    skipped = True
-                elif fb == 1 and nb.isBlack and xba > 0:
-                    skipped = True
+                    return True
+                # Thumb-under onto black key while moving up is disallowed.
+                if fb == 1 and nb.isBlack and xba > 0:
+                    return True
+            # Fast thumb-out from black key to a lower note is disallowed.
             elif na.isBlack and xba < 0 and fb > 1 and na.duration < 2:
-                skipped = True
+                return True
 
         elif na.isChord and nb.isChord and na.chordID == nb.chordID:
             axba = abs(xba) * hf / 0.8
+            # Chord fingering order must respect hand directionality.
             if fa == fb:
-                skipped = True
-            elif fa < fb and lr == "left":
-                skipped = True
-            elif fa > fb and lr == "right":
-                skipped = True
-            elif axba > 5 and (fa == 3 and fb == 4 or fa == 4 and fb == 3):
-                skipped = True
-            elif axba > 5 and (fa == 4 and fb == 5 or fa == 5 and fb == 4):
-                skipped = True
-            elif axba > 6 and (fa == 2 and fb == 3 or fa == 3 and fb == 2):
-                skipped = True
-            elif axba > 7 and (fa == 2 and fb == 4 or fa == 4 and fb == 2):
-                skipped = True
-            elif axba > 8 and (fa == 3 and fb == 5 or fa == 5 and fb == 3):
-                skipped = True
-            elif axba > 11 and (fa == 2 and fb == 5 or fa == 5 and fb == 2):
-                skipped = True
-            elif axba > 12 and (fa == 1 and fb == 2 or fa == 2 and fb == 1):
-                skipped = True
-            elif axba > 14 and (fa == 1 and fb == 3 or fa == 3 and fb == 1):
-                skipped = True
-            elif axba > 16 and (fa == 1 and fb == 4 or fa == 4 and fb == 1):
-                skipped = True
+                return True
+            if fa < fb and lr == "left":
+                return True
+            if fa > fb and lr == "right":
+                return True
 
-        return skipped
+            pair = (min(fa, fb), max(fa, fb))
+            # Maximum allowed inter-finger stretch inside the same chord.
+            threshold = {
+                (3, 4): 5,
+                (4, 5): 5,
+                (2, 3): 6,
+                (2, 4): 7,
+                (3, 5): 8,
+                (2, 5): 11,
+                (1, 2): 12,
+                (1, 3): 14,
+                (1, 4): 16,
+            }.get(pair)
+
+            if threshold is not None and axba > threshold:
+                return True
+
+        return False
 
     def optimize_seq(self, nseq: Sequence[INote], istart: int) -> tuple[list[int], float]:
         """Search the best fingering for a 9-note window under local constraints."""
@@ -154,9 +158,8 @@ class Hand:
                         break
 
         depth = self.depth
-        fingers = (1, 2, 3, 4, 5)
 
-        u_start = list(fingers) if istart == 0 else [istart]
+        u_start = list(self.fingers) if istart == 0 else [istart]
         best_fingering = [0 for _ in range(9)]
         minvel = 1.0e10
 
@@ -174,7 +177,7 @@ class Hand:
             #     * first note: constrained by `u_start` (either the previous carry-over
             #       finger, or all fingers when no carry-over exists),
             #     * subsequent notes: all fingers 1..5.
-            # - Before recursing, we apply `_skip(...)` as a local feasibility/pruning rule
+            # - Before recursing, we apply `skip(...)` as a local feasibility/pruning rule
             #   between the previous and current note/finger pair. This avoids exploring
             #   branches that are physically implausible or explicitly disallowed.
             # - The recursion mutates `candidate[level]`, then descends to `level + 1`.
@@ -186,9 +189,9 @@ class Hand:
                     minvel = velocity
                 return
 
-            choices = u_start if level == 0 else fingers
+            choices = u_start if level == 0 else self.fingers
             for finger in choices:
-                if level > 0 and self._skip(
+                if level > 0 and self.skip(
                     candidate[level - 1],
                     finger,
                     nseq[level - 1],
