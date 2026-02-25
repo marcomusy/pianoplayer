@@ -14,17 +14,12 @@ Optionally visualize it in 3D with [vedo](https://github.com/marcomusy/vedo).<br
 ```bash
 pip install pianoplayer
 ```
-to enable sound you may need to:
+Optional extras:
 ```bash
-sudo apt install libasound2-dev
-pip install simpleaudio
-```
-
-#### Installing without 3D rendering
-To only install the core functionality and skip everything else, use the following:
-```bash
-pip install music21
-pip install --no-deps pianoplayer
+pip install "pianoplayer[visual]"  # 3D rendering with vedo
+pip install "pianoplayer[midi]"    # MIDI input support
+pip install "pianoplayer[sound]"   # simpleaudio playback
+pip install "pianoplayer[all]"     # all optional extras
 ```
 
 To visualize the output annotated score install the latest
@@ -32,16 +27,10 @@ To visualize the output annotated score install the latest
 of [MusicXML](https://en.wikipedia.org/wiki/MusicXML)
 files.
 
-**Windows 10** users can place this file:
-[pianoplayer.bat](https://github.com/marcomusy/pianoplayer/blob/master/pianoplayer.bat)
-on their desktop (edit the path to your local anaconda or python installation).
-Check out [this link](https://github.com/marcomusy/pianoplayer/issues/27) in case of
-installation problems.
-
 
 ## CLI Usage:
 Example command line from terminal:<br />
-`pianoplayer scores/bach_invention4.xml --verbose -n10 -rvzm`<br />
+`pianoplayer scores/bach_invention4.xml -n10 -r -v -z -m`<br />
 will find the right hand fingering for the first 10 measures,
 pop up a 3D rendering window and invoke *musescore*.
 
@@ -49,19 +38,20 @@ The output is saved as a [MusicXML](https://en.wikipedia.org/wiki/MusicXML)
 file with name `output.xml`.<br />
 
 ```bash
-pianoplayer         # if no argument is given a GUI will pop up (on windows try `python pianoplayer.py`)
+pianoplayer         # if no argument is given a GUI will pop up
 # Or
-pianoplayer [-h] [-o] [-n] [-s] [-d] [-k] [-rbeam] [-lbeam] [-q] [-m] [-v] [--vedo-speed]
-            [-z] [-l] [-r] [-XXS] [-XS] [-S] [-M] [-L] [-XL] [-XXL]
+pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-b] [-v] [--vedo-speed]
+            [-z] [-l] [-r] [--hand-size {XXS,XS,S,M,L,XL,XXL}]
             filename
 # Valid file formats: MusicXML, musescore, midi (.xml, .mscz, .mscx, .mid)
 #
 # Optional arguments:
 #   -h, --help            show this help message and exit
+#   --gui                 Launch the Tkinter GUI
 #   -o , --outputfile     Annotated output xml file name
 #   -n , --n-measures     [100] Number of score measures to scan
 #   -s , --start-measure  Start from measure number [1]
-#   -d , --depth          [auto] Depth of combinatorial search, [2-9]
+#   -d , --depth          [auto] Depth of combinatorial search, [4-9]
 #   -rbeam                [0] Specify Right Hand beam number
 #   -lbeam                [1] Specify Left Hand beam number
 #   --quiet               Switch off verbosity
@@ -71,19 +61,11 @@ pianoplayer [-h] [-o] [-n] [-s] [-d] [-k] [-rbeam] [-lbeam] [-q] [-m] [-v] [--ve
 #   -z, --sound-off       Disable sound
 #   -l, --left-only       Fingering for left hand only
 #   -r, --right-only      Fingering for right hand only
-#   -XXS, --hand-size-XXS Set hand size to XXS
-#   -XS, --hand-size-XS   Set hand size to XS
-#   -S, --hand-size-S     Set hand size to S
-#   -M, --hand-size-M     Set hand size to M
-#   -L, --hand-size-L     Set hand size to L
-#   -XL, --hand-size-XL   Set hand size to XL
-#   -XXL, --hand-size-XXL Set hand size to XXL
+#   --hand-size           Hand size preset [XXS, XS, S, M, L, XL, XXL]
 ```
 
 ### GUI Usage:<br />
 Just type `pianoplayer` in a terminal
-(or double click the
-[pianoplayer.bat](https://github.com/marcomusy/pianoplayer/blob/master/pianoplayer.bat) file),
 then:
 
 ![newgui](https://user-images.githubusercontent.com/32848391/63605343-09365000-c5ce-11e9-97b8-a5642e71ca24.png)
@@ -133,5 +115,3 @@ default the algorithm selects this number automatically based on the duration of
 - In the 3D representation with sounds enabled, notes are played one after the other (no chords),
 so the tempo within the measure is not always respected.
 - Small notes/ornaments are ignored.
-
-
