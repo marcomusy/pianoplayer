@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import csv
 import logging
 import os
@@ -15,6 +16,96 @@ from pianoplayer.musicxml_io import annotate_part_with_fingering, parse_musicxml
 from pianoplayer.scorereader import reader, reader_PIG, reader_pretty_midi
 
 logger = logging.getLogger(__name__)
+
+
+class _ProgressReporter:
+    def __init__(self, enabled: bool) -> None:
+        self.enabled = enabled
+        self._active = False
+        self._progress = None
+        self._parse_task = None
+        self._rh_task = None
+        self._lh_task = None
+        self._write_task = None
+        self._text_bucket = {"right": -1, "left": -1}
+
+    def __enter__(self):
+        if not self.enabled:
+            return self
+        try:
+            from rich.progress import (
+                BarColumn,
+                Progress,
+                SpinnerColumn,
+                TextColumn,
+                TimeElapsedColumn,
+            )
+
+            self._progress = Progress(
+                SpinnerColumn(),
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(),
+                TextColumn("{task.completed}/{task.total}"),
+                TimeElapsedColumn(),
+            )
+            self._progress.start()
+            # self._parse_task = self._progress.add_task("Parse score", total=1)
+            self._rh_task = self._progress.add_task("Generate RH", total=1, visible=False)
+            self._lh_task = self._progress.add_task("Generate LH", total=1, visible=False)
+            # self._write_task = self._progress.add_task("Write output", total=1, visible=False)
+            self._active = True
+        except Exception:
+            self._active = False
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        if self._active and self._progress is not None:
+            with contextlib.suppress(Exception):
+                self._progress.stop()
+
+    def parse_done(self) -> None:
+        if self._active and self._progress is not None and self._parse_task is not None:
+            self._progress.update(self._parse_task, completed=1)
+
+    def start_hand(self, side: str, total: int) -> None:
+        if not self._active or self._progress is None:
+            if self.enabled:
+                logger.info("Generate %s hand: start (%s notes)", side.upper(), total)
+            return
+        task = self._rh_task if side == "right" else self._lh_task
+        self._progress.update(task, total=max(1, total), completed=0, visible=True)
+
+    def update_hand(self, side: str, completed: int, total: int) -> None:
+        if not self._active or self._progress is None:
+            if self.enabled and total:
+                bucket = int((completed * 10) / max(1, total))
+                if bucket > self._text_bucket[side]:
+                    self._text_bucket[side] = bucket
+                    logger.info(
+                        "Generate %s hand: %s%%",
+                        side.upper(),
+                        min(100, bucket * 10),
+                    )
+            return
+        task = self._rh_task if side == "right" else self._lh_task
+        self._progress.update(task, completed=min(completed, max(1, total)))
+
+    def hand_done(self, side: str) -> None:
+        if not self._active or self._progress is None:
+            if self.enabled:
+                logger.info("Generate %s hand: done", side.upper())
+            return
+        task = self._rh_task if side == "right" else self._lh_task
+        current_total = int(self._progress.tasks[task].total or 1)
+        self._progress.update(task, completed=current_total)
+
+    def write_start(self) -> None:
+        if self._active and self._progress is not None and self._write_task is not None:
+            self._progress.update(self._write_task, total=1, completed=0, visible=True)
+
+    def write_done(self) -> None:
+        if self._active and self._progress is not None and self._write_task is not None:
+            self._progress.update(self._write_task, completed=1)
 
 
 def run_annotate(
@@ -152,7 +243,7 @@ def load_note_sequences(args):
     return xmlfn, score_info, rh_noteseq, lh_noteseq
 
 
-def generate_hands(args, rh_noteseq, lh_noteseq):
+def generate_hands(args, rh_noteseq, lh_noteseq, progress: _ProgressReporter | None = None):
     args = _as_namespace(args)
     hand_size = str(getattr(args, "hand_size", "M")).upper()
     if hand_size not in {"XXS", "XS", "S", "M", "L", "XL", "XXL"}:
@@ -162,21 +253,47 @@ def generate_hands(args, rh_noteseq, lh_noteseq):
 
     if not args.left_only:
         rh = Hand(side="right", noteseq=rh_noteseq, size=hand_size)
-        rh.verbose = not args.quiet
+        rh.verbose = not args.quiet and not (progress is not None and progress.enabled)
         rh.autodepth = args.depth == 0
         if not rh.autodepth:
             rh.depth = args.depth
         rh.lyrics = args.below_beam
-        rh.generate(args.start_measure, args.n_measures)
+        total = len(rh.noteseq or [])
+        if progress is not None:
+            progress.start_hand("right", total)
+        rh.generate(
+            args.start_measure,
+            args.n_measures,
+            progress_cb=(
+                (lambda done, alln, _m: progress.update_hand("right", done, alln))
+                if progress is not None
+                else None
+            ),
+        )
+        if progress is not None:
+            progress.hand_done("right")
 
     if not args.right_only:
         lh = Hand(side="left", noteseq=lh_noteseq, size=hand_size)
-        lh.verbose = not args.quiet
+        lh.verbose = not args.quiet and not (progress is not None and progress.enabled)
         lh.autodepth = args.depth == 0
         if not lh.autodepth:
             lh.depth = args.depth
         lh.lyrics = args.below_beam
-        lh.generate(args.start_measure, args.n_measures)
+        total = len(lh.noteseq or [])
+        if progress is not None:
+            progress.start_hand("left", total)
+        lh.generate(
+            args.start_measure,
+            args.n_measures,
+            progress_cb=(
+                (lambda done, alln, _m: progress.update_hand("left", done, alln))
+                if progress is not None
+                else None
+            ),
+        )
+        if progress is not None:
+            progress.hand_done("left")
 
     return rh, lh
 
@@ -262,8 +379,6 @@ def write_annotated_output(args, score_info, rh, lh):
             _run_external(["open", args.outputfile], "open output score")
         else:
             _run_external(["musescore", args.outputfile], "open MuseScore")
-    else:
-        logger.info("To visualize annotated score with fingering: musescore '%s'", args.outputfile)
 
 
 def maybe_play_vedo(args, xmlfn, rh, lh):
@@ -308,9 +423,89 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
         logger.info("3D viewport renderer unavailable; exiting 3D playback cleanly.")
 
 
+def _hand_status(args, score_info, is_right: bool) -> str:
+    hand_name = "RH" if is_right else "LH"
+    only_flag = args.left_only if is_right else args.right_only
+    if only_flag:
+        return f"{hand_name}=disabled"
+    beam = args.rbeam if is_right else args.lbeam
+    if score_info is not None and len(score_info.parts) <= beam:
+        return f"{hand_name}=skipped(beam {beam} out of range)"
+    return f"{hand_name}=ok(beam {beam})"
+
+
+def _log_summary(args, score_info, rh, lh) -> None:
+    rh_count = len(rh.noteseq) if rh is not None and getattr(rh, "noteseq", None) else 0
+    lh_count = len(lh.noteseq) if lh is not None and getattr(lh, "noteseq", None) else 0
+
+    parts_info = str(len(score_info.parts)) if score_info is not None else "n/a"
+    rh_status = _hand_status(args, score_info, is_right=True).replace("RH=", "")
+    lh_status = _hand_status(args, score_info, is_right=False).replace("LH=", "")
+
+    def _styled_status(status: str) -> str:
+        if status.startswith("ok"):
+            return f"[green]{status}[/green]"
+        if status.startswith("skipped"):
+            return f"[yellow]{status}[/yellow]"
+        if status.startswith("disabled"):
+            return f"[dim]{status}[/dim]"
+        return status
+
+    try:
+        from rich.console import Console
+        from rich.table import Table
+
+        table = Table(title="Run Summary", show_header=True, header_style="bold cyan")
+        table.add_column("Field", style="bold")
+        table.add_column("Value", overflow="fold")
+        table.add_row("Input", str(args.filename))
+        table.add_row("Output", str(args.outputfile))
+        table.add_row("Parts", parts_info)
+        table.add_row("Right Hand", f"{_styled_status(rh_status)} | notes={rh_count}")
+        table.add_row("Left Hand", f"{_styled_status(lh_status)} | notes={lh_count}")
+
+        Console().print(table)
+    except Exception:
+        logger.info(
+            "Summary | input=%s | output=%s | parts=%s | RH=%s(notes=%s) | LH=%s(notes=%s)",
+            args.filename,
+            args.outputfile,
+            parts_info,
+            rh_status,
+            rh_count,
+            lh_status,
+            lh_count,
+        )
+
+
+def _show_visualize_hint(outputfile: str) -> None:
+    hint = f"visualize annotated score with command: musescore '{outputfile}'"
+    try:
+        from rich.console import Console
+        from rich.panel import Panel
+
+        panel = Panel(
+            f"[bold]💡 {hint}[/bold]",
+            border_style="bright_cyan",
+            expand=False,
+        )
+        Console().print(panel)
+    except Exception:
+        logger.info(hint)
+
+
 def annotate(args: AnnotateOptions | SimpleNamespace | Any):
+    show_progress = bool(getattr(args, "_show_progress", False))
     args = _as_namespace(args)
-    xmlfn, score_info, rh_noteseq, lh_noteseq = load_note_sequences(args)
-    rh, lh = generate_hands(args, rh_noteseq, lh_noteseq)
-    write_annotated_output(args, score_info, rh, lh)
+    show_progress = show_progress and not bool(args.quiet)
+    with _ProgressReporter(show_progress) as progress:
+        xmlfn, score_info, rh_noteseq, lh_noteseq = load_note_sequences(args)
+        progress.parse_done()
+        rh, lh = generate_hands(args, rh_noteseq, lh_noteseq, progress=progress)
+        progress.write_start()
+        write_annotated_output(args, score_info, rh, lh)
+        progress.write_done()
     maybe_play_vedo(args, xmlfn, rh, lh)
+    _log_summary(args, score_info, rh, lh)
+    if not args.musescore:
+        _show_visualize_hint(args.outputfile)

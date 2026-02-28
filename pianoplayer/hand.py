@@ -51,8 +51,7 @@ class Hand:
         for i in (1, 2, 3, 4, 5):
             if self.frest[i]:
                 self.frest[i] *= self.hf
-        logger.info("Your hand span set to size-%s which is %s cm", size, 21 * self.hf)
-        logger.info("(max relaxed distance between thumb and pinkie)")
+        logger.debug("Hand size preset %s (span %.2f cm).", size, 21 * self.hf)
         self.cfps = list(self.frest)
         self.cost = -1.0
 
@@ -217,7 +216,12 @@ class Hand:
             window.extend([window[-1]] * (9 - len(window)))
         return window
 
-    def generate(self, start_measure: int = 0, nmeasures: int = 1000) -> None:
+    def generate(
+        self,
+        start_measure: int = 0,
+        nmeasures: int = 1000,
+        progress_cb=None,
+    ) -> None:
         """Generate fingering assignments for the configured note sequence."""
         initial_autodepth = self.autodepth
         initial_depth = self.depth
@@ -299,7 +303,7 @@ class Hand:
                                 "   " * (i % self.depth),
                                 str(out[0 : self.depth]),
                             )
-                elif i and not i % 100 and an.measure:
+                elif progress_cb is None and i and not i % 100 and an.measure:
                     logger.info(
                         "scanned %s / %s notes, measure %s for the %s hand...",
                         i,
@@ -307,6 +311,9 @@ class Hand:
                         an.measure + 1,
                         self.LR,
                     )
+
+                if progress_cb is not None:
+                    progress_cb(i + 1, n_total, an.measure)
         finally:
             self.autodepth = initial_autodepth
             self.depth = initial_depth

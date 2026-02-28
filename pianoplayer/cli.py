@@ -102,6 +102,7 @@ def main() -> None:
     from pianoplayer import core
 
     try:
+        args._show_progress = not args.quiet
         core.annotate(args)
     except (PianoPlayerError, ValueError) as exc:
         raise SystemExit(str(exc)) from exc
