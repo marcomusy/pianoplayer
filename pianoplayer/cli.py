@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import logging
 
+from rich.logging import RichHandler
+
 from pianoplayer import __version__, __website__
 from pianoplayer.errors import PianoPlayerError
 
@@ -115,7 +117,7 @@ def show_startup_banner(args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.panel import Panel
 
-        Console().print(Panel.fit(body, title="Start", border_style="bright_blue"))
+        Console().print(Panel.fit(body, border_style="bright_blue"))
     except Exception:
         print(f"PianoPlayer v{__version__}")
         print(f"Input: {args.filename}")
@@ -127,9 +129,18 @@ def show_startup_banner(args: argparse.Namespace) -> None:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+    level = logging.WARNING if getattr(args, "quiet", False) else logging.INFO
     logging.basicConfig(
-        level=logging.WARNING if getattr(args, "quiet", False) else logging.INFO,
-        format="%(levelname)s %(message)s",
+        level=level,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[
+            RichHandler(
+                rich_tracebacks=True,
+                show_path=False,
+                markup=True,
+            )
+        ],
     )
 
     if args.gui or args.filename is None:

@@ -216,6 +216,20 @@ class Hand:
             window.extend([window[-1]] * (9 - len(window)))
         return window
 
+    @staticmethod
+    def _preset_finger(value: int | str) -> int:
+        """Normalize a pre-annotated finger value to 1..5, or return 0 when absent/invalid."""
+        if isinstance(value, str):
+            text = value.strip()
+            if not text.lstrip("+-").isdigit():
+                return 0
+            value = int(text)
+
+        finger = abs(int(value))
+        if 1 <= finger <= 5:
+            return finger
+        return 0
+
     def generate(
         self,
         start_measure: int = 0,
@@ -258,6 +272,19 @@ class Hand:
                 ninenotes = self._window9(self.noteseq, i)
                 if not ninenotes:
                     break
+
+                anchored_finger = self._preset_finger(an.fingering)
+                if anchored_finger:
+                    # Preserve existing annotation and restart optimization from this finger.
+                    an.fingering = anchored_finger
+                    out, vel = self.optimize_seq(ninenotes, anchored_finger)
+                    start_finger = out[1] if len(out) > 1 else anchored_finger
+                    self.set_fingers_positions(out, ninenotes, 0)
+                    self.fingerseq.append(list(self.cfps))
+                    an.cost = vel
+                    if show_progress is not None:
+                        show_progress(i + 1, n_total, an.measure)
+                    continue
 
                 best_finger = 0
                 if i > n_total - 10:

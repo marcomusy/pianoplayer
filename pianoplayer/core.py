@@ -38,15 +38,16 @@ class _ProgressReporter:
                 Progress,
                 SpinnerColumn,
                 TextColumn,
-                TimeElapsedColumn,
+                TimeRemainingColumn,
             )
 
             self._progress = Progress(
                 SpinnerColumn(),
                 TextColumn("[bold blue]{task.description}"),
-                BarColumn(),
+                BarColumn(bar_width=26),
                 TextColumn("{task.completed}/{task.total}"),
-                TimeElapsedColumn(),
+                TextColumn("[dim]{task.fields[status]}"),
+                TimeRemainingColumn(),
             )
             self._progress.start()
             # self._parse_task = self._progress.add_task("Parse score", total=1)
@@ -73,9 +74,15 @@ class _ProgressReporter:
                 logger.info("Generate %s hand: start (%s notes)", side.upper(), total)
             return
         task = self._rh_task if side == "right" else self._lh_task
-        self._progress.update(task, total=max(1, total), completed=0, visible=True)
+        self._progress.update(
+            task,
+            total=max(1, total),
+            completed=0,
+            visible=True,
+            status="m-- \u00b7 0%",
+        )
 
-    def update_hand(self, side: str, completed: int, total: int) -> None:
+    def update_hand(self, side: str, completed: int, total: int, measure: int | None = None) -> None:
         if not self._active or self._progress is None:
             if self.enabled and total:
                 bucket = int((completed * 10) / max(1, total))
@@ -88,7 +95,10 @@ class _ProgressReporter:
                     )
             return
         task = self._rh_task if side == "right" else self._lh_task
-        self._progress.update(task, completed=min(completed, max(1, total)))
+        done = min(completed, max(1, total))
+        percent = int((done * 100) / max(1, total))
+        meas = "--" if not measure else str(measure)
+        self._progress.update(task, completed=done, status=f"meas.{meas} \u00b7 {percent}%")
 
     def hand_done(self, side: str) -> None:
         if not self._active or self._progress is None:
@@ -97,7 +107,7 @@ class _ProgressReporter:
             return
         task = self._rh_task if side == "right" else self._lh_task
         current_total = int(self._progress.tasks[task].total or 1)
-        self._progress.update(task, completed=current_total)
+        self._progress.update(task, completed=current_total, status="done")
 
     def write_start(self) -> None:
         if self._active and self._progress is not None and self._write_task is not None:
@@ -265,7 +275,7 @@ def generate_hands(args, rh_noteseq, lh_noteseq, progress: _ProgressReporter | N
             args.start_measure,
             args.n_measures,
             show_progress=(
-                (lambda done, alln, _m: progress.update_hand("right", done, alln))
+                (lambda done, alln, m: progress.update_hand("right", done, alln, m))
                 if progress is not None
                 else None
             ),
@@ -287,7 +297,7 @@ def generate_hands(args, rh_noteseq, lh_noteseq, progress: _ProgressReporter | N
             args.start_measure,
             args.n_measures,
             show_progress=(
-                (lambda done, alln, _m: progress.update_hand("left", done, alln))
+                (lambda done, alln, m: progress.update_hand("left", done, alln, m))
                 if progress is not None
                 else None
             ),

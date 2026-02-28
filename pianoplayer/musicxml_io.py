@@ -26,6 +26,9 @@ _STEP_TO_SEMITONE = {
     "B": 11,
 }
 
+_CIRCLED_FINGER = {1: "①", 2: "②", 3: "③", 4: "④", 5: "⑤"}
+_CIRCLED_TO_FINGER = {v: k for k, v in _CIRCLED_FINGER.items()}
+
 
 @dataclass(slots=True)
 class PitchInfo:
@@ -86,6 +89,33 @@ def _pitch_from_note(note_el: ET.Element) -> PitchInfo | None:
     semitone = _STEP_TO_SEMITONE[step] + alter
     midi = (octave + 1) * 12 + semitone
     return PitchInfo(name=_note_name(step, alter), octave=octave, midi=midi)
+
+
+def _extract_note_fingering(note_el: ET.Element) -> int:
+    """Return a pre-existing fingering annotation from one note element, if present."""
+    for fing_el in note_el.findall("./notations/technical/fingering"):
+        if fing_el.text is None:
+            continue
+        value = fing_el.text.strip()
+        if value in _CIRCLED_TO_FINGER:
+            return _CIRCLED_TO_FINGER[value]
+        if value.lstrip("+-").isdigit():
+            finger = abs(int(value))
+            if 1 <= finger <= 5:
+                return finger
+
+    for txt_el in note_el.findall("./lyric/text"):
+        if txt_el.text is None:
+            continue
+        value = txt_el.text.strip()
+        if value in _CIRCLED_TO_FINGER:
+            return _CIRCLED_TO_FINGER[value]
+        if value.lstrip("+-").isdigit():
+            finger = abs(int(value))
+            if 1 <= finger <= 5:
+                return finger
+
+    return 0
 
 
 def parse_musicxml(filename: str) -> ScoreInfo:
@@ -201,6 +231,8 @@ def noteseq_from_part(part: PartInfo) -> list[INote]:
             an.time = evt.offset
             an.duration = evt.duration
             an.isBlack = (p.midi % 12) in [1, 3, 6, 8, 10]
+            an.fingering = _extract_note_fingering(evt.notes[0])
+            an.is_anchor = an.fingering in {1, 2, 3, 4, 5}
             noteseq.append(an)
             note_id += 1
             continue
@@ -223,6 +255,9 @@ def noteseq_from_part(part: PartInfo) -> list[INote]:
                 an.time = evt.offset - sfasam * (count - j - 1)
                 an.duration = evt.duration + sfasam * (count - 1)
                 an.isBlack = (p.midi % 12) in [1, 3, 6, 8, 10]
+                if j < len(evt.notes):
+                    an.fingering = _extract_note_fingering(evt.notes[j])
+                    an.is_anchor = an.fingering in {1, 2, 3, 4, 5}
                 noteseq.append(an)
                 note_id += 1
             chord_id += 1
@@ -232,11 +267,43 @@ def noteseq_from_part(part: PartInfo) -> list[INote]:
     return noteseq
 
 
-def _set_note_fingering(note_el: ET.Element, fingering: int | str, lyrics: bool) -> None:
+def _is_fingering_text(text: str) -> bool:
+    value = text.strip()
+    return value in _CIRCLED_TO_FINGER or value.lstrip("+-").isdigit()
+
+
+def _clear_note_fingering(note_el: ET.Element, lyrics: bool) -> None:
+    """Remove existing fingering markup so we write a single annotation per note."""
+    for technical_el in note_el.findall("./notations/technical"):
+        for fing_el in list(technical_el.findall("fingering")):
+            technical_el.remove(fing_el)
+        if len(technical_el) == 0:
+            parent = note_el.find("./notations")
+            if parent is not None:
+                parent.remove(technical_el)
+    for notations_el in list(note_el.findall("./notations")):
+        if len(notations_el) == 0:
+            note_el.remove(notations_el)
+
+    if not lyrics:
+        return
+    for lyric_el in list(note_el.findall("lyric")):
+        text_el = lyric_el.find("text")
+        if text_el is not None and text_el.text and _is_fingering_text(text_el.text):
+            note_el.remove(lyric_el)
+
+
+def _set_note_fingering(note_el: ET.Element, fingering: int | str, lyrics: bool, *, anchored: bool) -> None:
+    text = str(fingering)
+    if anchored and isinstance(fingering, int) and fingering in _CIRCLED_FINGER:
+        text = _CIRCLED_FINGER[fingering]
+
+    _clear_note_fingering(note_el, lyrics)
+
     if lyrics:
         lyric_el = ET.SubElement(note_el, "lyric")
         text_el = ET.SubElement(lyric_el, "text")
-        text_el.text = str(fingering)
+        text_el.text = text
         return
 
     notations_el = note_el.find("notations")
@@ -246,7 +313,7 @@ def _set_note_fingering(note_el: ET.Element, fingering: int | str, lyrics: bool)
     if technical_el is None:
         technical_el = ET.SubElement(notations_el, "technical")
     fingering_el = ET.SubElement(technical_el, "fingering")
-    fingering_el.text = str(fingering)
+    fingering_el.text = text
 
 
 def annotate_part_with_fingering(
@@ -269,7 +336,12 @@ def annotate_part_with_fingering(
             if idx >= len(seq):
                 logger.warning("Not enough generated notes to annotate note at idx=%s", idx)
                 return
-            _set_note_fingering(evt.notes[0], seq[idx].fingering, lyrics)
+            _set_note_fingering(
+                evt.notes[0],
+                seq[idx].fingering,
+                lyrics,
+                anchored=bool(getattr(seq[idx], "is_anchor", False)),
+            )
             idx += 1
             continue
 
@@ -280,5 +352,10 @@ def annotate_part_with_fingering(
                     logger.warning("Not enough generated notes to annotate chord at idx=%s", idx)
                     return
                 if chord_len < skip_chords_with:
-                    _set_note_fingering(note_el, seq[idx].fingering, lyrics)
+                    _set_note_fingering(
+                        note_el,
+                        seq[idx].fingering,
+                        lyrics,
+                        anchored=bool(getattr(seq[idx], "is_anchor", False)),
+                    )
                 idx += 1

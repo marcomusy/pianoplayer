@@ -134,6 +134,7 @@ def reader_PIG(fname: str, beam: int = 0) -> list[INote]:
             an.name = name[:-1]
             an.octave = int(name[-1])
             an.fingering = 0 if finger == "_" else int(finger)
+            an.is_anchor = an.fingering in {1, 2, 3, 4, 5}
             pc_map = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
             step = an.name[0]
             alter = an.name.count("#") - an.name.count("-")
@@ -153,6 +154,7 @@ def reader_PIG(fname: str, beam: int = 0) -> list[INote]:
                 an.duration = max(0.0, off - onset)
                 an.name = name[:-1]
                 an.octave = int(name[-1])
+                an.is_anchor = False
                 pc_map = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
                 step = an.name[0]
                 alter = an.name.count("#") - an.name.count("-")
