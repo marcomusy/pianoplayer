@@ -245,6 +245,7 @@ class Hand:
             start_measure = 0
 
         if self.LR == "left":
+            # Reuse right-hand geometry/cost logic by mirroring x-coordinates for LH.
             original_x = [anote.x for anote in self.noteseq]
             for anote in self.noteseq:
                 anote.x = -anote.x
@@ -266,6 +267,7 @@ class Hand:
                         break
 
                 if i > n_total - 11:
+                    # Near the tail, force full look-ahead to keep choices stable.
                     self.autodepth = False
                     self.depth = 9
 
@@ -275,7 +277,7 @@ class Hand:
 
                 anchored_finger = self._preset_finger(an.fingering)
                 if anchored_finger:
-                    # Preserve existing annotation and restart optimization from this finger.
+                    # Preserve existing annotation and resume optimization from this anchor.
                     an.fingering = anchored_finger
                     out, vel = self.optimize_seq(ninenotes, anchored_finger)
                     start_finger = out[1] if len(out) > 1 else anchored_finger
@@ -289,6 +291,7 @@ class Hand:
                 best_finger = 0
                 if i > n_total - 10:
                     if len(out) > 1:
+                        # Reuse remaining fingers from the previously solved 9-note window.
                         best_finger = out.pop(1)
                     else:
                         out, vel = self.optimize_seq(ninenotes, start_finger)
@@ -305,38 +308,38 @@ class Hand:
                 an.cost = vel
 
                 if self.verbose:
-                    if an.measure:
+                    hand_tag = "RH" if self.LR == "right" else "LH"
+                    meas_tag = f"meas.{an.measure}" if an.measure else "meas.--"
+                    seq_preview = str(out[0 : self.depth])
+                    depth_tag = f" d={self.depth}" if self.autodepth else ""
+                    if i < n_total - 10:
                         logger.info(
-                            "meas.%-3s finger_%s plays Pitch:%s Octave:%s",
-                            an.measure,
+                            "%s %s f%s pitch=%s oct=%s v=%.1f %s%s",
+                            hand_tag,
+                            meas_tag,
+                            best_finger,
+                            an.pitch,
+                            an.octave,
+                            vel,
+                            seq_preview,
+                            depth_tag,
+                        )
+                    else:
+                        logger.info(
+                            "%s %s f%s pitch=%s oct=%s",
+                            hand_tag,
+                            meas_tag,
                             best_finger,
                             an.pitch,
                             an.octave,
                         )
-                    else:
-                        logger.info(
-                            "finger_%s plays Pitch:%s Octave:%s", best_finger, an.pitch, an.octave
-                        )
-
-                    if i < n_total - 10:
-                        if self.autodepth:
-                            logger.info(
-                                "v=%s\t%s d:%s", round(vel, 1), str(out[0 : self.depth]), self.depth
-                            )
-                        else:
-                            logger.info(
-                                "v=%s\t%s%s",
-                                round(vel, 1),
-                                "   " * (i % self.depth),
-                                str(out[0 : self.depth]),
-                            )
                 elif show_progress is None and i and not i % 100 and an.measure:
                     logger.info(
-                        "scanned %s / %s notes, measure %s for the %s hand...",
+                        "%s progress %s/%s notes (measure %s)",
+                        "RH" if self.LR == "right" else "LH",
                         i,
                         n_total,
                         an.measure + 1,
-                        self.LR,
                     )
 
                 if show_progress is not None:
@@ -345,5 +348,6 @@ class Hand:
             self.autodepth = initial_autodepth
             self.depth = initial_depth
             if original_x is not None:
+                # Restore original LH coordinates for downstream consumers.
                 for anote, x in zip(self.noteseq, original_x):
                     anote.x = x
