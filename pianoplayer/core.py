@@ -264,7 +264,7 @@ def generate_hands(args, rh_noteseq, lh_noteseq, progress: _ProgressReporter | N
         rh.generate(
             args.start_measure,
             args.n_measures,
-            progress_cb=(
+            show_progress=(
                 (lambda done, alln, _m: progress.update_hand("right", done, alln))
                 if progress is not None
                 else None
@@ -286,7 +286,7 @@ def generate_hands(args, rh_noteseq, lh_noteseq, progress: _ProgressReporter | N
         lh.generate(
             args.start_measure,
             args.n_measures,
-            progress_cb=(
+            show_progress=(
                 (lambda done, alln, _m: progress.update_hand("left", done, alln))
                 if progress is not None
                 else None
@@ -348,7 +348,7 @@ def write_annotated_output(args, score_info, rh, lh):
 
     if not args.left_only and rh is not None:
         if len(score_info.parts) <= args.rbeam:
-            logger.warning(
+            logger.debug(
                 "Skipping right-hand annotation: requested beam %s but score has %s part(s).",
                 args.rbeam,
                 len(score_info.parts),
@@ -360,7 +360,7 @@ def write_annotated_output(args, score_info, rh, lh):
 
     if not args.right_only and lh is not None:
         if len(score_info.parts) <= args.lbeam:
-            logger.warning(
+            logger.debug(
                 "Skipping left-hand annotation: requested beam %s but score has %s part(s).",
                 args.lbeam,
                 len(score_info.parts),
@@ -371,7 +371,7 @@ def write_annotated_output(args, score_info, rh, lh):
             )
 
     score_info.write(args.outputfile)
-    logger.info("Wrote annotated score to %s", args.outputfile)
+    logger.debug("Wrote annotated score to %s", args.outputfile)
 
     if args.musescore:
         logger.info("Opening MuseScore with output score: %s", args.outputfile)
@@ -455,7 +455,7 @@ def _log_summary(args, score_info, rh, lh) -> None:
         from rich.console import Console
         from rich.table import Table
 
-        table = Table(title="Run Summary", show_header=True, header_style="bold cyan")
+        table = Table(title="Run Summary", show_header=False)
         table.add_column("Field", style="bold")
         table.add_column("Value", overflow="fold")
         table.add_row("Input", str(args.filename))

@@ -220,7 +220,7 @@ class Hand:
         self,
         start_measure: int = 0,
         nmeasures: int = 1000,
-        progress_cb=None,
+        show_progress=None,
     ) -> None:
         """Generate fingering assignments for the configured note sequence."""
         initial_autodepth = self.autodepth
@@ -303,7 +303,7 @@ class Hand:
                                 "   " * (i % self.depth),
                                 str(out[0 : self.depth]),
                             )
-                elif progress_cb is None and i and not i % 100 and an.measure:
+                elif show_progress is None and i and not i % 100 and an.measure:
                     logger.info(
                         "scanned %s / %s notes, measure %s for the %s hand...",
                         i,
@@ -312,8 +312,8 @@ class Hand:
                         self.LR,
                     )
 
-                if progress_cb is not None:
-                    progress_cb(i + 1, n_total, an.measure)
+                if show_progress is not None:
+                    show_progress(i + 1, n_total, an.measure)
         finally:
             self.autodepth = initial_autodepth
             self.depth = initial_depth

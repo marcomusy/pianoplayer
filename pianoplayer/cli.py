@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 
+from pianoplayer import __version__, __website__
 from pianoplayer.errors import PianoPlayerError
 
 
@@ -85,6 +86,44 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _hand_mode(args: argparse.Namespace) -> str:
+    if args.left_only:
+        return "left hand only"
+    if args.right_only:
+        return "right hand only"
+    return "both hands"
+
+
+def show_startup_banner(args: argparse.Namespace) -> None:
+    if args.quiet or not args.filename:
+        return
+
+    lines = [
+        f"[bold]PianoPlayer[/bold] v{__version__}",
+        f"[dim]{__website__}[/dim]",
+        "",
+        f"[cyan]Input:[/cyan] {args.filename}",
+        f"[cyan]Output:[/cyan] {args.outputfile}",
+        f"[cyan]Mode:[/cyan] {_hand_mode(args)}",
+        f"[cyan]Hand size:[/cyan] {args.hand_size}",
+    ]
+    if args.sound_off:
+        lines.append("[cyan]Audio:[/cyan] off")
+
+    body = "\n".join(lines)
+    try:
+        from rich.console import Console
+        from rich.panel import Panel
+
+        Console().print(Panel.fit(body, title="Start", border_style="bright_blue"))
+    except Exception:
+        print(f"PianoPlayer v{__version__}")
+        print(f"Input: {args.filename}")
+        print(f"Output: {args.outputfile}")
+        print(f"Mode: {_hand_mode(args)}")
+        print(f"Hand size: {args.hand_size}")
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
@@ -102,6 +141,7 @@ def main() -> None:
     from pianoplayer import core
 
     try:
+        show_startup_banner(args)
         args._show_progress = not args.quiet
         core.annotate(args)
     except (PianoPlayerError, ValueError) as exc:
