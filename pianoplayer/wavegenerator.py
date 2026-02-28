@@ -1,93 +1,72 @@
 import logging
-
-import music21
-import numpy as np
+import math
+from array import array
 
 logger = logging.getLogger(__name__)
-_warned_realtime_playback = False
 
 try:
     import simpleaudio
 
     has_simpleaudio = True
 except ImportError:
-    logger.info("simpleaudio not available; falling back to music21 realtime playback")
+    logger.info("simpleaudio not available; sound playback disabled")
     has_simpleaudio = False
 
 
-def soundof(notes, duration=1, volume=0.75, fading=750, wait=True):
-    """
-    Play a group of notes (chord) for the prescribed duration.
+def _pitch_to_frequency(value):
+    if isinstance(value, (int, float)):
+        midi = float(value)
+        return 440.0 * (2.0 ** ((midi - 69.0) / 12.0))
+    return None
 
-    Parameters
-    ----------
-    notes : list
-        list of notes to be played (as strings or music21.Note).
-    duration : float
-        duration in seconds.
-    volume : float, optional
-        Output volume. The default is 0.75.
-    fading : int, optional
-        linear ramp up and down of volume. The default is 750.
-    wait : bool, optional
-        wait for the sound to end before continuing
-    """
+
+def soundof(notes, duration=1, volume=0.75, fading=750, wait=True):
+    """Play a group of notes (chord) for the prescribed duration."""
     if not has_simpleaudio:
-        return
+        return None
 
     sample_rate = 44100
-    fade_in = np.arange(0, 1, 1 / fading)
-    fade_out = np.arange(1, 0, -1 / fading)
-    timepoints = int(duration * sample_rate)
+    timepoints = max(1, int(duration * sample_rate))
+    fade_n = min(fading, timepoints // 2)
 
-    intensity = np.zeros(timepoints)
+    freqs = []
     for n in notes:
-        if isinstance(n, (int, float)):
-            freq = n
-        else:
-            if isinstance(n, str):
-                n = music21.note.Note(n)
-            if isinstance(n, music21.note.Note):
-                n21 = n
-            else:
-                n21 = n.note21
-            if hasattr(n21, "pitch"):
-                freq = n21.pitch.frequency
-            else:
-                freq = n21.frequency
+        freq = None
+        if hasattr(n, "pitch"):
+            freq = _pitch_to_frequency(getattr(n, "pitch"))
+        if freq is None:
+            freq = _pitch_to_frequency(n)
+        if freq is not None:
+            freqs.append(freq)
 
-        t = np.linspace(0, duration, timepoints, False)
+    if not freqs:
+        return None
 
-        note_intensity = np.sin(freq * 2 * np.pi * t)
-        if len(intensity) > fading:
-            note_intensity[:fading] *= fade_in
-            note_intensity[-fading:] *= fade_out
-        intensity += note_intensity
+    samples = array("h")
+    for i in range(timepoints):
+        t = i / sample_rate
+        val = 0.0
+        for freq in freqs:
+            val += math.sin(freq * 2.0 * math.pi * t)
+        val /= len(freqs)
 
-    audio = intensity * (32767 / np.max(np.abs(intensity)) * float(volume))
-    play_obj = simpleaudio.play_buffer(audio.astype(np.int16), 1, 2, sample_rate)
+        if fade_n > 0:
+            if i < fade_n:
+                val *= i / fade_n
+            elif i >= (timepoints - fade_n):
+                val *= (timepoints - i - 1) / fade_n
 
+        amp = int(max(-1.0, min(1.0, val * float(volume))) * 32767)
+        samples.append(amp)
+
+    play_obj = simpleaudio.play_buffer(samples.tobytes(), 1, 2, sample_rate)
     if wait:
         play_obj.wait_done()
     return play_obj
 
 
 def playSound(n, speedfactor=1.0, wait=True):
-    """Play a single chord and or a sequence of notes and chords."""
-    if has_simpleaudio:
-        soundof([n], duration=n.duration / speedfactor, wait=wait)
+    """Play a single note or chord-like item."""
+    if not has_simpleaudio:
         return
-
-    try:
-        s = music21.stream.Stream()
-        if n.isChord:
-            n = n.chord21
-        else:
-            s.append(n.note21)
-        sp = music21.midi.realtime.StreamPlayer(s)
-        sp.play()
-    except Exception:
-        global _warned_realtime_playback
-        if not _warned_realtime_playback:
-            logger.info("Realtime sound playback unavailable; continuing without sound.")
-            _warned_realtime_playback = True
+    soundof([n], duration=n.duration / speedfactor, wait=wait)

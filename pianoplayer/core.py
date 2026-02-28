@@ -8,13 +8,11 @@ import subprocess
 from types import SimpleNamespace
 from typing import Any
 
-from music21 import converter, stream
-from music21.articulations import Fingering
-
 from pianoplayer.errors import ConversionError, ExternalToolError, MissingDependencyError
 from pianoplayer.hand import Hand
 from pianoplayer.models import AnnotateOptions
-from pianoplayer.scorereader import PIG2Stream, reader, reader_PIG, reader_pretty_midi
+from pianoplayer.musicxml_io import annotate_part_with_fingering, parse_musicxml
+from pianoplayer.scorereader import reader, reader_PIG, reader_pretty_midi
 
 logger = logging.getLogger(__name__)
 
@@ -66,54 +64,6 @@ def _as_namespace(args: Any) -> SimpleNamespace:
     return AnnotateOptions.from_namespace(args).to_namespace()
 
 
-def annotate_fingers_xml(sf, hand, args, is_right=True):
-    p0 = sf.parts[args.rbeam if is_right else args.lbeam]
-    idx = 0
-    for el in p0.flat.getElementsByClass("GeneralNote"):
-        if el.duration.quarterLength == 0:
-            continue
-        if hasattr(el, "tie") and el.tie and el.tie.type in {"continue", "stop"}:
-            continue
-
-        if el.isNote:
-            if idx >= len(hand.noteseq):
-                logger.warning(
-                    "Not enough generated notes to annotate part=%s at index=%s (len=%s).",
-                    "right" if is_right else "left",
-                    idx,
-                    len(hand.noteseq),
-                )
-                break
-            n = hand.noteseq[idx]
-            if hand.lyrics:
-                el.addLyric(n.fingering)
-            else:
-                el.articulations.append(Fingering(n.fingering))
-            idx += 1
-        elif el.isChord:
-            for _, cn in enumerate(el.pitches):
-                if idx >= len(hand.noteseq):
-                    logger.warning(
-                        (
-                            "Not enough generated notes to annotate chord in part=%s "
-                            "at index=%s (len=%s)."
-                        ),
-                        "right" if is_right else "left",
-                        idx,
-                        len(hand.noteseq),
-                    )
-                    return sf
-                n = hand.noteseq[idx]
-                if hand.lyrics:
-                    nl = len(cn.chord21.pitches) - cn.chordnr
-                    el.addLyric(cn.fingering, nl)
-                else:
-                    el.articulations.append(Fingering(n.fingering))
-                idx += 1
-
-    return sf
-
-
 def annotate_PIG(hand, is_right=True):
     ans = []
     for n in hand.noteseq:
@@ -153,6 +103,7 @@ def _run_external(cmd: list[str], context: str) -> None:
 def load_note_sequences(args):
     args = _as_namespace(args)
     xmlfn = args.filename
+    score_info = None
     rh_noteseq = None
     lh_noteseq = None
 
@@ -161,11 +112,11 @@ def load_note_sequences(args):
             xmlfn = str(args.filename).replace(".mscz", ".xml").replace(".mscx", ".xml")
             logger.info("Converting MuseScore file %s -> %s", args.filename, xmlfn)
             _run_external(["musescore", "-f", args.filename, "-o", xmlfn], "MuseScore conversion")
-            score = converter.parse(xmlfn)
+            score_info = parse_musicxml(xmlfn)
             if not args.left_only:
-                rh_noteseq = reader(score, beam=args.rbeam)
+                rh_noteseq = reader(score_info, beam=args.rbeam)
             if not args.right_only:
-                lh_noteseq = reader(score, beam=args.lbeam)
+                lh_noteseq = reader(score_info, beam=args.lbeam)
         elif ".txt" in args.filename:
             if not args.left_only:
                 rh_noteseq = reader_PIG(args.filename, args.rbeam)
@@ -188,17 +139,17 @@ def load_note_sequences(args):
                 pm_left = pm.instruments[args.lbeam]
                 lh_noteseq = reader_pretty_midi(pm_left, beam=args.lbeam)
         else:
-            score = converter.parse(xmlfn)
+            score_info = parse_musicxml(xmlfn)
             if not args.left_only:
-                rh_noteseq = reader(score, beam=args.rbeam)
+                rh_noteseq = reader(score_info, beam=args.rbeam)
             if not args.right_only:
-                lh_noteseq = reader(score, beam=args.lbeam)
+                lh_noteseq = reader(score_info, beam=args.lbeam)
     except ExternalToolError:
         raise
     except Exception as exc:
         raise ConversionError(f"Unable to parse/convert input score: {args.filename}") from exc
 
-    return xmlfn, rh_noteseq, lh_noteseq
+    return xmlfn, score_info, rh_noteseq, lh_noteseq
 
 
 def generate_hands(args, rh_noteseq, lh_noteseq):
@@ -230,24 +181,7 @@ def generate_hands(args, rh_noteseq, lh_noteseq):
     return rh, lh
 
 
-def build_output_stream(args, xmlfn):
-    args = _as_namespace(args)
-    ext = os.path.splitext(args.filename)[1]
-    if ext in ["mid", "midi"]:
-        return converter.parse(xmlfn)
-    if ext in ["txt"]:
-        sf = stream.Stream()
-        if not args.left_only:
-            ptr = PIG2Stream(args.filename, 0)
-            sf.insert(0, ptr)
-        if not args.right_only:
-            ptl = PIG2Stream(args.filename, 1)
-            sf.insert(0, ptl)
-        return sf
-    return converter.parse(xmlfn)
-
-
-def write_annotated_output(args, xmlfn, rh, lh):
+def write_annotated_output(args, score_info, rh, lh):
     args = _as_namespace(args)
     if args.outputfile is None:
         return
@@ -292,12 +226,34 @@ def write_annotated_output(args, xmlfn, rh, lh):
         logger.info("Wrote annotated PIG output to %s", args.outputfile)
         return
 
-    sf = build_output_stream(args, xmlfn)
+    if score_info is None:
+        raise ValueError("Only MusicXML inputs can produce MusicXML output in this build.")
+
     if not args.left_only and rh is not None:
-        sf = annotate_fingers_xml(sf, rh, args, is_right=True)
+        if len(score_info.parts) <= args.rbeam:
+            logger.warning(
+                "Skipping right-hand annotation: requested beam %s but score has %s part(s).",
+                args.rbeam,
+                len(score_info.parts),
+            )
+        else:
+            annotate_part_with_fingering(
+                score_info.parts[args.rbeam], rh.noteseq, lyrics=rh.lyrics, skip_chords_with=4
+            )
+
     if not args.right_only and lh is not None:
-        sf = annotate_fingers_xml(sf, lh, args, is_right=False)
-    sf.write("musicxml", fp=args.outputfile)
+        if len(score_info.parts) <= args.lbeam:
+            logger.warning(
+                "Skipping left-hand annotation: requested beam %s but score has %s part(s).",
+                args.lbeam,
+                len(score_info.parts),
+            )
+        else:
+            annotate_part_with_fingering(
+                score_info.parts[args.lbeam], lh.noteseq, lyrics=lh.lyrics, skip_chords_with=4
+            )
+
+    score_info.write(args.outputfile)
     logger.info("Wrote annotated score to %s", args.outputfile)
 
     if args.musescore:
@@ -317,6 +273,10 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
 
     if args.start_measure != 1:
         raise ValueError("start_measure must be set to 1 when -v/--with-vedo is used")
+
+    if not xmlfn.endswith(".xml"):
+        logger.warning("3D playback currently requires MusicXML input; skipping.")
+        return
 
     try:
         from pianoplayer.vkeyboard import VirtualKeyboard
@@ -350,7 +310,7 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
 
 def annotate(args: AnnotateOptions | SimpleNamespace | Any):
     args = _as_namespace(args)
-    xmlfn, rh_noteseq, lh_noteseq = load_note_sequences(args)
+    xmlfn, score_info, rh_noteseq, lh_noteseq = load_note_sequences(args)
     rh, lh = generate_hands(args, rh_noteseq, lh_noteseq)
-    write_annotated_output(args, xmlfn, rh, lh)
+    write_annotated_output(args, score_info, rh, lh)
     maybe_play_vedo(args, xmlfn, rh, lh)
