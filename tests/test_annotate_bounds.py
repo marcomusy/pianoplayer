@@ -1,20 +1,16 @@
 from types import SimpleNamespace
 
-import pytest
+from pianoplayer.musicxml_io import annotate_part_with_fingering, parse_musicxml
 
 
-def test_annotate_fingers_xml_handles_short_hand_sequence() -> None:
-    music21 = pytest.importorskip("music21")
-
-    from pianoplayer.core import annotate_fingers_xml
-
-    score = music21.converter.parse("scores/test_scales.xml")
+def test_annotate_handles_short_hand_sequence() -> None:
+    score = parse_musicxml("scores/test_scales.xml")
+    part = score.parts[0]
 
     # Deliberately shorter than the note stream to verify no IndexError is raised.
     short_hand = SimpleNamespace(
         noteseq=[SimpleNamespace(fingering=1)],
         lyrics=False,
     )
-    args = SimpleNamespace(rbeam=0, lbeam=1)
 
-    annotate_fingers_xml(score, short_hand, args, is_right=True)
+    annotate_part_with_fingering(part, short_hand.noteseq, lyrics=False)

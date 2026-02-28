@@ -1,13 +1,9 @@
 from types import SimpleNamespace
 
-import pytest
+from pianoplayer import core
 
 
 def test_core_annotate_writes_output(tmp_path) -> None:
-    pytest.importorskip("music21")
-
-    from pianoplayer import core
-
     output = tmp_path / "annotated.xml"
     args = SimpleNamespace(
         filename="scores/test_scales.xml",

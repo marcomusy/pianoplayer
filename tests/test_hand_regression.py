@@ -1,13 +1,10 @@
-import pytest
+from pianoplayer.hand import Hand
+from pianoplayer.musicxml_io import parse_musicxml
+from pianoplayer.scorereader import reader
 
 
 def test_hand_generates_fingering_for_sample_score() -> None:
-    music21 = pytest.importorskip("music21")
-
-    from pianoplayer.hand import Hand
-    from pianoplayer.scorereader import reader
-
-    score = music21.converter.parse("scores/test_scales.xml")
+    score = parse_musicxml("scores/test_scales.xml")
     noteseq = reader(score, beam=0)
 
     hand = Hand(side="right", noteseq=noteseq, size="M")
