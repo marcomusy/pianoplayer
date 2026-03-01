@@ -9,7 +9,10 @@ from __future__ import annotations
 import logging
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
+from io import BytesIO
+from pathlib import Path
 from typing import Iterable
+from zipfile import ZipFile
 
 from pianoplayer.models import INote, keypos
 
@@ -118,8 +121,35 @@ def _extract_note_fingering(note_el: ET.Element) -> int:
     return 0
 
 
+def _parse_mxl_tree(filename: str) -> ET.ElementTree:
+    """Parse a compressed MusicXML (.mxl) archive and return the score tree."""
+    with ZipFile(filename, "r") as archive:
+        members = set(archive.namelist())
+
+        # Standard MXL entry point via container descriptor.
+        if "META-INF/container.xml" in members:
+            container_root = ET.fromstring(archive.read("META-INF/container.xml"))
+            for rootfile in container_root.findall(".//{*}rootfile"):
+                full_path = rootfile.attrib.get("full-path", "").strip()
+                if not full_path or full_path not in members:
+                    continue
+                return ET.parse(BytesIO(archive.read(full_path)))
+
+        # Fallback for non-standard archives: first XML score payload.
+        for name in archive.namelist():
+            lname = name.lower()
+            if lname.endswith(".xml") and not lname.startswith("meta-inf/"):
+                return ET.parse(BytesIO(archive.read(name)))
+
+    raise ValueError(f"No MusicXML document found inside archive: {filename}")
+
+
 def parse_musicxml(filename: str) -> ScoreInfo:
-    tree = ET.parse(filename)
+    ext = Path(filename).suffix.lower()
+    if ext == ".mxl":
+        tree = _parse_mxl_tree(filename)
+    else:
+        tree = ET.parse(filename)
     root = tree.getroot()
     parts: list[PartInfo] = []
 
@@ -272,6 +302,21 @@ def _is_fingering_text(text: str) -> bool:
     return value in _CIRCLED_TO_FINGER or value.lstrip("+-").isdigit()
 
 
+def _valid_output_finger(value: int | str) -> int | None:
+    """Normalize a generated finger to 1..5; return None when it should be skipped."""
+    if isinstance(value, str):
+        text = value.strip()
+        if text in _CIRCLED_TO_FINGER:
+            return _CIRCLED_TO_FINGER[text]
+        if not text.lstrip("+-").isdigit():
+            return None
+        value = int(text)
+    finger = abs(int(value))
+    if 1 <= finger <= 5:
+        return finger
+    return None
+
+
 def _clear_note_fingering(note_el: ET.Element, lyrics: bool) -> None:
     """Remove existing fingering markup so we write a single annotation per note."""
     for technical_el in note_el.findall("./notations/technical"):
@@ -293,7 +338,13 @@ def _clear_note_fingering(note_el: ET.Element, lyrics: bool) -> None:
             note_el.remove(lyric_el)
 
 
-def _set_note_fingering(note_el: ET.Element, fingering: int | str, lyrics: bool, *, anchored: bool) -> None:
+def _set_note_fingering(
+    note_el: ET.Element,
+    fingering: int | str,
+    lyrics: bool,
+    *,
+    anchored: bool,
+) -> None:
     text = str(fingering)
     if anchored and isinstance(fingering, int) and fingering in _CIRCLED_FINGER:
         text = _CIRCLED_FINGER[fingering]
@@ -336,12 +387,14 @@ def annotate_part_with_fingering(
             if idx >= len(seq):
                 logger.warning("Not enough generated notes to annotate note at idx=%s", idx)
                 return
-            _set_note_fingering(
-                evt.notes[0],
-                seq[idx].fingering,
-                lyrics,
-                anchored=bool(getattr(seq[idx], "is_anchor", False)),
-            )
+            finger = _valid_output_finger(seq[idx].fingering)
+            if finger is not None:
+                _set_note_fingering(
+                    evt.notes[0],
+                    finger,
+                    lyrics,
+                    anchored=bool(getattr(seq[idx], "is_anchor", False)),
+                )
             idx += 1
             continue
 
@@ -352,10 +405,12 @@ def annotate_part_with_fingering(
                     logger.warning("Not enough generated notes to annotate chord at idx=%s", idx)
                     return
                 if chord_len < skip_chords_with:
-                    _set_note_fingering(
-                        note_el,
-                        seq[idx].fingering,
-                        lyrics,
-                        anchored=bool(getattr(seq[idx], "is_anchor", False)),
-                    )
+                    finger = _valid_output_finger(seq[idx].fingering)
+                    if finger is not None:
+                        _set_note_fingering(
+                            note_el,
+                            finger,
+                            lyrics,
+                            anchored=bool(getattr(seq[idx], "is_anchor", False)),
+                        )
                 idx += 1

@@ -67,7 +67,7 @@ class PianoGUI(Frame):
     def import_cmd(self) -> None:
         """Open a file picker and store the selected input score path."""
         ftypes = [
-            ("XML Music files", "*.xml"),
+            ("MusicXML files", "*.xml *.mxl"),
             ("MuseScore files", "*.mscz *.mscx"),
             ("MIDI Music files", "*.mid *.midi"),
             ("PIG Music files", "*.txt"),

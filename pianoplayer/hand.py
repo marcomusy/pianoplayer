@@ -256,6 +256,7 @@ class Hand:
             out: list[int] = []
             vel = 0.0
             n_total = len(self.noteseq)
+            max_measure = start_measure + nmeasures - 1
             self.depth = max(3, min(self.depth, 9))
 
             for i in range(n_total):
@@ -263,13 +264,14 @@ class Hand:
                 if an.measure:
                     if an.measure < start_measure:
                         continue
-                    if an.measure > start_measure + nmeasures:
+                    if an.measure > max_measure:
                         break
 
                 if i > n_total - 11:
-                    # Near the tail, force full look-ahead to keep choices stable.
-                    self.autodepth = False
-                    self.depth = 9
+                    # Near the tail, disable autodepth but keep manual depth if explicitly set.
+                    if self.autodepth:
+                        self.autodepth = False
+                        self.depth = 9
 
                 ninenotes = self._window9(self.noteseq, i)
                 if not ninenotes:
@@ -293,6 +295,9 @@ class Hand:
                     if len(out) > 1:
                         # Reuse remaining fingers from the previously solved 9-note window.
                         best_finger = out.pop(1)
+                        # Keep solver state aligned with the actual finger applied to this note.
+                        out[0] = best_finger
+                        start_finger = out[1] if len(out) > 1 else best_finger
                     else:
                         out, vel = self.optimize_seq(ninenotes, start_finger)
                         best_finger = out[0]
