@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="PianoPlayer logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#115e59"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#bg)"/>
+  <rect x="24" y="24" width="464" height="220" rx="104" fill="url(#shine)"/>
+
+  <rect x="86" y="136" width="340" height="244" rx="22" fill="#f8fafc"/>
+  <rect x="86" y="136" width="340" height="38" rx="22" fill="#dbeafe"/>
+
+  <g fill="#0f172a">
+    <rect x="108" y="176" width="38" height="188" rx="6"/>
+    <rect x="156" y="176" width="38" height="188" rx="6"/>
+    <rect x="204" y="176" width="38" height="188" rx="6"/>
+    <rect x="252" y="176" width="38" height="188" rx="6"/>
+    <rect x="300" y="176" width="38" height="188" rx="6"/>
+    <rect x="348" y="176" width="38" height="188" rx="6"/>
+  </g>
+
+  <g fill="#111827">
+    <rect x="136" y="176" width="28" height="112" rx="6"/>
+    <rect x="184" y="176" width="28" height="112" rx="6"/>
+    <rect x="280" y="176" width="28" height="112" rx="6"/>
+    <rect x="328" y="176" width="28" height="112" rx="6"/>
+  </g>
+
+  <circle cx="414" cy="410" r="48" fill="#ccfbf1"/>
+  <path d="M398 411c11-3 19-12 19-23 0-13-10-23-23-23s-23 10-23 23c0 9 5 16 13 20v20h14z" fill="#115e59"/>
+</svg>

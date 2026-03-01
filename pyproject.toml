@@ -51,7 +51,7 @@ include-package-data = true
 include = ["pianoplayer*", "webapi*"]
 
 [tool.setuptools.package-data]
-webapi = ["*.html"]
+webapi = ["*.html", "images/*"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

@@ -11,6 +11,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from pianoplayer import core
 from pianoplayer.errors import PianoPlayerError
@@ -21,6 +22,7 @@ MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".xml", ".mxl", ".mid", ".midi", ".mscz", ".mscx", ".txt"}
 VALID_HAND_SIZES = {"XXS", "XS", "S", "M", "L", "XL", "XXL"}
 INDEX_HTML = Path(__file__).with_name("index.html")
+IMAGES_DIR = Path(__file__).with_name("images")
 
 
 def _allowed_origins() -> list[str]:
@@ -31,6 +33,7 @@ def _allowed_origins() -> list[str]:
 
 
 app = FastAPI(title="PianoPlayer Web API", version="1.0.0")
+app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins(),

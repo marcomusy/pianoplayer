@@ -6,3 +6,4 @@ build/
 dist/
 pianoplayer.egg-info/
 store/
+scores/.mscbackup/

@@ -1,5 +1,25 @@
 <!doctype html>
 <html lang="en">
+
+<!-- 
+If Port 8000 is already occupied by another process.
+
+Use either option:
+
+1. Run on another port:
+
+uvicorn webapi.app:app --host 127.0.0.1 --port 8001
+
+2. Kill the process using 8000, then restart:
+
+lsof -i :8000
+kill <PID>
+uvicorn webapi.app:app --host 127.0.0.1 --port 8000 
+-->
+
+
+
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -94,6 +114,24 @@
       display: flex;
       flex-wrap: wrap;
       gap: 0.55rem;
+    }
+
+    .affiliation {
+      position: fixed;
+      left: 12px;
+      bottom: 10px;
+      z-index: 10;
+      opacity: 0.88;
+    }
+
+    .affiliation img {
+      height: 32px;
+      width: auto;
+      display: block;
+      background: #ffffffd6;
+      border: 1px solid #dbeafe;
+      border-radius: 8px;
+      padding: 0.18rem 0.38rem;
     }
 
     .hero-link {
@@ -293,7 +331,7 @@
       <!-- <span class="kicker">No Setup Needed</span> -->
       <div class="hero-image">
         <img
-          src="https://github.com/user-attachments/assets/7242fc4e-873f-42fc-99ff-edf985a412eb"
+          src="/images/banner.png"
           alt="PianoPlayer banner"
         />
       </div>
@@ -305,7 +343,7 @@
           PyPI Package
         </a>
       </div>
-      <p class="subtitle">Upload a score and download the annotated MusicXML</p>
+      <p class="subtitle">Upload a score and download the annotated MusicXML output.</p>
     </section>
 
     <section class="card">
@@ -397,6 +435,10 @@
       </form>
     </section>
   </div>
+
+  <a class="affiliation" href="#" aria-label="Affiliation logo">
+    <img src="/images/Logo-Elisava-UVic-UCC-horizontal-negro.png" alt="Affiliation logo" />
+  </a>
 
   <script>
     const form = document.getElementById("annotate-form");
