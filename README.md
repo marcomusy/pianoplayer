@@ -81,6 +81,7 @@ file with name `output.xml`.<br />
 
 Pre-fingered notes are supported: if a note already has a fingering mark, `PianoPlayer` keeps it
 and uses it as an anchor for the following optimization.
+In the output score, these anchored fingers are rendered as circled numbers.
 
 ```bash
 pianoplayer         # if no argument is given a GUI will pop up
