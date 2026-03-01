@@ -391,6 +391,15 @@ class Hand:
             n_total = len(self.noteseq)
             max_measure = start_measure + nmeasures - 1
             self.depth = max(3, min(self.depth, 9))
+            effective_total = 0
+            for note in self.noteseq:
+                if note.measure:
+                    if note.measure < start_measure:
+                        continue
+                    if note.measure > max_measure:
+                        break
+                effective_total += 1
+            processed_count = 0
             for i in range(n_total):
                 an = self.noteseq[i]
                 if an.measure:
@@ -398,6 +407,7 @@ class Hand:
                         continue
                     if an.measure > max_measure:
                         break
+                processed_count += 1
 
                 if i > n_total - 11:
                     # Near the tail, disable autodepth but keep manual depth if explicitly set.
@@ -419,7 +429,7 @@ class Hand:
                     self.fingerseq.append(list(self.finger_positions))
                     an.cost = vel
                     if show_progress is not None:
-                        show_progress(i + 1, n_total, an.measure)
+                        show_progress(processed_count, effective_total, an.measure)
                     continue
 
                 best_finger = 0
@@ -480,7 +490,7 @@ class Hand:
                     )
 
                 if show_progress is not None:
-                    show_progress(i + 1, n_total, an.measure)
+                    show_progress(processed_count, effective_total, an.measure)
         finally:
             self.autodepth = initial_autodepth
             self.depth = initial_depth

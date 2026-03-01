@@ -31,6 +31,7 @@ _STEP_TO_SEMITONE = {
 
 _CIRCLED_FINGER = {1: "①", 2: "②", 3: "③", 4: "④", 5: "⑤"}
 _CIRCLED_TO_FINGER = {v: k for k, v in _CIRCLED_FINGER.items()}
+_FINGERING_LYRIC_NUMBER = "pianoplayer-fingering"
 
 
 @dataclass(slots=True)
@@ -107,10 +108,15 @@ def _extract_note_fingering(note_el: ET.Element) -> int:
             if 1 <= finger <= 5:
                 return finger
 
-    for txt_el in note_el.findall("./lyric/text"):
-        if txt_el.text is None:
+    for lyric_el in note_el.findall("./lyric"):
+        text_el = lyric_el.find("text")
+        if text_el is None or text_el.text is None:
             continue
-        value = txt_el.text.strip()
+        value = text_el.text.strip()
+        is_pianoplayer_lyric = lyric_el.attrib.get("number", "") == _FINGERING_LYRIC_NUMBER
+        # Avoid mistaking ordinary numeric lyrics (verse numbers) for fingering.
+        if not is_pianoplayer_lyric and value not in _CIRCLED_TO_FINGER:
+            continue
         if value in _CIRCLED_TO_FINGER:
             return _CIRCLED_TO_FINGER[value]
         if value.lstrip("+-").isdigit():
@@ -299,7 +305,7 @@ def noteseq_from_part(part: PartInfo) -> list[INote]:
 
 def _is_fingering_text(text: str) -> bool:
     value = text.strip()
-    return value in _CIRCLED_TO_FINGER or value.lstrip("+-").isdigit()
+    return value in _CIRCLED_TO_FINGER
 
 
 def _valid_output_finger(value: int | str) -> int | None:
@@ -333,6 +339,9 @@ def _clear_note_fingering(note_el: ET.Element, lyrics: bool) -> None:
     if not lyrics:
         return
     for lyric_el in list(note_el.findall("lyric")):
+        if lyric_el.attrib.get("number", "") == _FINGERING_LYRIC_NUMBER:
+            note_el.remove(lyric_el)
+            continue
         text_el = lyric_el.find("text")
         if text_el is not None and text_el.text and _is_fingering_text(text_el.text):
             note_el.remove(lyric_el)
@@ -352,7 +361,7 @@ def _set_note_fingering(
     _clear_note_fingering(note_el, lyrics)
 
     if lyrics:
-        lyric_el = ET.SubElement(note_el, "lyric")
+        lyric_el = ET.SubElement(note_el, "lyric", {"number": _FINGERING_LYRIC_NUMBER})
         text_el = ET.SubElement(lyric_el, "text")
         text_el.text = text
         return

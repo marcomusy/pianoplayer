@@ -274,6 +274,7 @@ class VirtualKeyboard:
                 getattr(evt, "keypress", "")
                 or getattr(evt, "keyPressed", "")
                 or getattr(evt, "key", "")
+                or getattr(evt, "keySym", "")
             )
             if not key and interactor is not None:
                 with contextlib.suppress(Exception):
@@ -298,8 +299,11 @@ class VirtualKeyboard:
                         interactor.TerminateApp()
 
         cid = None
+        char_cid = None
         try:
             cid = self.vp.add_callback("KeyPress", _on_key)
+            # Some VTK/vedo builds deliver printable keys through CharEvent.
+            char_cid = self.vp.add_callback("CharEvent", _on_key)
             interactor.Start()
         except (AttributeError, RuntimeError) as exc:
             logger.debug("Key wait unavailable: %s", exc)
@@ -311,6 +315,11 @@ class VirtualKeyboard:
                     self.vp.remove_callback(cid)
                 except (AttributeError, RuntimeError):
                     logger.debug("Unable to remove key callback.")
+            if char_cid is not None:
+                try:
+                    self.vp.remove_callback(char_cid)
+                except (AttributeError, RuntimeError):
+                    logger.debug("Unable to remove char callback.")
 
         if state["abort"]:
             self._abort_playback = True

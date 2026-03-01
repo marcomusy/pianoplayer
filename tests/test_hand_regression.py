@@ -247,3 +247,23 @@ def test_memory_mode_enforces_max_thumb_pinky_span() -> None:
 
     assert hand.finger_positions[1] is not None and hand.finger_positions[5] is not None
     assert (hand.finger_positions[5] - hand.finger_positions[1]) <= hand.max_span_cm + 1e-9
+
+
+def test_progress_callback_is_normalized_to_processed_window() -> None:
+    notes = [_mk_note(i, measure=(1 if i < 4 else 2)) for i in range(8)]
+    hand = Hand(side="right", noteseq=notes, size="M")
+    hand.verbose = False
+
+    # Keep generation fast/deterministic for this progress test.
+    hand.optimize_seq = lambda _nseq, _istart: ([1, 2, 3, 4, 5, 1, 2, 3, 4], 0.0)  # type: ignore[method-assign]
+
+    updates: list[tuple[int, int, int]] = []
+    hand.generate(
+        start_measure=2,
+        nmeasures=1,
+        show_progress=lambda done, total, measure: updates.append((done, total, measure or 0)),
+    )
+
+    assert updates
+    assert all(total == 4 for _, total, _ in updates)
+    assert updates[-1][0] == 4
