@@ -148,6 +148,7 @@ def run_annotate(
     left_only=False,
     right_only=False,
     hand_size="M",
+    chord_note_stagger_s=0.05,
 ):
     options = AnnotateOptions(
         filename=filename,
@@ -166,6 +167,7 @@ def run_annotate(
         left_only=left_only,
         right_only=right_only,
         hand_size=hand_size,
+        chord_note_stagger_s=chord_note_stagger_s,
     )
     annotate(options)
 
@@ -200,6 +202,22 @@ def _normalize_requested_depth(args: SimpleNamespace) -> None:
             _MIN_MANUAL_DEPTH,
         )
         args.depth = _MIN_MANUAL_DEPTH
+
+
+def _normalize_chord_note_stagger(args: SimpleNamespace) -> None:
+    """Validate chord note staggering value."""
+    raw = getattr(args, "chord_note_stagger_s", 0.05)
+    try:
+        stagger = float(raw)
+    except (TypeError, ValueError):
+        logger.warning("Invalid chord_note_stagger_s %r; using 0.05.", raw)
+        args.chord_note_stagger_s = 0.05
+        return
+    if stagger < 0:
+        logger.warning("Negative chord_note_stagger_s %s is invalid; using 0.0.", stagger)
+        args.chord_note_stagger_s = 0.0
+        return
+    args.chord_note_stagger_s = stagger
 
 
 def _is_anchored_finger(value: Any) -> bool:
@@ -283,14 +301,24 @@ def load_note_sequences(args):
             _run_external(["musescore", "-f", args.filename, "-o", xmlfn], "MuseScore conversion")
             score_info = parse_musicxml(xmlfn)
             if not args.left_only:
-                rh_noteseq = reader(score_info, beam=args.rbeam)
+                rh_noteseq = reader(
+                    score_info,
+                    beam=args.rbeam,
+                    chord_note_stagger_s=args.chord_note_stagger_s,
+                )
             if not args.right_only:
-                lh_noteseq = reader(score_info, beam=args.lbeam)
+                lh_noteseq = reader(
+                    score_info,
+                    beam=args.lbeam,
+                    chord_note_stagger_s=args.chord_note_stagger_s,
+                )
+
         elif ext == ".txt":
             if not args.left_only:
                 rh_noteseq = reader_PIG(args.filename, args.rbeam)
             if not args.right_only:
                 lh_noteseq = reader_PIG(args.filename, args.lbeam)
+
         elif ext in {".mid", ".midi"}:
             try:
                 import pretty_midi
@@ -302,15 +330,32 @@ def load_note_sequences(args):
 
             pm = pretty_midi.PrettyMIDI(args.filename)
             if not args.left_only:
-                rh_noteseq = reader_pretty_midi(pm.instruments[args.rbeam], beam=args.rbeam)
+                rh_noteseq = reader_pretty_midi(
+                    pm.instruments[args.rbeam],
+                    beam=args.rbeam,
+                    chord_note_stagger_s=args.chord_note_stagger_s,
+                )
             if not args.right_only:
-                lh_noteseq = reader_pretty_midi(pm.instruments[args.lbeam], beam=args.lbeam)
+                lh_noteseq = reader_pretty_midi(
+                    pm.instruments[args.lbeam],
+                    beam=args.lbeam,
+                    chord_note_stagger_s=args.chord_note_stagger_s,
+                )
+
         else:
             score_info = parse_musicxml(xmlfn)
             if not args.left_only:
-                rh_noteseq = reader(score_info, beam=args.rbeam)
+                rh_noteseq = reader(
+                    score_info,
+                    beam=args.rbeam,
+                    chord_note_stagger_s=args.chord_note_stagger_s,
+                )
             if not args.right_only:
-                lh_noteseq = reader(score_info, beam=args.lbeam)
+                lh_noteseq = reader(
+                    score_info,
+                    beam=args.lbeam,
+                    chord_note_stagger_s=args.chord_note_stagger_s,
+                )
     except ExternalToolError:
         raise
     except Exception as exc:
@@ -570,6 +615,7 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
     show_progress = bool(getattr(args, "_show_progress", False))
     args = _as_namespace(args)
     _normalize_requested_depth(args)
+    _normalize_chord_note_stagger(args)
     show_progress = show_progress and not bool(args.quiet)
     with _ProgressReporter(show_progress) as progress:
         xmlfn, score_info, rh_noteseq, lh_noteseq = load_note_sequences(args)

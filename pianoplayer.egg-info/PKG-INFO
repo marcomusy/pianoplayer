@@ -1,17 +1,46 @@
+Metadata-Version: 2.4
+Name: pianoplayer
+Version: 3.0.0
+Summary: Automatic piano fingering generator. Finds and shows in 3D the best fingering combination to play a score.
+Author-email: Marco Musy <marco.musy@gmail.com>
+License: MIT
+Project-URL: Homepage, https://github.com/marcomusy/pianoplayer
+Project-URL: Repository, https://github.com/marcomusy/pianoplayer
+Keywords: piano,fingering,musicxml
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Education
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Topic :: Scientific/Engineering :: Visualization
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: rich>=13.0.0
+Provides-Extra: visual
+Requires-Dist: vedo>=2026.6.1; extra == "visual"
+Provides-Extra: midi
+Requires-Dist: pretty_midi>=0.2.9; extra == "midi"
+Provides-Extra: sound
+Requires-Dist: pygame>=2.6.0; extra == "sound"
+Provides-Extra: all
+Requires-Dist: vedo>=2026.6.1; extra == "all"
+Requires-Dist: pretty_midi>=0.2.9; extra == "all"
+Requires-Dist: pygame>=2.6.0; extra == "all"
+Dynamic: license-file
 
-![banner](https://github.com/user-attachments/assets/7242fc4e-873f-42fc-99ff-edf985a412eb)
+# PianoPlayer
 
-[![PyPI version](https://img.shields.io/pypi/v/pianoplayer.svg)](https://pypi.org/project/pianoplayer/)
 [![Downloads](https://pepy.tech/badge/pianoplayer)](https://pepy.tech/project/pianoplayer)
 [![Downloads / Month](https://pepy.tech/badge/pianoplayer/month)](https://pepy.tech/project/pianoplayer)
+[![Downloads / Week](https://pepy.tech/badge/pianoplayer/week)](https://pepy.tech/project/pianoplayer)
 [![lics](https://img.shields.io/badge/license-MIT-blue.svg)](https://en.wikipedia.org/wiki/MIT_License)
 [![DOI](https://zenodo.org/badge/107160052.svg)](https://zenodo.org/badge/latestdoi/107160052)
-[![CI](https://github.com/marcomusy/pianoplayer/actions/workflows/ci.yml/badge.svg)](https://github.com/marcomusy/pianoplayer/actions/workflows/ci.yml)
-[![Stars](https://img.shields.io/github/stars/marcomusy/pianoplayer.svg?style=social)](https://github.com/marcomusy/pianoplayer/stargazers)
 
 
 Automatic piano fingering generator for MusicXML and MIDI scores.  
 PianoPlayer searches for a low-effort fingering sequence for one or both hands.  
+You can also inspect playback in 3D with [vedo](https://github.com/marcomusy/vedo).
 
 ## Download and Install:
 ```bash
@@ -21,54 +50,14 @@ Optional extras:
 ```bash
 pip install "pianoplayer[visual]"  # 3D rendering with vedo
 pip install "pianoplayer[midi]"    # MIDI input support
-pip install "pianoplayer[sound]"   # enable playback
+pip install "pianoplayer[sound]"   # pygame playback
 pip install "pianoplayer[all]"     # all optional extras
 ```
 
-<details>
-<summary><strong>Python Setup (Beginner-Friendly)</strong></summary>
-
-If you are new to Python, use one of these two approaches.
-
-### Option A: Anaconda (recommended for beginners on Windows)
-
-1. Install Anaconda from https://www.anaconda.com/download
-2. Type **Anaconda Prompt** in your windows search and open it.
-3. Install PianoPlayer, type:
-```bash
-pip install pianoplayer
-```
-4. Run:
-```bash
-pianoplayer --help
-```
-
-### Option B: Python from python.org
-
-Windows:
-1. Install Python 3.10+ from https://www.python.org/downloads/windows/
-2. During installation, enable **Add Python to PATH**.
-3. Open **Command Prompt** and run:
-```bash
-python -m pip install --upgrade pip
-pip install pianoplayer
-pianoplayer --help
-```
-
-macOS/Linux:
-```bash
-python3 -m pip install --upgrade pip
-pip install pianoplayer
-pianoplayer --help
-```
-
-</details>
-
-To visualize the output annotated score (`output.xml`) install the latest
+To visualize the output annotated score install the latest
 [musescore](https://musescore.org/en/download), or any other renderer
 of [MusicXML](https://en.wikipedia.org/wiki/MusicXML)
 files.
-You can also inspect playback in 3D with [vedo](https://github.com/marcomusy/vedo).
 
 
 ## CLI Usage:
@@ -83,10 +72,9 @@ file with name `output.xml`.<br />
 pianoplayer         # if no argument is given a GUI will pop up
 # Or
 pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-b] [-v] [--vedo-speed]
-            [-z] [-l] [-r] [--hand-size {XXS,XS,S,M,L,XL,XXL}] [--chord-note-stagger-s]
+            [-z] [-l] [-r] [--hand-size {XXS,XS,S,M,L,XL,XXL}]
             filename
-# Valid file formats: MusicXML, compressed MusicXML, MuseScore, MIDI, PIG
-# (.xml, .mxl, .mscz, .mscx, .mid, .midi, .txt)
+# Valid file formats: MusicXML, compressed MusicXML, MuseScore, MIDI (.xml, .mxl, .mscz, .mscx, .mid, .midi)
 #
 # Optional arguments:
 #   -h, --help            show this help message and exit
@@ -105,7 +93,6 @@ pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-
 #   -l, --left-only       Fingering for left hand only
 #   -r, --right-only      Fingering for right hand only
 #   --hand-size           Hand size preset [XXS, XS, S, M, L, XL, XXL]
-#   --chord-note-stagger-s [0.05] Small note staggering used to represent chords
 ```
 
 ### GUI Usage
@@ -115,7 +102,7 @@ Run `pianoplayer` with no filename to open the GUI, then:
 
 - press **Import Score** (valid formats: *MusicXML/MXL, MuseScore, MIDI, [PIG](http://beam.kisarazu.ac.jp/~saito/research/PianoFingeringDataset/)*)
 - press **GENERATE** (`output.xml` is written)
-- press **Musescore** to visualize the annotated score (Linux/macOS only)
+- press **Musescore** to visualize the annotated score
 - press **Quit** (or `q` / `Ctrl+W`) to close the GUI
 
 

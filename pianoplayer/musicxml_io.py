@@ -241,11 +241,19 @@ def parse_musicxml(filename: str) -> ScoreInfo:
     return ScoreInfo(tree=tree, parts=parts)
 
 
-def noteseq_from_part(part: PartInfo) -> list[INote]:
+def noteseq_from_part(part: PartInfo, chord_note_stagger_s: float = 0.05) -> list[INote]:
+    """Convert a parsed part to INote sequence.
+
+    Parameters
+    ----------
+    chord_note_stagger_s:
+        Small onset/duration offset (seconds) used to turn a simultanous chord into
+        a very short top-to-bottom note sequence for the optimizer.
+    """
     noteseq: list[INote] = []
     chord_id = 0
     note_id = 0
-    sfasam = 0.05
+    chord_note_stagger_s = max(0.0, float(chord_note_stagger_s))
 
     for evt in part.events:
         if evt.duration == 0:
@@ -288,8 +296,8 @@ def noteseq_from_part(part: PartInfo) -> list[INote]:
                 an.NinChord = count
                 an.measure = evt.measure
                 an.x = keypos(an)
-                an.time = evt.offset - sfasam * (count - j - 1)
-                an.duration = evt.duration + sfasam * (count - 1)
+                an.time = evt.offset - chord_note_stagger_s * (count - j - 1)
+                an.duration = evt.duration + chord_note_stagger_s * (count - 1)
                 an.isBlack = (p.midi % 12) in [1, 3, 6, 8, 10]
                 if j < len(evt.notes):
                     an.fingering = _extract_note_fingering(evt.notes[j])

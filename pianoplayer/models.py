@@ -50,6 +50,7 @@ class AnnotateOptions:
     left_only: bool = False
     right_only: bool = False
     hand_size: str = "M"
+    chord_note_stagger_s: float = 0.05
     cost_path: str | None = None
 
     @classmethod

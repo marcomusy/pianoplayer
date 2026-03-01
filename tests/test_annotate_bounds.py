@@ -1,7 +1,14 @@
 import xml.etree.ElementTree as ET
 from types import SimpleNamespace
 
-from pianoplayer.musicxml_io import annotate_part_with_fingering, parse_musicxml
+from pianoplayer.musicxml_io import (
+    EventInfo,
+    PartInfo,
+    PitchInfo,
+    annotate_part_with_fingering,
+    noteseq_from_part,
+    parse_musicxml,
+)
 from pianoplayer.scorereader import reader
 
 
@@ -109,3 +116,32 @@ def test_annotate_below_beam_preserves_non_fingering_lyrics(tmp_path) -> None:
     assert "1" in texts
     assert "2" in texts
     assert any(ly.attrib.get("number") == "pianoplayer-fingering" for ly in lyrics)
+
+
+def test_noteseq_from_part_uses_configurable_chord_stagger() -> None:
+    part = PartInfo(
+        part_id="P1",
+        events=[
+            EventInfo(
+                kind="chord",
+                measure=1,
+                offset=10.0,
+                duration=1.0,
+                tie_types=set(),
+                notes=[],
+                pitches=[
+                    PitchInfo(name="C", octave=4, midi=60),
+                    PitchInfo(name="E", octave=4, midi=64),
+                    PitchInfo(name="G", octave=4, midi=67),
+                ],
+            )
+        ],
+    )
+
+    seq_default = noteseq_from_part(part)
+    seq_zero = noteseq_from_part(part, chord_note_stagger_s=0.0)
+
+    assert len(seq_default) == 3
+    assert len(seq_zero) == 3
+    assert seq_default[0].time < seq_default[1].time < seq_default[2].time
+    assert seq_zero[0].time == seq_zero[1].time == seq_zero[2].time == 10.0

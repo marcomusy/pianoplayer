@@ -46,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--depth",
         metavar="",
         type=int,
-        help="[auto] Depth of combinatorial search, [4-9]",
+        help="[auto] Depth of combinatorial search, [5-9]",
         default=0,
     )
     parser.add_argument(
@@ -84,6 +84,13 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["XXS", "XS", "S", "M", "L", "XL", "XXL"],
         default="M",
         help="Hand size preset",
+    )
+    parser.add_argument(
+        "--chord-note-stagger-s",
+        metavar="",
+        type=float,
+        default=0.05,
+        help="[0.05] Chord note staggering in seconds for optimization.",
     )
     return parser
 

@@ -12,18 +12,26 @@ from pianoplayer.musicxml_io import PartInfo, noteseq_from_part
 logger = logging.getLogger(__name__)
 
 
-def reader(score: Any, beam: int = 0) -> list[INote]:
+def reader(
+    score: Any,
+    beam: int = 0,
+    chord_note_stagger_s: float = 0.05,
+) -> list[INote]:
     """Read a parsed score object and return an ``INote`` sequence for one part."""
     parts = getattr(score, "parts", None)
     if parts is None or len(parts) <= beam:
         return []
     part = parts[beam]
     if isinstance(part, PartInfo):
-        return noteseq_from_part(part)
+        return noteseq_from_part(part, chord_note_stagger_s=chord_note_stagger_s)
     return []
 
 
-def reader_pretty_midi(pm: Any, beam: int = 0) -> list[INote]:
+def reader_pretty_midi(
+    pm: Any,
+    beam: int = 0,
+    chord_note_stagger_s: float = 0.05,
+) -> list[INote]:
     """Convert a ``pretty_midi.Instrument`` object to ``INote`` entries."""
     noteseq: list[INote] = []
     pm_notes = sorted(pm.notes, key=attrgetter("start"))
@@ -32,7 +40,7 @@ def reader_pretty_midi(pm: Any, beam: int = 0) -> list[INote]:
 
     chord_id = 0
     note_id = 0
-    sfasam = 0.05
+    chord_note_stagger_s = max(0.0, float(chord_note_stagger_s))
 
     ii = 0
     while ii < len(pm_notes):
@@ -80,8 +88,8 @@ def reader_pretty_midi(pm: Any, beam: int = 0) -> list[INote]:
             an.NinChord = len(valid_group)
             an.octave = cn.pitch // 12
             an.x = keypos_midi(cn)
-            an.time = onset - sfasam * (len(valid_group) - k - 1)
-            an.duration = cn_duration + sfasam * (len(valid_group) - 1)
+            an.time = onset - chord_note_stagger_s * (len(valid_group) - k - 1)
+            an.duration = cn_duration + chord_note_stagger_s * (len(valid_group) - 1)
             pc = cn.pitch % 12
             an.isBlack = pc in [1, 3, 6, 8, 10]
             noteseq.append(an)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import platform
 import subprocess
 from pathlib import Path
@@ -56,7 +55,8 @@ class PianoGUI(Frame):
         left_cb.place(x=200, y=80)
 
         Button(self, text="GENERATE", command=self.generate_cmd).place(x=300, y=70)
-        Button(self, text="Musescore", command=self.musescore_cmd).place(x=300, y=120)
+        if platform.system() != "Windows":
+            Button(self, text="Musescore", command=self.musescore_cmd).place(x=300, y=120)
         Button(self, text="Quit", command=self._close_cmd).place(x=300, y=170)
 
         self.measures = Scale(self, from_=1, to=100, bg="white", length=210, orient="horizontal")
@@ -121,6 +121,12 @@ class PianoGUI(Frame):
 
     def musescore_cmd(self) -> None:
         """Open the generated output score with the platform MuseScore command."""
+        if platform.system() == "Windows":
+            messagebox.showinfo(
+                "PianoPlayer",
+                "MuseScore launch from GUI is not available on Windows.",
+            )
+            return
         if not Path(self.output_file).exists():
             messagebox.showinfo("PianoPlayer", "Generate output first.")
             return
@@ -128,8 +134,6 @@ class PianoGUI(Frame):
         try:
             if platform.system() == "Darwin":
                 subprocess.run(["open", self.output_file], check=True)
-            elif platform.system() == "Windows":
-                os.startfile(self.output_file)
             else:
                 subprocess.run(
                     ["musescore", self.output_file],
