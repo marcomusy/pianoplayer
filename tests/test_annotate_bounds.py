@@ -1,5 +1,5 @@
-from types import SimpleNamespace
 import xml.etree.ElementTree as ET
+from types import SimpleNamespace
 
 from pianoplayer.musicxml_io import annotate_part_with_fingering, parse_musicxml
 from pianoplayer.scorereader import reader

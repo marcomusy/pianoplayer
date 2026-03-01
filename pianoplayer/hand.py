@@ -53,9 +53,9 @@ class Hand:
                 self.frest[i] *= self.hf
         logger.debug("Hand size preset %s (span %.2f cm).", size, 21 * self.hf)
 
-        ### HIGHLY EXPERIMENTAL: whether to keep relaxed finger targets or 
+        ### HIGHLY EXPERIMENTAL: whether to keep relaxed finger targets or
         # apply memory-based smoothing after the first placement.
-        self.preserve_posture_memory = False  
+        self.preserve_posture_memory = False
         self.relocation_alpha = 0.3
         self._has_position_state = False
         self.max_span_cm = 21.0 * self.hf
