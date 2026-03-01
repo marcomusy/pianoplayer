@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PianoPlayer Web API</title>
+  <link
+    rel="icon"
+    href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="50" font-size="48">🎹</text></svg>'
+  />
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Playfair+Display:wght@700&display=swap");
+
+    :root {
+      --bg-top: #f0f9ff;
+      --bg-bottom: #fffef2;
+      --ink: #102018;
+      --muted: #4b5563;
+      --panel: rgba(255, 255, 255, 0.88);
+      --line: rgba(16, 32, 24, 0.14);
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --accent-soft: #ccfbf1;
+      --tab: #e6eef8;
+      --tab-active: #d8e8ff;
+      --error-soft: #fee2e2;
+      --ok-soft: #dcfce7;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Manrope", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(950px 420px at 5% -20%, #dbeafe 0%, transparent 62%),
+        radial-gradient(860px 400px at 92% -16%, #cffafe 0%, transparent 58%),
+        linear-gradient(170deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+    }
+
+    .wrap {
+      width: min(960px, 100%);
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: 1fr;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(140deg, #ffffffd9, #f0fdfaeb);
+      box-shadow: 0 22px 56px -42px #0f172a;
+      padding: 1.05rem 1.1rem;
+    }
+
+    .kicker {
+      display: inline-block;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      padding: 0.2rem 0.55rem;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0.55rem 0 0.3rem;
+      font-family: "Playfair Display", serif;
+      font-size: clamp(1.52rem, 2.1vw, 2rem);
+      line-height: 1.14;
+    }
+
+    .subtitle {
+      margin: 1.45rem auto 0.9rem;
+      color: #0f172a;
+      font-size: clamp(0.95rem, 1.45vw, 1.18rem);
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: .01em;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .hero-links {
+      margin-top: 0.7rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+    }
+
+    .hero-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      text-decoration: none;
+      border: 1px solid #b9d6d3;
+      border-radius: 999px;
+      padding: 0.32rem 0.7rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #0f4f4a;
+      background: #f0fdfa;
+      transition: background .15s ease, transform .15s ease;
+    }
+
+    .hero-link:hover {
+      background: #ccfbf1;
+      transform: translateY(-1px);
+    }
+
+    .hero-image {
+      margin-top: 0.85rem;
+      border: 1px solid #d3e3ea;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #ffffff;
+      box-shadow: 0 12px 26px -18px #0f172a;
+    }
+
+    .hero-image img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 26px 52px -42px #0f172a;
+      padding: 1rem;
+    }
+
+    .io-row {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      align-items: center;
+      gap: 0.55rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.35rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .tab {
+      border: 1px solid #cbd5e1;
+      background: var(--tab);
+      color: #1e293b;
+      border-radius: 10px;
+      padding: 0.45rem 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: var(--tab-active);
+      border-color: #93c5fd;
+      color: #0f172a;
+    }
+
+    .panel {
+      display: none;
+      border: 1px solid #d9e4ea;
+      border-radius: 12px;
+      background: #fbfdff;
+      padding: 0.75rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .panel.active { display: block; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.8rem;
+    }
+
+    .field { display: grid; gap: 0.3rem; }
+
+    label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #23404a;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #0f172a;
+      font-size: 0.95rem;
+      padding: 0.55rem 0.62rem;
+      outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+
+    input:focus, select:focus {
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 3px #ccfbf1;
+    }
+
+    .actions {
+      margin-top: 0.1rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .output-note {
+      margin-top: 1.45rem;
+      border: 1px solid #dbe6ef;
+      border-radius: 10px;
+      background: #f8fbff;
+      padding: 0.68rem 0.78rem;
+      color: #334155;
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+
+    .output-note b {
+      color: #0f172a;
+    }
+
+    button.generate {
+      border: 0;
+      border-radius: 11px;
+      padding: 0.66rem 1.05rem;
+      background: linear-gradient(145deg, var(--accent), var(--accent-strong));
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: 800;
+      letter-spacing: .01em;
+      box-shadow: 0 10px 24px -16px #0f766e;
+      transition: transform .15s ease, filter .15s ease, opacity .15s ease;
+    }
+
+    button.generate:hover { transform: translateY(-1px); filter: brightness(1.03); }
+    button.generate:disabled { opacity: .62; cursor: wait; transform: none; }
+
+    #status {
+      min-height: 1.25rem;
+      border-radius: 10px;
+      padding: 0.5rem 0.7rem;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      color: #334155;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    #status.busy {
+      background: #eef2ff;
+      border-color: #a5b4fc;
+      color: #3730a3;
+    }
+
+    #status.ok {
+      background: var(--ok-soft);
+      border-color: #86efac;
+      color: #166534;
+    }
+
+    #status.err {
+      background: var(--error-soft);
+      border-color: #fca5a5;
+      color: #991b1b;
+    }
+
+    @media (max-width: 760px) {
+      .io-row { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+      body { padding: 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <!-- <span class="kicker">No Setup Needed</span> -->
+      <div class="hero-image">
+        <img
+          src="https://github.com/user-attachments/assets/7242fc4e-873f-42fc-99ff-edf985a412eb"
+          alt="PianoPlayer banner"
+        />
+      </div>
+      <div class="hero-links">
+        <a class="hero-link" href="https://github.com/marcomusy/pianoplayer" target="_blank" rel="noopener noreferrer">
+          GitHub Repository
+        </a>
+        <a class="hero-link" href="https://pypi.org/project/pianoplayer/" target="_blank" rel="noopener noreferrer">
+          PyPI Package
+        </a>
+      </div>
+      <p class="subtitle">Upload a score and download the annotated MusicXML</p>
+    </section>
+
+    <section class="card">
+      <form id="annotate-form">
+        <div class="io-row">
+          <label for="file">Input Score</label>
+          <input id="file" name="file" type="file" accept=".xml,.mxl,.mid,.midi,.mscz,.mscx,.txt" required />
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Options Tabs">
+          <button class="tab active" type="button" data-target="basic-panel" role="tab" aria-selected="true">Basic</button>
+          <button class="tab" type="button" data-target="advanced-panel" role="tab" aria-selected="false">Advanced</button>
+        </div>
+
+        <div id="basic-panel" class="panel active" role="tabpanel">
+          <div class="grid">
+            <div class="field">
+              <label for="hand_size">Hand Size</label>
+              <select id="hand_size" name="hand_size">
+                <option>XXS</option><option>XS</option><option>S</option>
+                <option selected>M</option>
+                <option>L</option><option>XL</option><option>XXL</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="hand_mode">Annotate</label>
+              <select id="hand_mode" name="hand_mode">
+                <option value="both" selected>Both Hands</option>
+                <option value="right">Right Hand Only</option>
+                <option value="left">Left Hand Only</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="start_measure">Start at Measure</label>
+              <input id="start_measure" name="start_measure" type="number" min="1" value="1" />
+            </div>
+
+            <div class="field">
+              <label for="n_measures">Stop at Measure</label>
+              <input id="n_measures" name="n_measures" type="number" min="1" value="1000" />
+            </div>
+          </div>
+        </div>
+
+        <div id="advanced-panel" class="panel" role="tabpanel">
+          <div class="grid">
+            <div class="field">
+              <label for="depth">Depth of search (0=auto)</label>
+              <input id="depth" name="depth" type="number" min="0" max="9" value="0" />
+            </div>
+
+            <div class="field">
+              <label for="chord_note_stagger_s">Chord Stagger (sec)</label>
+              <input id="chord_note_stagger_s" name="chord_note_stagger_s" type="number" step="0.01" min="0" value="0.05" />
+            </div>
+
+            <div class="field">
+              <label for="rbeam">Right Beam number</label>
+              <input id="rbeam" name="rbeam" type="number" min="0" value="0" />
+            </div>
+
+            <div class="field">
+              <label for="lbeam">Left Beam number</label>
+              <input id="lbeam" name="lbeam" type="number" min="0" value="1" />
+            </div>
+
+            <div class="field">
+              <label for="below_beam">Show annotations below beam</label>
+              <select id="below_beam" name="below_beam">
+                <option value="false" selected>False</option>
+                <option value="true">True</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="submit-btn" class="generate" type="submit">Generate and Download</button>
+          <div id="status">Ready</div>
+        </div>
+
+        <div class="output-note">
+          <b>Output:</b> the download is a MusicXML file with fingering annotations added to your score.<br />
+          Existing (pre-fingered) anchors are preserved and shown as circled numbers.<br />
+          You can open the result with MuseScore or any MusicXML-compatible viewer.
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script>
+    const form = document.getElementById("annotate-form");
+    const statusEl = document.getElementById("status");
+    const submitBtn = document.getElementById("submit-btn");
+    const tabs = Array.from(document.querySelectorAll(".tab"));
+    const panels = Array.from(document.querySelectorAll(".panel"));
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((t) => {
+          t.classList.remove("active");
+          t.setAttribute("aria-selected", "false");
+        });
+        panels.forEach((p) => p.classList.remove("active"));
+
+        tab.classList.add("active");
+        tab.setAttribute("aria-selected", "true");
+        const panel = document.getElementById(tab.dataset.target);
+        if (panel) panel.classList.add("active");
+      });
+    });
+
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      submitBtn.disabled = true;
+      statusEl.className = "busy";
+      statusEl.textContent = "Processing score...";
+
+      try {
+        const formData = new FormData(form);
+
+        const handMode = formData.get("hand_mode");
+        formData.delete("hand_mode");
+        formData.set("left_only", handMode === "left" ? "true" : "false");
+        formData.set("right_only", handMode === "right" ? "true" : "false");
+
+        const response = await fetch("/annotate", { method: "POST", body: formData });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const cd = response.headers.get("content-disposition") || "";
+        const match = /filename=\"([^\"]+)\"/.exec(cd);
+        const filename = match ? match[1] : "annotated.xml";
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        statusEl.className = "ok";
+        statusEl.textContent = "Done. Download started.";
+      } catch (err) {
+        statusEl.className = "err";
+        statusEl.textContent = `Failed: ${err.message}`;
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

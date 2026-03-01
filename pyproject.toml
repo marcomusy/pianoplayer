@@ -26,11 +26,15 @@ visual = ["vedo>=2026.6.1"]
 midi = ["pretty_midi>=0.2.9"]
 sound = ["pygame>=2.6.0"]
 build = ["pyinstaller>=6.0.0"]
+web = ["fastapi>=0.115.0", "uvicorn>=0.30.0", "python-multipart>=0.0.9"]
 all = [
   "vedo>=2026.6.1",
   "pretty_midi>=0.2.9",
   "pygame>=2.6.0",
   "pyinstaller>=6.0.0",
+  "fastapi>=0.115.0",
+  "uvicorn>=0.30.0",
+  "python-multipart>=0.0.9",
 ]
 
 [project.urls]
@@ -44,7 +48,10 @@ pianoplayer = "pianoplayer.cli:main"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["pianoplayer*"]
+include = ["pianoplayer*", "webapi*"]
+
+[tool.setuptools.package-data]
+webapi = ["*.html"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
