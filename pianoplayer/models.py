@@ -45,7 +45,6 @@ class AnnotateOptions:
     musescore: bool = False
     below_beam: bool = False
     with_vedo: bool = False
-    vedo_speed: float = 1.5
     sound_off: bool = False
     left_only: bool = False
     right_only: bool = False

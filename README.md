@@ -82,7 +82,7 @@ file with name `output.xml`.<br />
 ```bash
 pianoplayer         # if no argument is given a GUI will pop up
 # Or
-pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-b] [-v] [--vedo-speed]
+pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-b] [-v]
             [-z] [-l] [-r] [--hand-size {XXS,XS,S,M,L,XL,XXL}] [--chord-note-stagger-s]
             filename
 # Valid file formats: MusicXML, compressed MusicXML, MuseScore, MIDI, PIG

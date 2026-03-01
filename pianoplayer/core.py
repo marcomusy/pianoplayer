@@ -143,7 +143,6 @@ def run_annotate(
     musescore=False,
     below_beam=False,
     with_vedo=0,
-    vedo_speed=False,
     sound_off=False,
     left_only=False,
     right_only=False,
@@ -162,14 +161,16 @@ def run_annotate(
         musescore=musescore,
         below_beam=below_beam,
         with_vedo=with_vedo,
-        vedo_speed=vedo_speed,
         sound_off=sound_off,
         left_only=left_only,
         right_only=right_only,
         hand_size=hand_size,
         chord_note_stagger_s=chord_note_stagger_s,
     )
-    annotate(options)
+    options_ns = options.to_namespace()
+    # GUI/programmatic callers expect progress unless quiet mode is requested.
+    options_ns._show_progress = not bool(quiet)
+    annotate(options_ns)
 
 
 def _as_namespace(args: Any) -> SimpleNamespace:
@@ -519,7 +520,6 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
     if args.sound_off:
         vk.playsounds = False
 
-    vk.speedfactor = args.vedo_speed
     vk.play()
     renderer = getattr(vk.vp, "renderer", None)
     if renderer is None:

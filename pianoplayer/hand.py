@@ -233,28 +233,21 @@ class Hand:
 
         if not na.isChord and not nb.isChord:
             # Same-finger repetitions on different notes are discouraged for short notes.
-            if fa == fb and xba and na.duration < 4:
-                return True
+            if fa == fb and xba and na.duration < 4: return True
             if fa > 1:
                 # Non-thumb crossing against melodic direction is disallowed.
-                if fb > 1 and (fb - fa) * xba < 0:
-                    return True
+                if fb > 1  and (fb - fa) * xba < 0: return True
                 # Thumb-under onto black key while moving up is disallowed.
-                if fb == 1 and nb.isBlack and xba > 0:
-                    return True
+                if fb == 1 and nb.isBlack and xba > 0: return True
             # Fast thumb-out from black key to a lower note is disallowed.
-            elif na.isBlack and xba < 0 and fb > 1 and na.duration < 2:
-                return True
+            elif na.isBlack and xba < 0 and fb > 1 and na.duration < 2: return True
 
         elif na.isChord and nb.isChord and na.chordID == nb.chordID:
             axba = abs(xba) * hf / 0.8
             # Chord fingering order must respect hand directionality.
-            if fa == fb:
-                return True
-            if fa < fb and lr == "left":
-                return True
-            if fa > fb and lr == "right":
-                return True
+            if fa == fb: return True
+            if fa < fb and lr == "left": return True
+            if fa > fb and lr == "right": return True
 
             pair = (min(fa, fb), max(fa, fb))
             # Maximum allowed inter-finger stretch inside the same chord.

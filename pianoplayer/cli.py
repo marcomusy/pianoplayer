@@ -68,9 +68,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-v", "--with-vedo", help="Play 3D scene after processing", action="store_true"
     )
-    parser.add_argument(
-        "--vedo-speed", metavar="", type=float, help="[1] Speed factor of rendering", default=1.5
-    )
     parser.add_argument("-z", "--sound-off", help="Disable sound", action="store_true")
     parser.add_argument(
         "-l", "--left-only", help="Fingering for left hand only", action="store_true"
