@@ -451,8 +451,9 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
     if args.start_measure != 1:
         raise ValueError("start_measure must be set to 1 when -v/--with-vedo is used")
 
-    if not xmlfn.endswith(".xml"):
-        logger.warning("3D playback currently requires MusicXML input; skipping.")
+    ext = os.path.splitext(str(xmlfn).lower())[1]
+    if ext not in {".xml", ".mxl"}:
+        logger.warning("3D playback currently requires MusicXML (.xml/.mxl) input; skipping.")
         return
 
     try:

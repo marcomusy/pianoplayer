@@ -4,26 +4,54 @@ from __future__ import annotations
 
 import logging
 import math
+import os
+import tempfile
+import wave
 from array import array
+from pathlib import Path
 from typing import Any, Iterable
 
 logger = logging.getLogger(__name__)
 
 try:
-    import simpleaudio as _simpleaudio
+    import pygame
 except ImportError:
-    _simpleaudio = None
+    pygame = None
 
-has_simpleaudio = _simpleaudio is not None
+try:
+    import winsound as _winsound
+except ImportError:
+    _winsound = None
+
 _warned_missing_backend = False
+_temp_audio_dir = Path(tempfile.gettempdir()) / "pianoplayer_audio"
+_temp_audio_dir.mkdir(parents=True, exist_ok=True)
 
 
 def _warn_missing_backend_once() -> None:
     global _warned_missing_backend
     if _warned_missing_backend:
         return
-    logger.debug("simpleaudio not available; sound playback disabled")
+    logger.warning("Audio playback unavailable (install pygame).")
     _warned_missing_backend = True
+
+
+def _init_pygame_mixer() -> bool:
+    if pygame is None:
+        return False
+    try:
+        if not pygame.mixer.get_init():
+            pygame.mixer.pre_init(44100, -16, 1, 512)
+            pygame.mixer.init()
+        return True
+    except Exception as exc:
+        logger.debug("pygame mixer init failed: %s", exc)
+        return False
+
+
+def has_audio_backend() -> bool:
+    """Return True when at least one audio backend is available."""
+    return _init_pygame_mixer() or (_winsound is not None)
 
 
 def _pitch_to_frequency(value: Any) -> float | None:
@@ -34,24 +62,12 @@ def _pitch_to_frequency(value: Any) -> float | None:
     return None
 
 
-def soundof(
+def _render_samples(
     notes: Iterable[Any],
-    duration: float = 1.0,
-    volume: float = 0.75,
-    fading: float = 17.0,
-    wait: bool = True,
-):
-    """Play a group of notes (chord) for the prescribed duration.
-
-    Parameters
-    ----------
-    fading:
-        Fade-in/out length in milliseconds.
-    """
-    if _simpleaudio is None:
-        _warn_missing_backend_once()
-        return None
-
+    duration: float,
+    volume: float,
+    fading: float,
+) -> tuple[array, int] | None:
     try:
         duration_s = float(duration)
     except (TypeError, ValueError):
@@ -75,6 +91,7 @@ def soundof(
     timepoints = int(duration_s * sample_rate)
     if timepoints <= 0:
         return None
+
     fading_n = int(sample_rate * (fading_ms / 1000.0))
     fade_n = min(fading_n, timepoints // 2)
 
@@ -108,18 +125,87 @@ def soundof(
         amp = int(max(-1.0, min(1.0, val * volume_f)) * 32767)
         samples.append(amp)
 
-    play_obj = _simpleaudio.play_buffer(samples.tobytes(), 1, 2, sample_rate)
-    if wait:
-        play_obj.wait_done()
-    return play_obj
+    return samples, sample_rate
+
+
+def _play_with_pygame(samples: array, sample_rate: int, wait: bool):
+    """Play raw samples using pygame mixer."""
+    if not _init_pygame_mixer():
+        return None
+
+    pid = os.getpid()
+    wav_path = _temp_audio_dir / f"pp_{pid}_{id(samples)}.wav"
+    try:
+        with wave.open(str(wav_path), "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            wf.writeframes(samples.tobytes())
+
+        snd = pygame.mixer.Sound(str(wav_path))
+        ch = snd.play()
+        if wait and ch is not None:
+            while ch.get_busy():
+                pygame.time.delay(1)
+        return ch
+    except Exception as exc:
+        logger.debug("pygame playback failed: %s", exc)
+        return None
+    finally:
+        try:
+            wav_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+def soundof(
+    notes: Iterable[Any],
+    duration: float = 1.0,
+    volume: float = 0.75,
+    fading: float = 17.0,
+    wait: bool = True,
+):
+    """Play a group of notes (chord) for the prescribed duration.
+
+    Parameters
+    ----------
+    fading:
+        Fade-in/out length in milliseconds.
+    """
+    rendered = _render_samples(notes, duration=duration, volume=volume, fading=fading)
+    if rendered is None:
+        return None
+    samples, sample_rate = rendered
+
+    ch = _play_with_pygame(samples, sample_rate, wait)
+    if ch is not None:
+        return ch
+
+    # Last-resort fallback: Windows beep for single-note usage.
+    if _winsound is not None:
+        freqs = []
+        for n in notes:
+            freq = _pitch_to_frequency(getattr(n, "pitch", n))
+            if freq is not None:
+                freqs.append(freq)
+        if freqs:
+            try:
+                hz = int(max(37, min(32767, round(freqs[0]))))
+                msec = max(20, int(float(duration) * 1000))
+                if wait:
+                    _winsound.Beep(hz, msec)
+                else:
+                    _winsound.MessageBeep()
+                return True
+            except Exception:
+                pass
+
+    _warn_missing_backend_once()
+    return None
 
 
 def play_sound(n: Any, speedfactor: float = 1.0, wait: bool = True):
     """Play a single note or chord-like item."""
-    if _simpleaudio is None:
-        _warn_missing_backend_once()
-        return None
-
     try:
         speed = float(speedfactor)
     except (TypeError, ValueError):
@@ -134,8 +220,3 @@ def play_sound(n: Any, speedfactor: float = 1.0, wait: bool = True):
         logger.warning("Note object has no duration; skipping sound.")
         return None
     return soundof([n], duration=float(duration) / speed, wait=wait)
-
-
-def playSound(n: Any, speedfactor: float = 1.0, wait: bool = True):
-    """Backward-compatible wrapper for ``play_sound``."""
-    return play_sound(n, speedfactor=speedfactor, wait=wait)

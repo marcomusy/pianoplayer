@@ -52,34 +52,159 @@ class Hand:
             if self.frest[i]:
                 self.frest[i] *= self.hf
         logger.debug("Hand size preset %s (span %.2f cm).", size, 21 * self.hf)
-        self.cfps = list(self.frest)
+
+        ### HIGHLY EXPERIMENTAL: whether to keep relaxed finger targets or 
+        # apply memory-based smoothing after the first placement.
+        self.preserve_posture_memory = False  
+        self.relocation_alpha = 0.3
+        self._has_position_state = False
+        self.max_span_cm = 21.0 * self.hf
+        self.max_follow_lag_cm = 2.5 * self.hf
+        self.min_finger_gap_cm = 0.15 * self.hf
+        ################################
+
+        self.finger_positions = list(self.frest)
         self.cost = -1.0
 
-    def set_fingers_positions(self, fings: Sequence[int], notes: Sequence[INote], i: int) -> None:
-        """Update current finger positions after assigning note index ``i``."""
+    def set_fingers_positions(
+        self,
+        fings: Sequence[int],
+        notes: Sequence[INote],
+        i: int,
+        *,
+        finger_positions: list[float | None] | None = None,
+        force_relaxed: bool = False,
+    ) -> None:
+        """Update finger positions after assigning note index ``i``.
+
+        By default it updates ``self.finger_positions`` and tracks first-placement state.
+        Pass ``finger_positions=...`` to update an external temporary state instead.
+        """
+        if finger_positions is None:
+            finger_positions = self.finger_positions
+            force_relaxed = not self._has_position_state
+
         fi = fings[i]
-        ni = notes[i]
+        note_x = notes[i].x
+        targets = self._relaxed_targets(fi, note_x)
+        if not targets:
+            return
+
+        # First global placement starts from relaxed hand geometry; then memory may apply.
+        if force_relaxed or not self.preserve_posture_memory:
+            for j in (1, 2, 3, 4, 5):
+                finger_positions[j] = targets.get(j)
+            finger_positions[fi] = note_x
+            if finger_positions is self.finger_positions:
+                self._has_position_state = True
+            return
+
+        for j in (1, 2, 3, 4, 5):
+            target = targets.get(j)
+            if target is None:
+                finger_positions[j] = None
+                continue
+            if j == fi:
+                # The active finger must exactly land on the current note.
+                finger_positions[j] = note_x
+                continue
+            prev = finger_positions[j]
+            if prev is None:
+                finger_positions[j] = target
+            else:
+                # `relocation_alpha` is memory strength:
+                # 0.0 -> fully relaxed target (default behavior),
+                # 1.0 -> keep previous finger posture.
+                finger_positions[j] = (
+                    self.relocation_alpha * prev + (1.0 - self.relocation_alpha) * target
+                )
+        self._apply_position_constraints(finger_positions, fi, note_x, targets)
+        if finger_positions is self.finger_positions:
+            self._has_position_state = True
+
+    def _relaxed_targets(self, fi: int, note_x: float) -> dict[int, float]:
+        """Return relaxed absolute target positions for all fingers around pressed finger ``fi``."""
         ifx = self.frest[fi]
         if ifx is None:
-            return
+            return {}
+        targets: dict[int, float] = {}
         for j in (1, 2, 3, 4, 5):
             jfx = self.frest[j]
-            self.cfps[j] = (jfx - ifx) + ni.x if jfx is not None else None
+            if jfx is None:
+                continue
+            targets[j] = (jfx - ifx) + note_x
+        return targets
+
+    def _apply_position_constraints(
+        self,
+        finger_positions: list[float | None],
+        fi: int,
+        note_x: float,
+        targets: dict[int, float],
+    ) -> None:
+        """Constrain posture memory so fingers follow the hand and keep realistic spread."""
+        for j in (1, 2, 3, 4, 5):
+            if j == fi:
+                continue
+            pos = finger_positions[j]
+            target = targets.get(j)
+            if pos is None or target is None:
+                continue
+            lag = pos - target
+            if lag > self.max_follow_lag_cm:
+                finger_positions[j] = target + self.max_follow_lag_cm
+            elif lag < -self.max_follow_lag_cm:
+                finger_positions[j] = target - self.max_follow_lag_cm
+
+        # Preserve finger ordering to avoid impossible interpenetration/cross-over poses.
+        for j in (2, 3, 4, 5):
+            a = finger_positions[j - 1]
+            b = finger_positions[j]
+            if a is None or b is None:
+                continue
+            min_allowed = a + self.min_finger_gap_cm
+            if b < min_allowed:
+                finger_positions[j] = min_allowed
+
+        # Hard cap on thumb-pinky spread around current contact note.
+        if finger_positions[1] is not None and finger_positions[5] is not None:
+            span = finger_positions[5] - finger_positions[1]
+            if span > self.max_span_cm:
+                limit = self.max_span_cm / 2.0
+                for j in (1, 2, 3, 4, 5):
+                    if j == fi or finger_positions[j] is None:
+                        continue
+                    off = finger_positions[j] - note_x
+                    if off > limit:
+                        finger_positions[j] = note_x + limit
+                    elif off < -limit:
+                        finger_positions[j] = note_x - limit
+
+        # Keep active finger exactly on the note after clamping.
+        finger_positions[fi] = note_x
 
     def ave_velocity(self, fingering: Sequence[int], notes: Sequence[INote]) -> float:
         """Compute average weighted finger velocity for a candidate fingering."""
-        self.set_fingers_positions(fingering, notes, 0)
+        # Evaluate candidates from a stable starting posture without mutating shared state.
+        finger_positions = list(self.finger_positions)
+        self.set_fingers_positions(
+            fingering,
+            notes,
+            0,
+            finger_positions=finger_positions,
+            force_relaxed=False,
+        )
 
         vmean = 0.0
         for i in range(1, self.depth):
             na = notes[i - 1]
             nb = notes[i]
             fb = fingering[i]
-            cfps = self.cfps[fb]
-            if cfps is None:
+            finger_pos = finger_positions[fb]
+            if finger_pos is None:
                 continue
 
-            dx = abs(nb.x - cfps)
+            dx = abs(nb.x - finger_pos)
             dt = abs(nb.time - na.time) + 0.1
             v = dx / dt
 
@@ -91,7 +216,13 @@ class Hand:
                 v /= weight
 
             vmean += v
-            self.set_fingers_positions(fingering, notes, i)
+            self.set_fingers_positions(
+                fingering,
+                notes,
+                i,
+                finger_positions=finger_positions,
+                force_relaxed=False,
+            )
 
         return vmean / (self.depth - 1)
 
@@ -252,13 +383,14 @@ class Hand:
 
         self.fingerseq = []
         try:
+            self.finger_positions = list(self.frest)
+            self._has_position_state = False
             start_finger = 0
             out: list[int] = []
             vel = 0.0
             n_total = len(self.noteseq)
             max_measure = start_measure + nmeasures - 1
             self.depth = max(3, min(self.depth, 9))
-
             for i in range(n_total):
                 an = self.noteseq[i]
                 if an.measure:
@@ -284,7 +416,7 @@ class Hand:
                     out, vel = self.optimize_seq(ninenotes, anchored_finger)
                     start_finger = out[1] if len(out) > 1 else anchored_finger
                     self.set_fingers_positions(out, ninenotes, 0)
-                    self.fingerseq.append(list(self.cfps))
+                    self.fingerseq.append(list(self.finger_positions))
                     an.cost = vel
                     if show_progress is not None:
                         show_progress(i + 1, n_total, an.measure)
@@ -309,7 +441,7 @@ class Hand:
 
                 an.fingering = best_finger
                 self.set_fingers_positions(out, ninenotes, 0)
-                self.fingerseq.append(list(self.cfps))
+                self.fingerseq.append(list(self.finger_positions))
                 an.cost = vel
 
                 if self.verbose:
