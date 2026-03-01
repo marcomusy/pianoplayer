@@ -25,6 +25,18 @@ pip install "pianoplayer[sound]"   # enable playback
 pip install "pianoplayer[all]"     # all optional extras
 ```
 
+## Standalone executable (basic, no 3D visualization)
+Build a standalone executable with PyInstaller:
+
+```bash
+pip install "pianoplayer[build]"
+python scripts/build_standalone.py
+```
+
+Output executable:
+- Linux/macOS: `dist/pianoplayer`
+- Windows: `dist/pianoplayer.exe`
+
 <details>
 <summary><strong>Python Setup (Beginner-Friendly)</strong></summary>
 
@@ -96,7 +108,7 @@ pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-
 #   -h, --help            show this help message and exit
 #   --gui                 Launch the Tkinter GUI
 #   -o , --outputfile     Annotated output xml file name
-#   -n , --n-measures     [100] Number of score measures to scan
+#   -n , --n-measures     [1000] Number of score measures to scan
 #   -s , --start-measure  Start from measure number [1]
 #   -d , --depth          [auto] Depth of combinatorial search, [5-9]
 #   -rbeam                [0] Specify Right Hand beam number

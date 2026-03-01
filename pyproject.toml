@@ -25,10 +25,12 @@ dependencies = ["rich>=13.0.0"]
 visual = ["vedo>=2026.6.1"]
 midi = ["pretty_midi>=0.2.9"]
 sound = ["pygame>=2.6.0"]
+build = ["pyinstaller>=6.0.0"]
 all = [
   "vedo>=2026.6.1",
   "pretty_midi>=0.2.9",
   "pygame>=2.6.0",
+  "pyinstaller>=6.0.0",
 ]
 
 [project.urls]

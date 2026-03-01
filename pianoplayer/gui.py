@@ -60,7 +60,7 @@ class PianoGUI(Frame):
         self.left_enabled = BooleanVar(value=True)
 
         self.hand_size_var = StringVar(value="M")
-        self.n_measures_var = IntVar(value=100)
+        self.n_measures_var = IntVar(value=1000)
         self.start_measure_var = IntVar(value=1)
 
         self.depth_var = IntVar(value=0)
@@ -335,7 +335,7 @@ class PianoGUI(Frame):
             core.run_annotate(
                 filename=filename,
                 outputfile=output_file,
-                n_measures=max(1, self._as_int(self.n_measures_var.get(), 100)),
+                n_measures=max(1, self._as_int(self.n_measures_var.get(), 1000)),
                 start_measure=max(1, self._as_int(self.start_measure_var.get(), 1)),
                 depth=max(0, self._as_int(self.depth_var.get(), 0)),
                 rbeam=max(0, self._as_int(self.rbeam_var.get(), 0)),

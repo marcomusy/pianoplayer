@@ -40,7 +40,7 @@ class AnnotateOptions:
 
     filename: str
     outputfile: str | None = "output.xml"
-    n_measures: int = 100
+    n_measures: int = 1000
     start_measure: int = 1
     depth: int = 0
     rbeam: int = 0

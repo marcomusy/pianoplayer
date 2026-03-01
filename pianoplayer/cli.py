@@ -32,8 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--n-measures",
         metavar="",
         type=int,
-        help="[100] Number of score measures to scan",
-        default=100,
+        help="[1000] Number of score measures to scan",
+        default=1000,
     )
     parser.add_argument(
         "-s",

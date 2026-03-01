@@ -6,6 +6,7 @@ import logging
 import os
 import platform
 import subprocess
+import time
 from types import SimpleNamespace
 from typing import Any
 
@@ -140,7 +141,7 @@ class _ProgressReporter:
 def run_annotate(
     filename,
     outputfile="output.xml",
-    n_measures=100,
+    n_measures=1000,
     start_measure=1,
     depth=0,
     rbeam=0,
@@ -483,6 +484,7 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
 
 def annotate(args: AnnotateOptions | SimpleNamespace | Any):
     """End-to-end annotation pipeline used by CLI and GUI entry points."""
+    t_start = time.perf_counter()
 
     def is_anchored_finger(value: Any) -> bool:
         if isinstance(value, str):
@@ -588,6 +590,7 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
     lh_count = len(lh.noteseq) if lh is not None and getattr(lh, "noteseq", None) else 0
     parts_info = str(len(score_info.parts)) if score_info is not None else "n/a"
     depth_info = "auto" if int(getattr(args, "depth", 0)) == 0 else str(args.depth)
+    elapsed_s = time.perf_counter() - t_start
 
     rh_status = hand_status(is_right=True, score_info=score_info).replace("RH=", "")
     lh_status = hand_status(is_right=False, score_info=score_info).replace("LH=", "")
@@ -604,6 +607,7 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         table.add_row("Output", str(args.outputfile))
         table.add_row("Depth", depth_info)
         table.add_row("Parts", parts_info)
+        table.add_row("Elapsed", f"{elapsed_s:.2f} s")
         table.add_row("Right Hand", f"{styled_status(rh_status)} | notes={rh_count}")
         table.add_row("Left Hand", f"{styled_status(lh_status)} | notes={lh_count}")
         Console().print(table)
@@ -621,13 +625,14 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         # Fallback for environments where Rich rendering is unavailable.
         logger.info(
             (
-                "Summary | input=%s | output=%s | depth=%s | parts=%s "
+                "Summary | input=%s | output=%s | depth=%s | parts=%s | elapsed=%.2fs "
                 "| RH=%s(notes=%s) | LH=%s(notes=%s)"
             ),
             args.filename,
             args.outputfile,
             depth_info,
             parts_info,
+            elapsed_s,
             rh_status,
             rh_count,
             lh_status,

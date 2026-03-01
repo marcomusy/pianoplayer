@@ -1,4 +1,8 @@
 __pycache__/
 
 output.xml
+pianoplayer.spec
+build/
+dist/
+pianoplayer.egg-info/
 store/
