@@ -19,11 +19,14 @@ def reader(
 ) -> list[INote]:
     """Read a parsed score object and return an ``INote`` sequence for one part."""
     parts = getattr(score, "parts", None)
+
     if parts is None or len(parts) <= beam:
         return []
+
     part = parts[beam]
     if isinstance(part, PartInfo):
         return noteseq_from_part(part, chord_note_stagger_s=chord_note_stagger_s)
+
     return []
 
 
@@ -46,6 +49,8 @@ def reader_pretty_midi(
     while ii < len(pm_notes):
         onset = pm_notes[ii].start
         jj = ii + 1
+
+        # Group all notes sharing the same onset.
         while jj < len(pm_notes) and pm_notes[jj].start == onset:
             jj += 1
 
@@ -71,6 +76,7 @@ def reader_pretty_midi(
             ii = jj
             continue
 
+        # For chord-like groups, drop zero-duration entries before expansion.
         valid_group = [n for n in group if (n.end - n.start) > 0]
         if not valid_group:
             ii = jj
@@ -124,10 +130,13 @@ def reader_PIG(fname: str, beam: int = 0) -> list[INote]:
 
     rows.sort(key=lambda r: (r[0], r[2]))
     i = 0
+
     while i < len(rows):
         onset = rows[i][0]
         j = i
         group: list[tuple[float, float, str, str]] = []
+
+        # Reconstruct chords by grouping equal onset timestamps.
         while j < len(rows) and rows[j][0] == onset:
             group.append(rows[j])
             j += 1

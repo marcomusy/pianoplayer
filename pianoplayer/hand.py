@@ -1,8 +1,4 @@
-# -------------------------------------------------------------------------------
-# Name:         PianoPlayer
-# Purpose:      Find optimal fingering for piano scores
-# Author:       Marco Musy
-# -------------------------------------------------------------------------------
+"""Hand-level fingering optimization logic."""
 from __future__ import annotations
 
 import logging
@@ -34,7 +30,9 @@ class Hand:
     def __init__(self, noteseq: Sequence[INote], side: str = "right", size: str = "M") -> None:
         """Initialize hand geometry and optimization state."""
         self.LR = side
-        # fingers pos at rest first is dummy, (cm), asymmetry helps with scales
+
+        # Finger rest positions (cm). Slot 0 is a dummy so finger ids map 1..5.
+        # A slight asymmetry helps produce natural scale motion.
         self.frest: list[float | None]   = [None, -7.0, -2.8, 0.0, 2.8, 5.6]
         self.weights: list[float | None] = [None, 1.1, 1.0, 1.1, 0.9, 0.8]  # finger strength
         self.bfactor: list[float | None] = [None, 0.3, 1.0, 1.1, 0.8, 0.7]  # black key bias
@@ -47,21 +45,22 @@ class Hand:
         self.lyrics = False
         self.size = size
 
+        # Hand-size scaling affects both geometry and physical constraints.
         self.hf = self.size_factor(size)
         for i in (1, 2, 3, 4, 5):
             if self.frest[i]:
                 self.frest[i] *= self.hf
         logger.debug("Hand size preset %s (span %.2f cm).", size, 21 * self.hf)
 
-        ### HIGHLY EXPERIMENTAL: whether to keep relaxed finger targets or
-        # apply memory-based smoothing after the first placement.
+        # Posture memory model: when disabled the hand always snaps to relaxed geometry.
         self.preserve_posture_memory = False
         self.relocation_alpha = 0.3
         self._has_position_state = False
+
+        # Physical constraints applied when posture memory is enabled.
         self.max_span_cm = 21.0 * self.hf
         self.max_follow_lag_cm = 2.5 * self.hf
         self.min_finger_gap_cm = 0.15 * self.hf
-        ################################
 
         self.finger_positions = list(self.frest)
         self.cost = -1.0
@@ -233,21 +232,28 @@ class Hand:
 
         if not na.isChord and not nb.isChord:
             # Same-finger repetitions on different notes are discouraged for short notes.
-            if fa == fb and xba and na.duration < 4: return True
+            if fa == fb and xba and na.duration < 4:
+                return True
             if fa > 1:
                 # Non-thumb crossing against melodic direction is disallowed.
-                if fb > 1  and (fb - fa) * xba < 0: return True
+                if fb > 1 and (fb - fa) * xba < 0:
+                    return True
                 # Thumb-under onto black key while moving up is disallowed.
-                if fb == 1 and nb.isBlack and xba > 0: return True
+                if fb == 1 and nb.isBlack and xba > 0:
+                    return True
             # Fast thumb-out from black key to a lower note is disallowed.
-            elif na.isBlack and xba < 0 and fb > 1 and na.duration < 2: return True
+            elif na.isBlack and xba < 0 and fb > 1 and na.duration < 2:
+                return True
 
         elif na.isChord and nb.isChord and na.chordID == nb.chordID:
             axba = abs(xba) * hf / 0.8
             # Chord fingering order must respect hand directionality.
-            if fa == fb: return True
-            if fa < fb and lr == "left": return True
-            if fa > fb and lr == "right": return True
+            if fa == fb:
+                return True
+            if fa < fb and lr == "left":
+                return True
+            if fa > fb and lr == "right":
+                return True
 
             pair = (min(fa, fb), max(fa, fb))
             # Maximum allowed inter-finger stretch inside the same chord.
@@ -330,30 +336,6 @@ class Hand:
         backtrack(0)
         return best_fingering, minvel
 
-    @staticmethod
-    def _window9(notes: Sequence[INote], start: int) -> list[INote]:
-        """Return a 9-note optimization window, padding with the last note when needed."""
-        window = list(notes[start : start + 9])
-        if not window:
-            return []
-        if len(window) < 9:
-            window.extend([window[-1]] * (9 - len(window)))
-        return window
-
-    @staticmethod
-    def _preset_finger(value: int | str) -> int:
-        """Normalize a pre-annotated finger value to 1..5, or return 0 when absent/invalid."""
-        if isinstance(value, str):
-            text = value.strip()
-            if not text.lstrip("+-").isdigit():
-                return 0
-            value = int(text)
-
-        finger = abs(int(value))
-        if 1 <= finger <= 5:
-            return finger
-        return 0
-
     def generate(
         self,
         start_measure: int = 0,
@@ -376,6 +358,16 @@ class Hand:
 
         self.fingerseq = []
         try:
+            def preset_finger(value: int | str) -> int:
+                """Normalize pre-annotated fingers to 1..5, or 0 when absent/invalid."""
+                if isinstance(value, str):
+                    text = value.strip()
+                    if not text.lstrip("+-").isdigit():
+                        return 0
+                    value = int(text)
+                finger = abs(int(value))
+                return finger if 1 <= finger <= 5 else 0
+
             self.finger_positions = list(self.frest)
             self._has_position_state = False
             start_finger = 0
@@ -408,11 +400,14 @@ class Hand:
                         self.autodepth = False
                         self.depth = 9
 
-                ninenotes = self._window9(self.noteseq, i)
+                # Build a fixed-size look-ahead window (tail padded with last note).
+                ninenotes = list(self.noteseq[i : i + 9])
+                if ninenotes and len(ninenotes) < 9:
+                    ninenotes.extend([ninenotes[-1]] * (9 - len(ninenotes)))
                 if not ninenotes:
                     break
 
-                anchored_finger = self._preset_finger(an.fingering)
+                anchored_finger = preset_finger(an.fingering)
                 if anchored_finger:
                     # Preserve existing annotation and resume optimization from this anchor.
                     an.fingering = anchored_finger

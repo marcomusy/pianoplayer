@@ -151,11 +151,13 @@ def _parse_mxl_tree(filename: str) -> ET.ElementTree:
 
 
 def parse_musicxml(filename: str) -> ScoreInfo:
+    """Parse plain/compressed MusicXML and build lightweight score containers."""
     ext = Path(filename).suffix.lower()
     if ext == ".mxl":
         tree = _parse_mxl_tree(filename)
     else:
         tree = ET.parse(filename)
+
     root = tree.getroot()
     parts: list[PartInfo] = []
 
@@ -170,6 +172,7 @@ def parse_musicxml(filename: str) -> ScoreInfo:
             measure_no = int(measure_el.attrib.get("number", "0") or 0)
 
             for child in measure_el:
+                # Divisions can change across measures; keep it updated.
                 if child.tag == "attributes":
                     div_el = child.find("divisions")
                     if div_el is not None and div_el.text is not None:
@@ -202,6 +205,7 @@ def parse_musicxml(filename: str) -> ScoreInfo:
                 pitch = _pitch_from_note(note_el)
 
                 if is_rest:
+                    # Rests advance timeline but do not create INote values.
                     events.append(
                         EventInfo(
                             kind="rest",
@@ -216,6 +220,7 @@ def parse_musicxml(filename: str) -> ScoreInfo:
                     current_offset += duration
                     continue
 
+                # Chord members share the same onset: append to previous note/chord event.
                 if is_chord_member and events and events[-1].kind in {"note", "chord"}:
                     events[-1].kind = "chord"
                     events[-1].notes.append(note_el)
@@ -258,6 +263,7 @@ def noteseq_from_part(part: PartInfo, chord_note_stagger_s: float = 0.05) -> lis
     for evt in part.events:
         if evt.duration == 0:
             continue
+        # Skip continuation/stop tie events: onset is already represented by the tie start.
         if evt.tie_types.intersection({"continue", "stop"}):
             continue
 
@@ -283,6 +289,7 @@ def noteseq_from_part(part: PartInfo, chord_note_stagger_s: float = 0.05) -> lis
 
         if evt.kind == "chord" and evt.pitches:
             count = len(evt.pitches)
+            # Expand one chord event into multiple INote entries.
             for j, p in enumerate(evt.pitches):
                 an = INote()
                 an.chordID = chord_id
@@ -391,6 +398,7 @@ def annotate_part_with_fingering(
     lyrics: bool,
     skip_chords_with: int = 4,
 ) -> None:
+    """Write generated fingering values back into the corresponding MusicXML part."""
     seq = list(hand_noteseq)
     idx = 0
 

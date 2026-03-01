@@ -38,6 +38,7 @@ class _ProgressReporter:
     def __enter__(self):
         if not self.enabled:
             return self
+
         try:
             from rich.progress import (
                 BarColumn,
@@ -56,6 +57,7 @@ class _ProgressReporter:
                 TimeRemainingColumn(),
             )
             self._progress.start()
+
             # Keep parse/write hidden: these are usually instant and add visual noise.
             # self._parse_task = self._progress.add_task("Parse score", total=1)
             self._rh_task = self._progress.add_task("Generate RH", total=1, visible=False)
@@ -64,6 +66,7 @@ class _ProgressReporter:
             self._active = True
         except Exception:
             self._active = False
+
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -76,10 +79,12 @@ class _ProgressReporter:
             self._progress.update(self._parse_task, completed=1)
 
     def start_hand(self, side: str, total: int) -> None:
+        # Fallback path when Rich progress is unavailable.
         if not self._active or self._progress is None:
             if self.enabled:
                 logger.info("Generate %s hand: start (%s notes)", side.upper(), total)
             return
+
         task = self._rh_task if side == "right" else self._lh_task
         self._progress.update(
             task,
@@ -107,6 +112,7 @@ class _ProgressReporter:
                         min(100, bucket * 10),
                     )
             return
+
         task = self._rh_task if side == "right" else self._lh_task
         done = min(completed, max(1, total))
         percent = int((done * 100) / max(1, total))
@@ -149,6 +155,7 @@ def run_annotate(
     hand_size="M",
     chord_note_stagger_s=0.05,
 ):
+    """Programmatic entry point mirroring CLI options."""
     options = AnnotateOptions(
         filename=filename,
         outputfile=outputfile,
@@ -174,105 +181,12 @@ def run_annotate(
 
 
 def _as_namespace(args: Any) -> SimpleNamespace:
+    """Normalize accepted arg containers to ``SimpleNamespace``."""
     if isinstance(args, AnnotateOptions):
         return args.to_namespace()
     if isinstance(args, SimpleNamespace):
         return args
     return AnnotateOptions.from_namespace(args).to_namespace()
-
-
-def _normalize_requested_depth(args: SimpleNamespace) -> None:
-    """Validate manual depth and clamp to supported bounds."""
-    depth = int(getattr(args, "depth", 0))
-    if depth == 0:
-        return
-    if depth > _MAX_MANUAL_DEPTH:
-        logger.warning(
-            "Requested depth %s is above max %s; using %s.",
-            depth,
-            _MAX_MANUAL_DEPTH,
-            _MAX_MANUAL_DEPTH,
-        )
-        args.depth = _MAX_MANUAL_DEPTH
-        return
-    if depth < _MIN_MANUAL_DEPTH:
-        logger.warning(
-            "Requested depth %s is below min %s; using %s.",
-            depth,
-            _MIN_MANUAL_DEPTH,
-            _MIN_MANUAL_DEPTH,
-        )
-        args.depth = _MIN_MANUAL_DEPTH
-
-
-def _normalize_chord_note_stagger(args: SimpleNamespace) -> None:
-    """Validate chord note staggering value."""
-    raw = getattr(args, "chord_note_stagger_s", 0.05)
-    try:
-        stagger = float(raw)
-    except (TypeError, ValueError):
-        logger.warning("Invalid chord_note_stagger_s %r; using 0.05.", raw)
-        args.chord_note_stagger_s = 0.05
-        return
-    if stagger < 0:
-        logger.warning("Negative chord_note_stagger_s %s is invalid; using 0.0.", stagger)
-        args.chord_note_stagger_s = 0.0
-        return
-    args.chord_note_stagger_s = stagger
-
-
-def _is_anchored_finger(value: Any) -> bool:
-    if isinstance(value, str):
-        text = value.strip()
-        if not text.lstrip("+-").isdigit():
-            return False
-        value = int(text)
-    if not isinstance(value, int):
-        return False
-    return 1 <= abs(value) <= 5
-
-
-def _log_anchored_fingers(rh_noteseq, lh_noteseq, args: SimpleNamespace) -> None:
-    """Report pre-existing fingering anchors detected in the input score."""
-    rh_anchors = sum(
-        1 for n in (rh_noteseq or []) if _is_anchored_finger(getattr(n, "fingering", 0))
-    )
-    lh_anchors = sum(
-        1 for n in (lh_noteseq or []) if _is_anchored_finger(getattr(n, "fingering", 0))
-    )
-    total = rh_anchors + lh_anchors
-    if total == 0:
-        return
-
-    parts = []
-    if not args.left_only:
-        parts.append(f"RH={rh_anchors}")
-    if not args.right_only:
-        parts.append(f"LH={lh_anchors}")
-    logger.info(
-        "Detected pre-annotated fingers (%s). They will be preserved and used as anchors.",
-        ", ".join(parts),
-    )
-
-
-def annotate_PIG(hand, is_right=True):
-    """Convert generated notes to legacy PIG rows."""
-    rows = []
-    for note in hand.noteseq:
-        rows.append(
-            (
-                f"{note.time:.4f}",
-                f"{note.time + note.duration:.4f}",
-                note.pitch,
-                str(None),
-                str(None),
-                "0" if is_right else "1",
-                note.fingering if is_right else -note.fingering,
-                note.cost,
-                note.noteID,
-            )
-        )
-    return rows
 
 
 def _run_external(cmd: list[str], context: str) -> None:
@@ -288,6 +202,7 @@ def _run_external(cmd: list[str], context: str) -> None:
 def load_note_sequences(args):
     """Load score input and produce internal RH/LH note sequences."""
     args = _as_namespace(args)
+
     xmlfn = args.filename
     score_info = None
     rh_noteseq = None
@@ -301,12 +216,14 @@ def load_note_sequences(args):
             logger.info("Converting MuseScore file %s -> %s", args.filename, xmlfn)
             _run_external(["musescore", "-f", args.filename, "-o", xmlfn], "MuseScore conversion")
             score_info = parse_musicxml(xmlfn)
+
             if not args.left_only:
                 rh_noteseq = reader(
                     score_info,
                     beam=args.rbeam,
                     chord_note_stagger_s=args.chord_note_stagger_s,
                 )
+
             if not args.right_only:
                 lh_noteseq = reader(
                     score_info,
@@ -315,6 +232,7 @@ def load_note_sequences(args):
                 )
 
         elif ext == ".txt":
+            # Legacy PIG format stores channels directly.
             if not args.left_only:
                 rh_noteseq = reader_PIG(args.filename, args.rbeam)
             if not args.right_only:
@@ -330,12 +248,14 @@ def load_note_sequences(args):
                 ) from exc
 
             pm = pretty_midi.PrettyMIDI(args.filename)
+
             if not args.left_only:
                 rh_noteseq = reader_pretty_midi(
                     pm.instruments[args.rbeam],
                     beam=args.rbeam,
                     chord_note_stagger_s=args.chord_note_stagger_s,
                 )
+
             if not args.right_only:
                 lh_noteseq = reader_pretty_midi(
                     pm.instruments[args.lbeam],
@@ -345,12 +265,14 @@ def load_note_sequences(args):
 
         else:
             score_info = parse_musicxml(xmlfn)
+
             if not args.left_only:
                 rh_noteseq = reader(
                     score_info,
                     beam=args.rbeam,
                     chord_note_stagger_s=args.chord_note_stagger_s,
                 )
+
             if not args.right_only:
                 lh_noteseq = reader(
                     score_info,
@@ -368,6 +290,7 @@ def load_note_sequences(args):
 def generate_hands(args, rh_noteseq, lh_noteseq, progress: _ProgressReporter | None = None):
     """Create and run right/left hand optimizers according to CLI options."""
     args = _as_namespace(args)
+
     hand_size = str(getattr(args, "hand_size", "M")).upper()
     if hand_size not in _HAND_SIZES:
         hand_size = "M"
@@ -376,6 +299,7 @@ def generate_hands(args, rh_noteseq, lh_noteseq, progress: _ProgressReporter | N
     lh = None
 
     if not args.left_only:
+        # Right-hand optimization.
         rh = Hand(side="right", noteseq=rh_noteseq, size=hand_size)
         rh.verbose = not args.quiet and not (progress is not None and progress.enabled)
         # `depth=0` means automatic depth selection in the hand solver.
@@ -398,6 +322,7 @@ def generate_hands(args, rh_noteseq, lh_noteseq, progress: _ProgressReporter | N
             rh.generate(args.start_measure, args.n_measures)
 
     if not args.right_only:
+        # Left-hand optimization.
         lh = Hand(side="left", noteseq=lh_noteseq, size=hand_size)
         lh.verbose = not args.quiet and not (progress is not None and progress.enabled)
         lh.autodepth = args.depth == 0
@@ -416,21 +341,41 @@ def generate_hands(args, rh_noteseq, lh_noteseq, progress: _ProgressReporter | N
             progress.hand_done("left")
         else:
             lh.generate(args.start_measure, args.n_measures)
+
     return rh, lh
 
 
 def write_annotated_output(args, score_info, rh, lh):
     """Write annotation results either as PIG text or MusicXML."""
     args = _as_namespace(args)
+
     if args.outputfile is None:
         return
 
     if os.path.splitext(args.outputfile)[1] == ".txt":
+        # Legacy PIG writer path.
         pig_rows = []
+
+        def append_pig_rows(hand, *, is_right: bool) -> None:
+            for note in hand.noteseq:
+                pig_rows.append(
+                    (
+                        f"{note.time:.4f}",
+                        f"{note.time + note.duration:.4f}",
+                        note.pitch,
+                        str(None),
+                        str(None),
+                        "0" if is_right else "1",
+                        note.fingering if is_right else -note.fingering,
+                        note.cost,
+                        note.noteID,
+                    )
+                )
+
         if not args.left_only and rh is not None:
-            pig_rows.extend(annotate_PIG(rh))
+            append_pig_rows(rh, is_right=True)
         if not args.right_only and lh is not None:
-            pig_rows.extend(annotate_PIG(lh, is_right=False))
+            append_pig_rows(lh, is_right=False)
 
         with open(args.outputfile, "wt", encoding="utf-8") as out_file:
             writer = csv.writer(out_file, delimiter="\t")
@@ -444,6 +389,7 @@ def write_annotated_output(args, score_info, rh, lh):
         logger.info("Wrote annotated PIG output to %s", args.outputfile)
         return
 
+    # MusicXML writer path.
     if score_info is None:
         raise ValueError("Only MusicXML inputs can produce MusicXML output in this build.")
 
@@ -481,6 +427,7 @@ def write_annotated_output(args, score_info, rh, lh):
     logger.debug("Wrote annotated score to %s", args.outputfile)
 
     if args.musescore:
+        # Optional auto-open after writing output.
         logger.info("Opening MuseScore with output score: %s", args.outputfile)
         if platform.system() == "Darwin":
             _run_external(["open", args.outputfile], "open output score")
@@ -491,6 +438,7 @@ def write_annotated_output(args, score_info, rh, lh):
 def maybe_play_vedo(args, xmlfn, rh, lh):
     """Run optional experimental 3D playback after annotation."""
     args = _as_namespace(args)
+
     if not args.with_vedo:
         return
 
@@ -513,14 +461,16 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
 
     vk = VirtualKeyboard(songname=xmlfn)
     if not args.left_only and rh is not None:
-        vk.build_RH(rh)
+        vk.build_right_hand(rh)
     if not args.right_only and lh is not None:
-        vk.build_LH(lh)
+        vk.build_left_hand(lh)
 
     if args.sound_off:
         vk.playsounds = False
 
     vk.play()
+
+    # Keep the final interactive viewport optional/safe.
     renderer = getattr(vk.vp, "renderer", None)
     if renderer is None:
         logger.info("3D viewport already closed; skipping final show().")
@@ -531,28 +481,30 @@ def maybe_play_vedo(args, xmlfn, rh, lh):
         logger.info("3D viewport renderer unavailable; exiting 3D playback cleanly.")
 
 
-def _hand_status(args, score_info, is_right: bool) -> str:
-    hand_name = "RH" if is_right else "LH"
-    only_flag = args.left_only if is_right else args.right_only
-    if only_flag:
-        return f"{hand_name}=disabled"
-    beam = args.rbeam if is_right else args.lbeam
-    if score_info is not None and len(score_info.parts) <= beam:
-        return f"{hand_name}=skipped(beam {beam} out of range)"
-    return f"{hand_name}=ok(beam {beam})"
+def annotate(args: AnnotateOptions | SimpleNamespace | Any):
+    """End-to-end annotation pipeline used by CLI and GUI entry points."""
 
+    def is_anchored_finger(value: Any) -> bool:
+        if isinstance(value, str):
+            text = value.strip()
+            if not text.lstrip("+-").isdigit():
+                return False
+            value = int(text)
+        if not isinstance(value, int):
+            return False
+        return 1 <= abs(value) <= 5
 
-def _log_summary(args, score_info, rh, lh) -> None:
-    """Print a compact run summary with Rich table styling."""
-    rh_count = len(rh.noteseq) if rh is not None and getattr(rh, "noteseq", None) else 0
-    lh_count = len(lh.noteseq) if lh is not None and getattr(lh, "noteseq", None) else 0
+    def hand_status(is_right: bool, score_info) -> str:
+        hand_name = "RH" if is_right else "LH"
+        only_flag = args.left_only if is_right else args.right_only
+        if only_flag:
+            return f"{hand_name}=disabled"
+        beam = args.rbeam if is_right else args.lbeam
+        if score_info is not None and len(score_info.parts) <= beam:
+            return f"{hand_name}=skipped(beam {beam} out of range)"
+        return f"{hand_name}=ok(beam {beam})"
 
-    parts_info = str(len(score_info.parts)) if score_info is not None else "n/a"
-    depth_info = "auto" if int(getattr(args, "depth", 0)) == 0 else str(args.depth)
-    rh_status = _hand_status(args, score_info, is_right=True).replace("RH=", "")
-    lh_status = _hand_status(args, score_info, is_right=False).replace("LH=", "")
-
-    def _styled_status(status: str) -> str:
+    def styled_status(status: str) -> str:
         if status.startswith("ok"):
             return f"[green]{status}[/green]"
         if status.startswith("skipped"):
@@ -561,8 +513,88 @@ def _log_summary(args, score_info, rh, lh) -> None:
             return f"[dim]{status}[/dim]"
         return status
 
+    # Normalize caller input and execution flags.
+    show_progress = bool(getattr(args, "_show_progress", False))
+    args = _as_namespace(args)
+
+    # Clamp manual search depth to the supported solver range.
+    depth = int(getattr(args, "depth", 0))
+    if depth > _MAX_MANUAL_DEPTH:
+        logger.warning(
+            "Requested depth %s is above max %s; using %s.",
+            depth,
+            _MAX_MANUAL_DEPTH,
+            _MAX_MANUAL_DEPTH,
+        )
+        args.depth = _MAX_MANUAL_DEPTH
+    elif depth and depth < _MIN_MANUAL_DEPTH:
+        logger.warning(
+            "Requested depth %s is below min %s; using %s.",
+            depth,
+            _MIN_MANUAL_DEPTH,
+            _MIN_MANUAL_DEPTH,
+        )
+        args.depth = _MIN_MANUAL_DEPTH
+
+    # Chord staggering affects note-sequence shaping for chord events.
+    raw_stagger = getattr(args, "chord_note_stagger_s", 0.05)
+    try:
+        stagger = float(raw_stagger)
+    except (TypeError, ValueError):
+        logger.warning("Invalid chord_note_stagger_s %r; using 0.05.", raw_stagger)
+        args.chord_note_stagger_s = 0.05
+    else:
+        if stagger < 0:
+            logger.warning("Negative chord_note_stagger_s %s is invalid; using 0.0.", stagger)
+            args.chord_note_stagger_s = 0.0
+        else:
+            args.chord_note_stagger_s = stagger
+
+    # Quiet mode always suppresses progress output.
+    show_progress = show_progress and not bool(args.quiet)
+
+    # Main pipeline: parse input, generate fingering, then write output.
+    with _ProgressReporter(show_progress) as progress:
+        xmlfn, score_info, rh_noteseq, lh_noteseq = load_note_sequences(args)
+
+        # Report existing score annotations that become hard anchors for optimization.
+        rh_anchors = sum(
+            1 for n in (rh_noteseq or []) if is_anchored_finger(getattr(n, "fingering", 0))
+        )
+        lh_anchors = sum(
+            1 for n in (lh_noteseq or []) if is_anchored_finger(getattr(n, "fingering", 0))
+        )
+        if rh_anchors + lh_anchors:
+            parts = []
+            if not args.left_only:
+                parts.append(f"RH={rh_anchors}")
+            if not args.right_only:
+                parts.append(f"LH={lh_anchors}")
+            logger.info(
+                "Detected pre-annotated fingers (%s). They will be preserved and used as anchors.",
+                ", ".join(parts),
+            )
+        progress.parse_done()
+        rh, lh = generate_hands(args, rh_noteseq, lh_noteseq, progress=progress)
+        progress.write_start()
+        write_annotated_output(args, score_info, rh, lh)
+        progress.write_done()
+
+    # Optional 3D playback happens after output generation.
+    maybe_play_vedo(args, xmlfn, rh, lh)
+
+    # Build compact end-of-run summary.
+    rh_count = len(rh.noteseq) if rh is not None and getattr(rh, "noteseq", None) else 0
+    lh_count = len(lh.noteseq) if lh is not None and getattr(lh, "noteseq", None) else 0
+    parts_info = str(len(score_info.parts)) if score_info is not None else "n/a"
+    depth_info = "auto" if int(getattr(args, "depth", 0)) == 0 else str(args.depth)
+
+    rh_status = hand_status(is_right=True, score_info=score_info).replace("RH=", "")
+    lh_status = hand_status(is_right=False, score_info=score_info).replace("LH=", "")
+
     try:
         from rich.console import Console
+        from rich.panel import Panel
         from rich.table import Table
 
         table = Table(title="Run Summary", title_justify="left", show_header=False)
@@ -572,11 +604,21 @@ def _log_summary(args, score_info, rh, lh) -> None:
         table.add_row("Output", str(args.outputfile))
         table.add_row("Depth", depth_info)
         table.add_row("Parts", parts_info)
-        table.add_row("Right Hand", f"{_styled_status(rh_status)} | notes={rh_count}")
-        table.add_row("Left Hand", f"{_styled_status(lh_status)} | notes={lh_count}")
-
+        table.add_row("Right Hand", f"{styled_status(rh_status)} | notes={rh_count}")
+        table.add_row("Left Hand", f"{styled_status(lh_status)} | notes={lh_count}")
         Console().print(table)
+
+        # Show a final "next command" hint when output is not auto-opened.
+        if not args.musescore:
+            hint = f"visualize annotated score with command: musescore '{args.outputfile}'"
+            panel = Panel(
+                f"[bold]💡 {hint}[/bold]",
+                border_style="bright_cyan",
+                expand=False,
+            )
+            Console().print(panel)
     except Exception:
+        # Fallback for environments where Rich rendering is unavailable.
         logger.info(
             (
                 "Summary | input=%s | output=%s | depth=%s | parts=%s "
@@ -591,41 +633,5 @@ def _log_summary(args, score_info, rh, lh) -> None:
             lh_status,
             lh_count,
         )
-
-
-def _show_visualize_hint(outputfile: str) -> None:
-    """Show a post-run command hint for opening the generated score."""
-    hint = f"visualize annotated score with command: musescore '{outputfile}'"
-    try:
-        from rich.console import Console
-        from rich.panel import Panel
-
-        panel = Panel(
-            f"[bold]💡 {hint}[/bold]",
-            border_style="bright_cyan",
-            expand=False,
-        )
-        Console().print(panel)
-    except Exception:
-        logger.info(hint)
-
-
-def annotate(args: AnnotateOptions | SimpleNamespace | Any):
-    """End-to-end annotation pipeline used by CLI and GUI entry points."""
-    show_progress = bool(getattr(args, "_show_progress", False))
-    args = _as_namespace(args)
-    _normalize_requested_depth(args)
-    _normalize_chord_note_stagger(args)
-    show_progress = show_progress and not bool(args.quiet)
-    with _ProgressReporter(show_progress) as progress:
-        xmlfn, score_info, rh_noteseq, lh_noteseq = load_note_sequences(args)
-        _log_anchored_fingers(rh_noteseq, lh_noteseq, args)
-        progress.parse_done()
-        rh, lh = generate_hands(args, rh_noteseq, lh_noteseq, progress=progress)
-        progress.write_start()
-        write_annotated_output(args, score_info, rh, lh)
-        progress.write_done()
-    maybe_play_vedo(args, xmlfn, rh, lh)
-    _log_summary(args, score_info, rh, lh)
-    if not args.musescore:
-        _show_visualize_hint(args.outputfile)
+        if not args.musescore:
+            logger.info("visualize annotated score with command: musescore '%s'", args.outputfile)

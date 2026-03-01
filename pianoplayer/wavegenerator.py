@@ -32,13 +32,16 @@ def _warn_missing_backend_once() -> None:
     global _warned_missing_backend
     if _warned_missing_backend:
         return
+
     logger.warning("Audio playback unavailable (install pygame).")
     _warned_missing_backend = True
 
 
 def _init_pygame_mixer() -> bool:
+    """Initialize pygame mixer lazily."""
     if pygame is None:
         return False
+
     try:
         if not pygame.mixer.get_init():
             pygame.mixer.pre_init(44100, -16, 1, 512)
@@ -51,6 +54,7 @@ def _init_pygame_mixer() -> bool:
 
 def has_audio_backend() -> bool:
     """Return True when at least one audio backend is available."""
+    # pygame is preferred cross-platform; winsound is a minimal Windows fallback.
     return _init_pygame_mixer() or (_winsound is not None)
 
 
@@ -68,6 +72,7 @@ def _render_samples(
     volume: float,
     fading: float,
 ) -> tuple[array, int] | None:
+    """Render mono PCM samples for a note/chord list."""
     try:
         duration_s = float(duration)
     except (TypeError, ValueError):
@@ -112,6 +117,8 @@ def _render_samples(
     for i in range(timepoints):
         t = i / sample_rate
         val = 0.0
+
+        # Sum partials then normalize by chord size.
         for freq in freqs:
             val += math.sin(freq * 2.0 * math.pi * t)
         val /= len(freqs)
@@ -219,4 +226,5 @@ def play_sound(n: Any, speedfactor: float = 1.0, wait: bool = True):
     if duration is None:
         logger.warning("Note object has no duration; skipping sound.")
         return None
+
     return soundof([n], duration=float(duration) / speed, wait=wait)

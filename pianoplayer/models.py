@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass(slots=True)
 class INote:
+    """Internal note representation used by readers, optimizer, and output writers."""
+
     name: str | None = None
     isChord: bool = False
     isBlack: bool = False
@@ -34,6 +36,8 @@ class INote:
 
 @dataclass(slots=True)
 class AnnotateOptions:
+    """Normalized options shared by CLI, GUI, and programmatic API calls."""
+
     filename: str
     outputfile: str | None = "output.xml"
     n_measures: int = 100
@@ -68,7 +72,8 @@ class AnnotateOptions:
         return cls(**payload)
 
     def to_namespace(self) -> SimpleNamespace:
-        return SimpleNamespace(**{k: getattr(self, k) for k in self.__dataclass_fields__})  # type: ignore[attr-defined]
+        payload = {k: getattr(self, k) for k in self.__dataclass_fields__}  # type: ignore[attr-defined]
+        return SimpleNamespace(**payload)
 
 
 _kb_layout = {
@@ -107,6 +112,7 @@ _kb_layout = {
 
 
 def keypos_midi(n):  # position of notes on keyboard
+    """Return horizontal key position from MIDI pitch (in cm)."""
     keybsize = 16.5  # cm
     k = keybsize / 7.0  # 7 notes
     step = (n.pitch % 12) * k
@@ -114,6 +120,7 @@ def keypos_midi(n):  # position of notes on keyboard
 
 
 def keypos(n):  # position of notes on keyboard
+    """Return horizontal key position from note name/octave (in cm)."""
     step = 0.0
     keybsize = 16.5  # cm
     k = keybsize / 7.0  # 7 notes

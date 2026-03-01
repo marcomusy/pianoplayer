@@ -79,6 +79,9 @@ This annotates the first 10 measures for the right hand, opens 3D playback, and 
 The output is saved as a [MusicXML](https://en.wikipedia.org/wiki/MusicXML)
 file with name `output.xml`.<br />
 
+Pre-fingered notes are supported: if a note already has a fingering mark, `PianoPlayer` keeps it
+and uses it as an anchor for the following optimization.
+
 ```bash
 pianoplayer         # if no argument is given a GUI will pop up
 # Or

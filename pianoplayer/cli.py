@@ -12,9 +12,11 @@ from pianoplayer.errors import PianoPlayerError
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build CLI argument parser used by the `pianoplayer` entry point."""
     parser = argparse.ArgumentParser(
         description="PianoPlayer, check out home page https://github.com/marcomusy/pianoplayer"
     )
+
     parser.add_argument("filename", nargs="?", type=str, help="Input music xml/midi file name")
     parser.add_argument("--gui", action="store_true", help="Launch the Tkinter GUI")
     parser.add_argument(
@@ -92,17 +94,17 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _hand_mode(args: argparse.Namespace) -> str:
-    if args.left_only:
-        return "left hand only"
-    if args.right_only:
-        return "right hand only"
-    return "both hands"
-
-
 def show_startup_banner(args: argparse.Namespace) -> None:
+    """Print a compact startup panel before the annotation run begins."""
     if args.quiet or not args.filename:
         return
+
+    if args.left_only:
+        hand_mode = "left hand only"
+    elif args.right_only:
+        hand_mode = "right hand only"
+    else:
+        hand_mode = "both hands"
 
     lines = [
         f"[bold]PianoPlayer[/bold] v{__version__}",
@@ -110,7 +112,7 @@ def show_startup_banner(args: argparse.Namespace) -> None:
         "",
         f"[cyan]Input:[/cyan] {args.filename}",
         f"[cyan]Output:[/cyan] {args.outputfile}",
-        f"[cyan]Mode:[/cyan] {_hand_mode(args)}",
+        f"[cyan]Mode:[/cyan] {hand_mode}",
         f"[cyan]Hand size:[/cyan] {args.hand_size}",
     ]
     if args.sound_off:
@@ -126,13 +128,15 @@ def show_startup_banner(args: argparse.Namespace) -> None:
         print(f"PianoPlayer v{__version__}")
         print(f"Input: {args.filename}")
         print(f"Output: {args.outputfile}")
-        print(f"Mode: {_hand_mode(args)}")
+        print(f"Mode: {hand_mode}")
         print(f"Hand size: {args.hand_size}")
 
 
 def main() -> None:
+    """CLI entry point."""
     parser = build_parser()
     args = parser.parse_args()
+
     level = logging.WARNING if getattr(args, "quiet", False) else logging.INFO
     logging.basicConfig(
         level=level,
@@ -157,6 +161,7 @@ def main() -> None:
 
     try:
         show_startup_banner(args)
+        # Enable progress UI by default unless quiet mode is requested.
         args._show_progress = not args.quiet
         core.annotate(args)
     except (PianoPlayerError, ValueError) as exc:

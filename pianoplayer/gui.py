@@ -5,7 +5,17 @@ from __future__ import annotations
 import platform
 import subprocess
 from pathlib import Path
-from tkinter import BOTH, BooleanVar, DoubleVar, Frame, IntVar, StringVar, TclError, Tk, messagebox
+from tkinter import (
+    BOTH,
+    BooleanVar,
+    DoubleVar,
+    Frame,
+    IntVar,
+    StringVar,
+    TclError,
+    Tk,
+    messagebox,
+)
 from tkinter import filedialog as tk_filedialog
 from tkinter.ttk import (
     Button,
@@ -58,13 +68,17 @@ class PianoGUI(Frame):
     def init_ui(self) -> None:
         """Create and place all GUI controls in Basic/Advanced tabs."""
         self.parent.title("PianoPlayer")
+
+        # Theme and palette for the full window.
+        bg = "#ffffff"
         style = Style()
         style.theme_use("clam")
-        style.configure("TFrame", background="#f6f8fb")
-        style.configure("TLabelframe", background="#f6f8fb")
-        style.configure("TLabelframe.Label", background="#f6f8fb")
-        style.configure("TLabel", background="#f6f8fb")
-        style.configure("TNotebook", background="#f6f8fb")
+        style.configure("TFrame", background=bg)
+        style.configure("TLabelframe", background=bg)
+        style.configure("TLabelframe.Label", background=bg)
+        style.configure("TLabel", background=bg)
+        style.configure("TCheckbutton", background=bg)
+        style.configure("TNotebook", background=bg)
         style.configure("TNotebook.Tab", background="#e8edf5", padding=(12, 6))
         style.map(
             "TNotebook.Tab",
@@ -77,10 +91,12 @@ class PianoGUI(Frame):
         style.map("Secondary.TButton", background=[("active", "#bfdbfe")])
         style.configure("QuietDanger.TButton", foreground="#7f1d1d", background="#fee2e2")
         style.map("QuietDanger.TButton", background=[("active", "#fecaca")])
+        self.parent.configure(bg=bg)
         self.pack(fill=BOTH, expand=True)
         self.parent.bind("<KeyPress-q>", self._close_cmd)
         self.parent.bind("<Control-w>", self._close_cmd)
 
+        # Main layout: IO row, options tabs, bottom action/status row.
         container = TtkFrame(self)
         container.pack(fill=BOTH, expand=True, padx=12, pady=10)
 
@@ -183,7 +199,7 @@ class PianoGUI(Frame):
             opts, state="readonly", values=hand_values, textvariable=self.hand_size_var, width=5
         ).grid(row=1, column=1, sticky="w", padx=8, pady=6)
 
-        Label(opts, text="Scan").grid(row=2, column=0, sticky="w", padx=8, pady=6)
+        Label(opts, text="Annotate").grid(row=2, column=0, sticky="w", padx=8, pady=6)
         hand_checks = TtkFrame(opts)
         hand_checks.grid(row=2, column=1, sticky="w", padx=8, pady=6)
         Checkbutton(hand_checks, text="Right", variable=self.right_enabled).pack(side="left")
@@ -242,12 +258,14 @@ class PianoGUI(Frame):
             width=8,
         ).grid(row=3, column=1, sticky="w", padx=8, pady=6)
 
+        # 3D playback controls.
         Checkbutton(opts, text="Enable 3D playback (vedo)", variable=self.with_vedo_var).grid(
             row=4, column=0, sticky="w", padx=8, pady=6
         )
         Checkbutton(opts, text="3D sound off", variable=self.sound_off_var).grid(
             row=4, column=1, sticky="w", padx=8, pady=6
         )
+        # Output/diagnostic toggles.
         Checkbutton(opts, text="Show annotations below beam", variable=self.below_beam_var).grid(
             row=5, column=0, sticky="w", padx=8, pady=6
         )
@@ -268,22 +286,6 @@ class PianoGUI(Frame):
         if filename:
             self.filename_var.set(filename)
             self.status_var.set("Loaded input score")
-
-    def _validate_hand_selection(self) -> bool:
-        """Ensure at least one hand is enabled for scanning."""
-        if not self.left_enabled.get() and not self.right_enabled.get():
-            messagebox.showerror("PianoPlayer", "Select at least one hand to scan.")
-            return False
-        return True
-
-    def _hand_mode_flags(self) -> dict[str, bool]:
-        """Translate checkbox state to core left_only/right_only flags."""
-        left_on = self.left_enabled.get()
-        right_on = self.right_enabled.get()
-        return {
-            "left_only": left_on and not right_on,
-            "right_only": right_on and not left_on,
-        }
 
     @staticmethod
     def _as_int(value: int | str, default: int) -> int:
@@ -306,11 +308,17 @@ class PianoGUI(Frame):
         if not filename:
             messagebox.showerror("PianoPlayer", "Please choose an input score first.")
             return
-        if not self._validate_hand_selection():
+        left_on = self.left_enabled.get()
+        right_on = self.right_enabled.get()
+        if not left_on and not right_on:
+            messagebox.showerror("PianoPlayer", "Select at least one hand to scan.")
             return
 
+        self.status_var.set(f"Generating: {output_file}")
+        self.parent.update_idletasks()
         self._set_busy(True)
         try:
+            # Collect current widget values and call the synchronous core runner.
             core.run_annotate(
                 filename=filename,
                 outputfile=output_file,
@@ -327,7 +335,8 @@ class PianoGUI(Frame):
                 sound_off=bool(self.sound_off_var.get()),
                 hand_size=(self.hand_size_var.get() or "M"),
                 chord_note_stagger_s=max(0.0, self._as_float(self.chord_stagger_var.get(), 0.05)),
-                **self._hand_mode_flags(),
+                left_only=left_on and not right_on,
+                right_only=right_on and not left_on,
             )
             self.status_var.set(f"Generated: {output_file}")
         except (PianoPlayerError, ValueError) as exc:

@@ -72,19 +72,53 @@ def test_core_annotate_reads_mxl_input(tmp_path) -> None:
 
 
 def test_core_warns_and_clamps_depth(caplog) -> None:
-    args = SimpleNamespace(depth=12)
+    args = SimpleNamespace(
+        filename="scores/test_scales.xml",
+        outputfile=None,
+        n_measures=1,
+        start_measure=1,
+        depth=12,
+        rbeam=0,
+        lbeam=1,
+        quiet=True,
+        musescore=False,
+        below_beam=False,
+        with_vedo=False,
+        sound_off=True,
+        left_only=False,
+        right_only=False,
+        hand_size="M",
+        chord_note_stagger_s=0.05,
+        cost_path=None,
+    )
     caplog.set_level("WARNING")
-    core._normalize_requested_depth(args)
+    core.annotate(args)
     assert args.depth == 9
     assert "above max 9" in caplog.text
 
 
 def test_core_logs_detected_anchors(caplog) -> None:
-    args = SimpleNamespace(left_only=False, right_only=False)
+    args = SimpleNamespace(
+        filename="scores/test_scales_all_keys.xml",
+        outputfile=None,
+        n_measures=1,
+        start_measure=1,
+        depth=0,
+        rbeam=0,
+        lbeam=1,
+        quiet=True,
+        musescore=False,
+        below_beam=False,
+        with_vedo=False,
+        sound_off=True,
+        left_only=False,
+        right_only=False,
+        hand_size="M",
+        chord_note_stagger_s=0.05,
+        cost_path=None,
+    )
     caplog.set_level("INFO")
-    rh = [SimpleNamespace(fingering=1), SimpleNamespace(fingering=0)]
-    lh = [SimpleNamespace(fingering=2), SimpleNamespace(fingering=-3)]
-    core._log_anchored_fingers(rh, lh, args)
+    core.annotate(args)
     assert "Detected pre-annotated fingers" in caplog.text
 
 
