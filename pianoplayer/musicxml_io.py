@@ -7,6 +7,7 @@ parts, measures, notes/chords/rests, ties, duration/divisions, and fingering out
 from __future__ import annotations
 
 import logging
+import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from io import BytesIO
@@ -95,6 +96,77 @@ def _pitch_from_note(note_el: ET.Element) -> PitchInfo | None:
     return PitchInfo(name=_note_name(step, alter), octave=octave, midi=midi)
 
 
+def _drop_shorter_simultaneous_duplicates(events: list[EventInfo]) -> list[EventInfo]:
+    """Drop duplicate notes sharing same onset+pitch, keeping the strongest candidate."""
+    winner_by_key: dict[tuple[int, int], tuple[int, int, float, int]] = {}
+    losers_by_event: dict[int, set[int]] = {}
+
+    for event_idx, evt in enumerate(events):
+        if evt.kind not in {"note", "chord"} or not evt.pitches:
+            continue
+
+        for note_idx, pitch in enumerate(evt.pitches):
+            onset_key = int(round(evt.offset * 1_000_000))
+            key = (onset_key, pitch.midi)
+
+            anchor_bonus = 0
+            if note_idx < len(evt.notes):
+                finger = _extract_note_fingering(evt.notes[note_idx])
+                anchor_bonus = 1 if 1 <= finger <= 5 else 0
+
+            candidate = (event_idx, note_idx, evt.duration, anchor_bonus)
+            previous = winner_by_key.get(key)
+            if previous is None:
+                winner_by_key[key] = candidate
+                continue
+
+            _, _, prev_duration, prev_anchor_bonus = previous
+            should_replace = (
+                evt.duration > prev_duration + 1e-9
+                or (abs(evt.duration - prev_duration) <= 1e-9 and anchor_bonus > prev_anchor_bonus)
+            )
+
+            if should_replace:
+                prev_event_idx, prev_note_idx, _, _ = previous
+                losers_by_event.setdefault(prev_event_idx, set()).add(prev_note_idx)
+                winner_by_key[key] = candidate
+            else:
+                losers_by_event.setdefault(event_idx, set()).add(note_idx)
+
+    if not losers_by_event:
+        return events
+
+    cleaned_events: list[EventInfo] = []
+    dropped = 0
+
+    for event_idx, evt in enumerate(events):
+        dropped_idx = losers_by_event.get(event_idx)
+        if not dropped_idx or evt.kind not in {"note", "chord"} or not evt.pitches:
+            cleaned_events.append(evt)
+            continue
+
+        kept_pitches: list[PitchInfo] = []
+        kept_notes: list[ET.Element] = []
+        for note_idx, pitch in enumerate(evt.pitches):
+            if note_idx in dropped_idx:
+                dropped += 1
+                continue
+            kept_pitches.append(pitch)
+            if note_idx < len(evt.notes):
+                kept_notes.append(evt.notes[note_idx])
+
+        if not kept_pitches:
+            continue
+
+        evt.pitches = kept_pitches
+        evt.notes = kept_notes
+        evt.kind = "note" if len(kept_pitches) == 1 else "chord"
+        cleaned_events.append(evt)
+
+    logger.debug("Dropped %s duplicated simultaneous note(s) (kept longest duration).", dropped)
+    return cleaned_events
+
+
 def _extract_note_fingering(note_el: ET.Element) -> int:
     """Return a pre-existing fingering annotation from one note element, if present."""
     for fing_el in note_el.findall("./notations/technical/fingering"):
@@ -168,8 +240,19 @@ def parse_musicxml(filename: str) -> ScoreInfo:
         divisions = 1
         current_offset = 0.0
 
+        sequential_measure_no = 0
         for measure_el in part_el.findall("measure"):
-            measure_no = int(measure_el.attrib.get("number", "0") or 0)
+            raw_measure = (measure_el.attrib.get("number", "0") or "0").strip()
+            if raw_measure.isdigit():
+                measure_no = int(raw_measure)
+            else:
+                digits = re.sub(r"\D", "", raw_measure)
+                if digits.isdigit():
+                    measure_no = int(digits)
+                else:
+                    sequential_measure_no += 1
+                    measure_no = sequential_measure_no
+            sequential_measure_no = max(sequential_measure_no, measure_no)
 
             for child in measure_el:
                 # Divisions can change across measures; keep it updated.
@@ -177,6 +260,26 @@ def parse_musicxml(filename: str) -> ScoreInfo:
                     div_el = child.find("divisions")
                     if div_el is not None and div_el.text is not None:
                         divisions = max(1, int(div_el.text))
+                    continue
+
+                if child.tag == "backup":
+                    duration_el = child.find("duration")
+                    duration_raw = (
+                        int(duration_el.text)
+                        if duration_el is not None and duration_el.text
+                        else 0
+                    )
+                    current_offset = max(0.0, current_offset - (duration_raw / divisions))
+                    continue
+
+                if child.tag == "forward":
+                    duration_el = child.find("duration")
+                    duration_raw = (
+                        int(duration_el.text)
+                        if duration_el is not None and duration_el.text
+                        else 0
+                    )
+                    current_offset += duration_raw / divisions
                     continue
 
                 if child.tag != "note":
@@ -241,6 +344,7 @@ def parse_musicxml(filename: str) -> ScoreInfo:
                 events.append(evt)
                 current_offset += duration
 
+        events = _drop_shorter_simultaneous_duplicates(events)
         parts.append(PartInfo(part_id=part_id, events=events))
 
     return ScoreInfo(tree=tree, parts=parts)

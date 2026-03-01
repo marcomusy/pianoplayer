@@ -190,6 +190,19 @@ def _as_namespace(args: Any) -> SimpleNamespace:
     return AnnotateOptions.from_namespace(args).to_namespace()
 
 
+def _resolve_input_filename(filename: str) -> str:
+    """Resolve score path, trying local `scores/` when a bare filename is passed."""
+    if os.path.exists(filename):
+        return filename
+
+    candidate = os.path.join("scores", filename)
+    if os.path.exists(candidate):
+        logger.info("Resolved input file '%s' to '%s'.", filename, candidate)
+        return candidate
+
+    raise FileNotFoundError(f"Input score not found: {filename}")
+
+
 def _run_external(cmd: list[str], context: str) -> None:
     """Execute an external command while silencing stdout/stderr."""
     try:
@@ -204,12 +217,14 @@ def load_note_sequences(args):
     """Load score input and produce internal RH/LH note sequences."""
     args = _as_namespace(args)
 
-    xmlfn = args.filename
+    xmlfn = str(args.filename)
     score_info = None
     rh_noteseq = None
     lh_noteseq = None
 
     try:
+        args.filename = _resolve_input_filename(str(args.filename))
+        xmlfn = args.filename
         ext = os.path.splitext(str(args.filename).lower())[1]
         # Dispatch by input format. MusicXML-like inputs also expose `score_info`.
         if ext in {".mscz", ".mscx"}:
@@ -282,8 +297,12 @@ def load_note_sequences(args):
                 )
     except ExternalToolError:
         raise
+    except FileNotFoundError as exc:
+        raise ConversionError(str(exc)) from exc
     except Exception as exc:
-        raise ConversionError(f"Unable to parse/convert input score: {args.filename}") from exc
+        raise ConversionError(
+            f"Unable to parse/convert input score: {args.filename} ({exc})"
+        ) from exc
 
     return xmlfn, score_info, rh_noteseq, lh_noteseq
 
