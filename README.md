@@ -25,18 +25,6 @@ pip install "pianoplayer[sound]"   # enable playback
 pip install "pianoplayer[all]"     # all optional extras
 ```
 
-## Standalone executable (basic, no 3D visualization)
-Build a standalone executable with PyInstaller:
-
-```bash
-pip install "pianoplayer[build]"
-python scripts/build_standalone.py
-```
-
-Output executable:
-- Linux/macOS: `dist/pianoplayer`
-- Windows: `dist/pianoplayer.exe`
-
 <details>
 <summary><strong>Python Setup (Beginner-Friendly)</strong></summary>
 
@@ -73,6 +61,18 @@ python3 -m pip install --upgrade pip
 pip install pianoplayer
 pianoplayer --help
 ```
+
+### Standalone executable (without 3D visualization)
+Build a standalone executable with `PyInstaller`:
+
+```bash
+pip install "pianoplayer[build]"
+python scripts/build_standalone.py
+```
+
+Output executable:
+- Linux/macOS: `dist/pianoplayer`
+- Windows: `dist/pianoplayer.exe`
 
 </details>
 
@@ -127,17 +127,17 @@ pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-
 ### GUI Usage
 Run `pianoplayer` with no filename to open the GUI, then:
 
-![newgui](https://user-images.githubusercontent.com/32848391/63605343-09365000-c5ce-11e9-97b8-a5642e71ca24.png)
+![newgui](https://github.com/user-attachments/assets/d65a2fdb-2efd-4b5b-98e6-ba1ad1328dca)
 
-- press **Import Score** (valid formats: *MusicXML/MXL, MuseScore, MIDI, [PIG](http://beam.kisarazu.ac.jp/~saito/research/PianoFingeringDataset/)*)
+- press **Import Score** (valid formats: *MusicXML/MXL, MuseSsore, MIDI, [PIG](http://beam.kisarazu.ac.jp/~saito/research/PianoFingeringDataset/)*)
 - press **GENERATE** (`output.xml` is written)
 - press **Musescore** to visualize the annotated score (Linux/macOS only)
 - press **Quit** (or `q` / `Ctrl+W`) to close the GUI
 
 
-#### Example output, as displayed in *musescore*:
+#### Example output, as displayed in Musescore:
 
-(If fingering numbers are not visible enough try `-b` option.)
+(If fingering numbers are not visible enough try with `-b` option.)
 
 
 ![bachinv4](https://user-images.githubusercontent.com/32848391/63605352-10f5f480-c5ce-11e9-8b00-34f1adc2e79b.png)
