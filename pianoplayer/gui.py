@@ -30,7 +30,7 @@ from tkinter.ttk import (
 )
 from tkinter.ttk import Frame as TtkFrame
 
-from pianoplayer import core
+from pianoplayer import __version__, core
 from pianoplayer.errors import PianoPlayerError
 
 
@@ -42,7 +42,19 @@ class PianoGUI(Frame):
         super().__init__(parent, bg="white")
         self.parent = parent
 
-        self.filename_var = StringVar(value=str(Path("scores/bach_invention4.xml")))
+        default_score = Path("scores/bach_invention4.xml")
+        if default_score.exists():
+            default_input = str(default_score)
+        else:
+            scores_dir = Path("scores")
+            fallback = None
+            if scores_dir.exists():
+                candidates = sorted(scores_dir.glob("*.xml")) + sorted(scores_dir.glob("*.mxl"))
+                if candidates:
+                    fallback = candidates[0]
+            default_input = str(fallback) if fallback is not None else ""
+
+        self.filename_var = StringVar(value=default_input)
         self.output_file_var = StringVar(value="output.xml")
         self.right_enabled = BooleanVar(value=True)
         self.left_enabled = BooleanVar(value=True)
@@ -67,7 +79,7 @@ class PianoGUI(Frame):
 
     def init_ui(self) -> None:
         """Create and place all GUI controls in Basic/Advanced tabs."""
-        self.parent.title("PianoPlayer")
+        self.parent.title(f"PianoPlayer v{__version__}")
 
         # Theme and palette for the full window.
         bg = "#ffffff"
@@ -95,6 +107,7 @@ class PianoGUI(Frame):
         self.pack(fill=BOTH, expand=True)
         self.parent.bind("<KeyPress-q>", self._close_cmd)
         self.parent.bind("<Control-w>", self._close_cmd)
+        self.parent.bind("<Control-o>", lambda _event: self.import_cmd())
 
         # Main layout: IO row, options tabs, bottom action/status row.
         container = TtkFrame(self)
