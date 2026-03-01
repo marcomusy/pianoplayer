@@ -1,4 +1,4 @@
-"""Readers to convert scores and MIDI to internal INote sequences."""
+"""Readers to convert score inputs to internal INote sequences."""
 
 from __future__ import annotations
 
@@ -6,109 +6,25 @@ import logging
 from operator import attrgetter
 from typing import Any
 
-from music21.articulations import Fingering
-
-from pianoplayer.models import INote, keypos, keypos_midi
+from pianoplayer.models import INote, keypos_midi
+from pianoplayer.musicxml_io import PartInfo, noteseq_from_part
 
 logger = logging.getLogger(__name__)
 
 
-def get_finger_music21(n: Any, j: int = 0) -> int | str:
-    fingers = [art.fingerNumber for art in n.articulations if isinstance(art, Fingering)]
-    return fingers[j] if len(fingers) > j else 0
-
-
-def reader(sf: Any, beam: int = 0) -> list[INote]:
-    noteseq: list[INote] = []
-
-    if hasattr(sf, "parts"):
-        if len(sf.parts) <= beam:
-            return []
-        strm = sf.parts[beam].flat
-    elif hasattr(sf, "elements"):
-        if len(sf.elements) == 1 and beam == 1:
-            strm = sf[0]
-        else:
-            if len(sf) <= beam:
-                return []
-            strm = sf[beam]
-    else:
-        strm = sf.flat
-
-    logger.info("Reading beam %s with %s objects in stream.", beam, len(strm))
-
-    chord_id = 0
-    note_id = 0
-    for n in strm.getElementsByClass("GeneralNote"):
-        if n.duration.quarterLength == 0:
-            continue
-
-        if hasattr(n, "tie") and n.tie and n.tie.type in {"continue", "stop"}:
-            continue
-
-        if n.isNote:
-            if len(noteseq) and n.offset == noteseq[-1].time:
-                continue
-
-            an = INote()
-            an.noteID = note_id
-            an.note21 = n
-            an.isChord = False
-            an.name = n.name
-            an.octave = n.octave
-            an.measure = n.measureNumber
-            an.x = keypos(n)
-            an.pitch = n.pitch.midi
-            an.time = n.offset
-            an.duration = n.duration.quarterLength
-            pc = n.pitch.pitchClass
-            an.isBlack = pc in [1, 3, 6, 8, 10]
-
-            # Prefer explicit articulation fingering; fallback to lyric fingering.
-            art_finger = get_finger_music21(n)
-            if art_finger:
-                an.fingering = art_finger
-            elif n.lyrics:
-                an.fingering = n.lyric
-
-            noteseq.append(an)
-            note_id += 1
-            continue
-
-        if n.isChord:
-            if n.tie and n.tie.type in {"continue", "stop"}:
-                continue
-
-            sfasam = 0.05
-            for j, cn in enumerate(n.pitches):
-                an = INote()
-                an.chordID = chord_id
-                an.noteID = note_id
-                an.isChord = True
-                an.pitch = cn.midi
-                an.note21 = cn
-                an.name = cn.name
-                an.chordnr = j
-                an.NinChord = len(n.pitches)
-                an.octave = cn.octave
-                an.measure = n.measureNumber
-                an.x = keypos(cn)
-                an.time = n.offset - sfasam * (len(n.pitches) - j - 1)
-                an.duration = n.duration.quarterLength + sfasam * (an.NinChord - 1)
-                pc = cn.pitch.pitchClass if hasattr(cn, "pitch") else cn.pitchClass
-                an.isBlack = pc in [1, 3, 6, 8, 10]
-                an.fingering = get_finger_music21(n, j)
-                note_id += 1
-                noteseq.append(an)
-            chord_id += 1
-
-    if len(noteseq) < 2:
-        logger.info("Beam is empty.")
+def reader(score: Any, beam: int = 0) -> list[INote]:
+    """Read a parsed score object and return an ``INote`` sequence for one part."""
+    parts = getattr(score, "parts", None)
+    if parts is None or len(parts) <= beam:
         return []
-    return noteseq
+    part = parts[beam]
+    if isinstance(part, PartInfo):
+        return noteseq_from_part(part)
+    return []
 
 
 def reader_pretty_midi(pm: Any, beam: int = 0) -> list[INote]:
+    """Convert a ``pretty_midi.Instrument`` object to ``INote`` entries."""
     noteseq: list[INote] = []
     pm_notes = sorted(pm.notes, key=attrgetter("start"))
 
@@ -135,7 +51,6 @@ def reader_pretty_midi(pm: Any, beam: int = 0) -> list[INote]:
                 an = INote()
                 an.noteID = note_id
                 note_id += 1
-                an.note21 = n
                 an.pitch = n.pitch
                 an.isChord = False
                 an.octave = n.pitch // 12
@@ -160,9 +75,7 @@ def reader_pretty_midi(pm: Any, beam: int = 0) -> list[INote]:
             an.noteID = note_id
             note_id += 1
             an.isChord = True
-            an.chord21 = group[0]
             an.pitch = cn.pitch
-            an.note21 = cn
             an.chordnr = k
             an.NinChord = len(valid_group)
             an.octave = cn.pitch // 12
@@ -183,120 +96,76 @@ def reader_pretty_midi(pm: Any, beam: int = 0) -> list[INote]:
 
 
 def reader_PIG(fname: str, beam: int = 0) -> list[INote]:
-    """
-    Convert a PIG text file to a noteseq of type INote.
+    """Read a PIG text file and build ``INote`` values for one channel (beam)."""
+    noteseq: list[INote] = []
+    chord_id = 0
+    note_id = 0
 
-    time_unit must be multiple of 2.
-    beam = 0, right hand
-    beam = 1, left hand.
-    """
-    sf = PIG2Stream(fname, beam=beam)
-    return reader(sf, beam=0)
-
-
-def PIG2Stream(fname: str, beam: int = 0, time_unit: float = 0.5, fixtempo: float = 0) -> Any:
-    """
-    Convert a PIG text file to a music21 Stream object.
-    time_unit must be multiple of 2.
-    beam = 0, right hand
-    beam = 1, left hand.
-    """
-    import numpy as np
-    from music21 import chord, note, stream
-    from music21.articulations import Fingering
-
+    rows: list[tuple[float, float, str, str]] = []
     with open(fname, "r", encoding="utf-8") as f:
-        lines = f.readlines()
+        for line in f:
+            if line.startswith("//") or not line.strip():
+                continue
+            cols = line.split()
+            if len(cols) < 8:
+                continue
+            _idx, onset, offset, name, _onv, _offv, channel, finger = cols[:8]
+            if int(channel) != beam:
+                continue
+            rows.append((float(onset), float(offset), name.replace("b", "-"), finger))
 
-    durations = []
-    firstonset = 0.0
-    blines = []
-    for line in lines:
-        if line.startswith("//"):
-            continue
-        _, onset, offset, _name, _, _, channel, _ = line.split()
-        onset, offset = float(onset), float(offset)
-        if beam != int(channel):
-            continue
-        if not firstonset:
-            firstonset = onset
-        if offset - onset < 0.0001:
-            continue
-        durations.append(offset - onset)
-        blines.append(line)
-
-    sf = stream.Part()
-    sf.id = beam
-
-    if not blines:
-        return sf
-
-    durations_arr = np.array(durations)
-    logdurs = -np.log2(durations_arr)
-    mindur = np.min(logdurs)
-    expos = (logdurs - mindur).astype(int)
-    if np.max(expos) > 3:
-        mindur = mindur + 1
-
-    if not fixtempo and firstonset:
-        r = note.Rest()
-        logdur = -np.log2(firstonset)
-        r.duration.quarterLength = 1.0 / time_unit / pow(2, int(logdur - mindur))
-        sf.append(r)
-
+    rows.sort(key=lambda r: (r[0], r[2]))
     i = 0
-    n_lines = len(blines)
-    while i < n_lines:
-        line = blines[i]
-        if line.startswith("//"):
-            i += 1
-            continue
+    while i < len(rows):
+        onset = rows[i][0]
+        j = i
+        group: list[tuple[float, float, str, str]] = []
+        while j < len(rows) and rows[j][0] == onset:
+            group.append(rows[j])
+            j += 1
 
-        _, onset, offset, name, _, _, _, finger = line.split()
-        onset, offset = float(onset), float(offset)
-        name = name.replace("b", "-")
-
-        chordnotes = [name]
-        next_i = i + 1
-        while next_i < n_lines:
-            _, onset1, _, name1, _, _, _, _ = blines[next_i].split()
-            onset1 = float(onset1)
-            if onset1 != onset:
-                break
-            name1 = name1.replace("b", "-")
-            chordnotes.append(name1)
-            next_i += 1
-
-        if len(chordnotes) > 1:
-            an = chord.Chord(chordnotes)
+        if len(group) == 1:
+            _, off, name, finger = group[0]
+            an = INote()
+            an.noteID = note_id
+            note_id += 1
+            an.time = onset
+            an.duration = max(0.0, off - onset)
+            an.name = name[:-1]
+            an.octave = int(name[-1])
+            an.fingering = 0 if finger == "_" else int(finger)
+            an.is_anchor = an.fingering in {1, 2, 3, 4, 5}
+            pc_map = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
+            step = an.name[0]
+            alter = an.name.count("#") - an.name.count("-")
+            an.pitch = (an.octave + 1) * 12 + pc_map[step] + alter
+            an.isBlack = (an.pitch % 12) in [1, 3, 6, 8, 10]
+            noteseq.append(an)
         else:
-            an = note.Note(name)
-            if "_" not in finger:
-                fingering = Fingering(abs(int(finger)))
-                fingering.style.absoluteY = 20
-                an.articulations.append(fingering)
+            for k, (_on, off, name, _finger) in enumerate(group):
+                an = INote()
+                an.chordID = chord_id
+                an.noteID = note_id
+                note_id += 1
+                an.isChord = True
+                an.chordnr = k
+                an.NinChord = len(group)
+                an.time = onset
+                an.duration = max(0.0, off - onset)
+                an.name = name[:-1]
+                an.octave = int(name[-1])
+                an.is_anchor = False
+                pc_map = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
+                step = an.name[0]
+                alter = an.name.count("#") - an.name.count("-")
+                an.pitch = (an.octave + 1) * 12 + pc_map[step] + alter
+                an.isBlack = (an.pitch % 12) in [1, 3, 6, 8, 10]
+                noteseq.append(an)
+            chord_id += 1
 
-        if fixtempo:
-            an.duration.quarterLength = fixtempo
-        else:
-            logdur = -np.log2(offset - onset)
-            an.duration.quarterLength = 1.0 / time_unit / pow(2, int(logdur - mindur))
+        i = j
 
-        sf.append(an)
-
-        if next_i < n_lines:
-            _, onset_next, _, _, _, _, _, _ = blines[next_i].split()
-            onset_next = float(onset_next)
-            if onset_next - offset > 0:
-                r = note.Rest()
-                if fixtempo:
-                    r.duration.quarterLength = fixtempo
-                logdur = -np.log2(onset_next - offset)
-                d = int(logdur - mindur)
-                if d < 4:
-                    r.duration.quarterLength = 1.0 / time_unit / pow(2, d)
-                    sf.append(r)
-
-        i = next_i
-
-    return sf
+    if len(noteseq) < 2:
+        logger.info("Beam is empty.")
+        return []
+    return noteseq

@@ -5,12 +5,15 @@
 # URL:          https://github.com/marcomusy/pianoplayer
 # Author:       Marco Musy
 #-------------------------------------------------------------------------------
+import contextlib
 import logging
 
+from rich.console import Console
+
 try:
-    from vedo import Assembly, Box, Cylinder, Ellipsoid, Plotter, Text3D, dataurl, printc
+    from vedo import Assembly, Box, Cylinder, Ellipsoid, Plotter, Text2D, Text3D, dataurl
 except ImportError as exc:
-    Plotter = Assembly = printc = Ellipsoid = Box = Cylinder = Text3D = None
+    Plotter = Assembly = Ellipsoid = Box = Cylinder = Text2D = Text3D = None
     dataurl = ""
     _VEDO_IMPORT_ERROR = exc
 else:
@@ -18,9 +21,10 @@ else:
 
 from pianoplayer import __version__
 from pianoplayer.hand import Hand
-from pianoplayer.wavegenerator import playSound
+from pianoplayer.wavegenerator import has_audio_backend, play_sound
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
 def nameof(n):
@@ -86,40 +90,61 @@ class VirtualKeyboard:
         self._press_idx_R = 0
         self._press_idx_L = 0
         self._abort_playback = False
+        self._hud_rh = None
+        self._hud_lh = None
+        self._finger_colors_right = {
+            1: (0.76, 0.35, 0.35),
+            2: (0.76, 0.40, 0.33),
+            3: (0.76, 0.45, 0.31),
+            4: (0.76, 0.50, 0.29),
+            5: (0.76, 0.55, 0.27),
+        }
+        self._finger_colors_left = {
+            1: (0.32, 0.72, 0.98),
+            2: (0.24, 0.64, 0.96),
+            3: (0.16, 0.56, 0.92),
+            4: (0.10, 0.48, 0.86),
+            5: (0.06, 0.40, 0.78),
+        }
         self.build_keyboard()
 
     ################################################################################
-    def makeHandActor(self, f=1):
-        """Create and register a simple hand actor assembly."""
-        a1, a2, a3, c = (5*f,0,0), (0,3.5*f,0), (0,0,1.5*f), (.7,0.3,0.3)
-        palm = Ellipsoid(pos=(0,-3,0), axis1=a1, axis2=a2, axis3=a3, alpha=0.6, c=c)
-        wrist= Box(pos=(0,-9,0), length=6*f, width=5, height=2, alpha=0.4, c=c)
-        arm  = Assembly([palm,wrist])
-        f1 = Cylinder((-2, 1.5,0), axis=(0,1,0), height=5, r=.8*f, c=c)
-        f2 = Cylinder((-1, 3  ,0), axis=(0,1,0), height=6, r=.7*f, c=c)
-        f3 = Cylinder(( 0, 4  ,0), axis=(0,1,0), height=6.2, r=.75*f, c=c)
-        f4 = Cylinder(( 1, 3.5,0), axis=(0,1,0), height=6.1, r=.7*f, c=c)
-        f5 = Cylinder(( 2, 2  ,0), axis=(0,1,0), height=5, r=.6*f, c=c)
-        self.vp += [arm, f1,f2,f3,f4,f5] # add actors to internal list
-        return [arm, f1,f2,f3,f4,f5]
+    def make_hand_model(self, f=1, palm_color=(0.7, 0.3, 0.3)):
+        """Create and register the palm+fingers vedo objects for one hand."""
+        a1, a2, a3 = (5 * f, 0, 0), (0, 3.5 * f, 0), (0, 0, 1.5 * f)
+        palm = Ellipsoid(
+            pos=(0, -3, 0), axis1=a1, axis2=a2, axis3=a3, alpha=0.6, c=palm_color
+        )
+        arm = Assembly([palm])
+        f1 = Cylinder((-2, 1.5, 0), axis=(0, 1, 0), height=5, r=0.8 * f, c=palm_color)
+        f2 = Cylinder((-1, 3, 0), axis=(0, 1, 0), height=6, r=0.7 * f, c=palm_color)
+        f3 = Cylinder((0, 4, 0), axis=(0, 1, 0), height=6.2, r=0.75 * f, c=palm_color)
+        f4 = Cylinder((1, 3.5, 0), axis=(0, 1, 0), height=6.1, r=0.7 * f, c=palm_color)
+        f5 = Cylinder((2, 2, 0), axis=(0, 1, 0), height=5, r=0.6 * f, c=palm_color)
+        self.vp += [arm, f1, f2, f3, f4, f5]
+        return [arm, f1, f2, f3, f4, f5]
 
     def build_RH(self, hand): #########################Build Right Hand
         """Attach and place the right-hand actor model."""
         self.rightHand = hand
         f = getattr(hand, "hf", Hand.size_factor(hand.size))
-        self.vpRH = self.makeHandActor(f)
+        self.vpRH = self.make_hand_model(f, palm_color=(0.7, 0.3, 0.3))
         for limb in self.vpRH: # initial x positions are superseded later
             limb.x( limb.x()* 2.5 )
             limb.shift(16.5 * 5 + 1, -7.5, 3)
+        for finger in (1, 2, 3, 4, 5):
+            self.vpRH[finger].color(self._finger_colors_right[finger])
 
     def build_LH(self, hand): ########################Build Left Hand
         """Attach and place the left-hand actor model."""
         self.leftHand = hand
         f = getattr(hand, "hf", Hand.size_factor(hand.size))
-        self.vpLH = self.makeHandActor(f)
+        self.vpLH = self.make_hand_model(f, palm_color=(0.12, 0.42, 0.86))
         for limb in self.vpLH:
             limb.x( limb.x()* 2.5 )
             limb.shift(16.5 * 3 + 1, -7.5, 3)
+        for finger in (1, 2, 3, 4, 5):
+            self.vpLH[finger].color(self._finger_colors_left[finger])
 
 
     #######################################################Build Keyboard
@@ -187,19 +212,27 @@ class VirtualKeyboard:
                     tn = Box(pos=(x+wb/2,0,1), length=wb*.6, height=1, width=8, c='black')
                     self.KB.update({nts[ik]+"#"+str(ioct+1) : tn})
                     self.vp += tn
+        self._hud_lh = Text2D(
+            pos="top-left", c="black", bg="w", alpha=0.05, s=1, font="Theemim"
+        )
+        self._hud_rh = Text2D(
+            pos="top-right", c="black", bg="w", alpha=0.05, s=1, font="Theemim"
+        )
+        self.vp += [self._hud_rh, self._hud_lh]
         cam = dict(pos=(110, -51.1, 89.1),
-                   focalPoint=(81.5, 0.531, 2.82),
+                   focal_point=(81.5, 0.531, 2.82),
                    viewup=(-0.163, 0.822, 0.546),
-                   distance=105, clippingRange=(41.4, 179))
+                   distance=105, clipping_range=(41.4, 179))
         self.vp.show(interactive=0, camera=cam, resetcam=0)
-
 
     #####################################################################
     def play(self):
         """Run playback loop until sequence end or user abort."""
 
-        printc('Press space to proceed by one note', c=1)
-        printc('Press Esc to exit.', c=1)
+        console.print("[cyan]Press space to proceed by one note[/cyan]")
+        console.print("[cyan]Press Esc (or q) to exit.[/cyan]")
+        if self.playsounds and not has_audio_backend():
+            logger.warning("Sound playback unavailable: install pygame.")
 
         if self.rightHand:
             self.engagedkeysR    = [False]*len(self.rightHand.noteseq)
@@ -225,38 +258,56 @@ class VirtualKeyboard:
             t += self.dt                      # absolute time flows
 
         if self.verbose:
-            printc('End of note sequence reached.')
-        self.vp.keyPressFunction = None       # disable observer
+            console.print("[green]End of note sequence reached.[/green]")
 
     def _wait_for_advance_key(self):
         """Block until Space (advance) or Esc (abort) is pressed."""
         interactor = getattr(self.vp, "interactor", None)
         if interactor is None:
+            self._abort_playback = True
             return
 
         state = {"abort": False}
 
+        def _get_key(evt) -> str:
+            key = (
+                getattr(evt, "keypress", "")
+                or getattr(evt, "keyPressed", "")
+                or getattr(evt, "key", "")
+                or getattr(evt, "keySym", "")
+            )
+            if not key and interactor is not None:
+                with contextlib.suppress(Exception):
+                    key = interactor.GetKeySym() or ""
+            return str(key).strip().lower()
+
         def _on_key(evt):
-            key = getattr(evt, "keypress", "") or getattr(evt, "keyPressed", "")
-            if key in ("Escape", "Esc"):
+            key = _get_key(evt)
+            if key in {"escape", "esc", "q"}:
                 state["abort"] = True
                 try:
                     interactor.ExitCallback()
                 except Exception:
-                    pass
+                    with contextlib.suppress(Exception):
+                        interactor.TerminateApp()
                 return
-            if key in ("space", " ", "Return", "KP_Enter"):
+            if key in {"space", "spacebar", " ", "return", "kp_enter", "enter"}:
                 try:
                     interactor.ExitCallback()
                 except Exception:
-                    pass
+                    with contextlib.suppress(Exception):
+                        interactor.TerminateApp()
 
         cid = None
+        char_cid = None
         try:
             cid = self.vp.add_callback("KeyPress", _on_key)
+            # Some VTK/vedo builds deliver printable keys through CharEvent.
+            char_cid = self.vp.add_callback("CharEvent", _on_key)
             interactor.Start()
         except (AttributeError, RuntimeError) as exc:
             logger.debug("Key wait unavailable: %s", exc)
+            self._abort_playback = True
             return
         finally:
             if cid is not None:
@@ -264,8 +315,21 @@ class VirtualKeyboard:
                     self.vp.remove_callback(cid)
                 except (AttributeError, RuntimeError):
                     logger.debug("Unable to remove key callback.")
+            if char_cid is not None:
+                try:
+                    self.vp.remove_callback(char_cid)
+                except (AttributeError, RuntimeError):
+                    logger.debug("Unable to remove char callback.")
 
         if state["abort"]:
+            self._abort_playback = True
+            return
+
+        # If the interactor/renderer disappears while waiting, stop playback cleanly.
+        if (
+            getattr(self.vp, "interactor", None) is None
+            or getattr(self.vp, "renderer", None) is None
+        ):
             self._abort_playback = True
 
     def _safe_refresh(self, interactive=False):
@@ -285,11 +349,11 @@ class VirtualKeyboard:
         finger_actor.shift(0, 0, -1)
         finger_actor.color(color)
 
-    def _frelease(self, finger_actor):
+    def _frelease(self, finger_actor, base_color):
         """Animate finger release."""
         finger_actor.shift(0, 0, 1)
         finger_actor.rotate_x(20, around=finger_actor.pos())
-        finger_actor.color((0.7, 0.3, 0.3))
+        finger_actor.color(base_color)
 
     def _kpress(self, key_actor, color):
         """Animate piano key press."""
@@ -313,6 +377,7 @@ class VirtualKeyboard:
 
         if side == 1:
             c1, c2         = 'tomato', 'orange'
+            finger_base_colors = self._finger_colors_right
             engagedkeys    = self.engagedkeysR
             engagedfingers = self.engagedfingersR
             H              = self.rightHand
@@ -320,7 +385,8 @@ class VirtualKeyboard:
             release_idx = self._release_idx_R
             press_idx = self._press_idx_R
         else:
-            c1, c2         = 'purple', 'mediumpurple'
+            c1, c2         = (0.06, 0.32, 0.86), (0.24, 0.72, 1.00)
+            finger_base_colors = self._finger_colors_left
             engagedkeys    = self.engagedkeysL
             engagedfingers = self.engagedfingersL
             H              = self.leftHand
@@ -344,7 +410,7 @@ class VirtualKeyboard:
                 engagedfingers[f] = False
                 name = nameof(n)
                 self._krelease(self.KB[name])
-                self._frelease(vpH[f])
+                self._frelease(vpH[f], finger_base_colors[f])
                 self._safe_refresh(interactive=False)
             release_idx += 1
 
@@ -384,15 +450,14 @@ class VirtualKeyboard:
             self._kpress(self.KB[name], c2)
 
             if self.verbose:
-                msg = 'meas.' + str(n.measure) + ' t=' + str(round(t, 2))
-                if side == 1:
-                    printc(msg, '\t\t\t\tRH.finger', f, 'hit', name, c='b')
-                else:
-                    printc(msg, '\tLH.finger', f, 'hit', name, c='m')
+                msg = "meas." + str(n.measure) + " t=" + str(round(t, 2))
+                actor = self._hud_rh if side == 1 else self._hud_lh
+                if actor is not None:
+                    actor.text(f"{msg}\nfinger {f} hits {name}")
 
             self._safe_refresh(interactive=False)
             if self.playsounds:
-                playSound(n, self.speedfactor, wait=True)
+                play_sound(n, self.speedfactor, wait=True)
 
             self._wait_for_advance_key()
             press_idx += 1

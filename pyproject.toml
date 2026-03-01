@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Marco Musy", email = "marco.musy@gmail.com" }]
-keywords = ["piano", "fingering", "music21"]
+keywords = ["piano", "fingering", "musicxml"]
 classifiers = [
   "Intended Audience :: Science/Research",
   "Intended Audience :: Education",
@@ -19,18 +19,16 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Visualization",
   "Topic :: Scientific/Engineering :: Information Analysis",
 ]
-dependencies = [
-  "music21>=6.5.0",
-]
+dependencies = ["rich>=13.0.0"]
 
 [project.optional-dependencies]
 visual = ["vedo>=2026.6.1"]
 midi = ["pretty_midi>=0.2.9"]
-sound = ["simpleaudio>=1.0.4"]
+sound = ["pygame>=2.6.0"]
 all = [
   "vedo>=2026.6.1",
   "pretty_midi>=0.2.9",
-  "simpleaudio>=1.0.4",
+  "pygame>=2.6.0",
 ]
 
 [project.urls]

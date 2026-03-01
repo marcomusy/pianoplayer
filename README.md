@@ -1,14 +1,15 @@
 # PianoPlayer
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/fb513fa9c1a34f9988ec5dc443cbe633)](https://app.codacy.com/app/marcomusy/pianoplayer?utm_source=github.com&utm_medium=referral&utm_content=marcomusy/pianoplayer&utm_campaign=Badge_Grade_Settings)
 [![Downloads](https://pepy.tech/badge/pianoplayer)](https://pepy.tech/project/pianoplayer)
+[![Downloads / Month](https://pepy.tech/badge/pianoplayer/month)](https://pepy.tech/project/pianoplayer)
+[![Downloads / Week](https://pepy.tech/badge/pianoplayer/week)](https://pepy.tech/project/pianoplayer)
 [![lics](https://img.shields.io/badge/license-MIT-blue.svg)](https://en.wikipedia.org/wiki/MIT_License)
 [![DOI](https://zenodo.org/badge/107160052.svg)](https://zenodo.org/badge/latestdoi/107160052)
 
 
-Automatic piano fingering generator. <br />
-Find the optimal fingering combination to play a piano score.
-Optionally visualize it in 3D with [vedo](https://github.com/marcomusy/vedo).<br />
+Automatic piano fingering generator for MusicXML and MIDI scores.  
+PianoPlayer searches for a low-effort fingering sequence for one or both hands.  
+You can also inspect playback in 3D with [vedo](https://github.com/marcomusy/vedo).
 
 ## Download and Install:
 ```bash
@@ -18,7 +19,7 @@ Optional extras:
 ```bash
 pip install "pianoplayer[visual]"  # 3D rendering with vedo
 pip install "pianoplayer[midi]"    # MIDI input support
-pip install "pianoplayer[sound]"   # simpleaudio playback
+pip install "pianoplayer[sound]"   # pygame playback
 pip install "pianoplayer[all]"     # all optional extras
 ```
 
@@ -29,10 +30,9 @@ files.
 
 
 ## CLI Usage:
-Example command line from terminal:<br />
-`pianoplayer scores/bach_invention4.xml -n10 -r -v -z -m`<br />
-will find the right hand fingering for the first 10 measures,
-pop up a 3D rendering window and invoke *musescore*.
+Example command line:
+`pianoplayer scores/bach_invention4.xml -n 10 -r -v -z -m`  
+This annotates the first 10 measures for the right hand, opens 3D playback, and then opens MuseScore.
 
 The output is saved as a [MusicXML](https://en.wikipedia.org/wiki/MusicXML)
 file with name `output.xml`.<br />
@@ -43,7 +43,7 @@ pianoplayer         # if no argument is given a GUI will pop up
 pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-b] [-v] [--vedo-speed]
             [-z] [-l] [-r] [--hand-size {XXS,XS,S,M,L,XL,XXL}]
             filename
-# Valid file formats: MusicXML, musescore, midi (.xml, .mscz, .mscx, .mid)
+# Valid file formats: MusicXML, compressed MusicXML, MuseScore, MIDI (.xml, .mxl, .mscz, .mscx, .mid, .midi)
 #
 # Optional arguments:
 #   -h, --help            show this help message and exit
@@ -51,7 +51,7 @@ pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-
 #   -o , --outputfile     Annotated output xml file name
 #   -n , --n-measures     [100] Number of score measures to scan
 #   -s , --start-measure  Start from measure number [1]
-#   -d , --depth          [auto] Depth of combinatorial search, [4-9]
+#   -d , --depth          [auto] Depth of combinatorial search, [5-9]
 #   -rbeam                [0] Specify Right Hand beam number
 #   -lbeam                [1] Specify Left Hand beam number
 #   --quiet               Switch off verbosity
@@ -64,16 +64,15 @@ pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-
 #   --hand-size           Hand size preset [XXS, XS, S, M, L, XL, XXL]
 ```
 
-### GUI Usage:<br />
-Just type `pianoplayer` in a terminal
-then:
+### GUI Usage
+Run `pianoplayer` with no filename to open the GUI, then:
 
 ![newgui](https://user-images.githubusercontent.com/32848391/63605343-09365000-c5ce-11e9-97b8-a5642e71ca24.png)
 
-- press **Import Score** (valid formats: *musescore, MusicXML, MIDI, [PIG](http://beam.kisarazu.ac.jp/~saito/research/PianoFingeringDataset/)*)
+- press **Import Score** (valid formats: *MusicXML/MXL, MuseScore, MIDI, [PIG](http://beam.kisarazu.ac.jp/~saito/research/PianoFingeringDataset/)*)
 - press **GENERATE** (`output.xml` is written)
 - press **Musescore** to visualize the annotated score
-- press **3D Player** to show the animation (Press `Esc` to quit the application)
+- press **Quit** (or `q` / `Ctrl+W`) to close the GUI
 
 
 #### Example output, as displayed in *musescore*:
@@ -106,7 +105,7 @@ minimizes the effort of the hand avoiding unnecessary movements.
 - Your hand size (from 'XXS' to 'XXL') which sets the relaxed distance between thumb and pinkie.
 - The beam number associated to the right hand is by default nr.0 (nr.1 for left hand).
 You can change it with `-rbeam` and `-lbeam` command line options.
-- Depth of combinatorial search, from 3 up to 9 notes ahead of the currently playing note. By
+- Depth of combinatorial search, from 5 up to 9 notes ahead of the currently playing note. By
 default the algorithm selects this number automatically based on the duration of the notes to be played.
 
 ## Limitations

@@ -21,6 +21,7 @@ class INote:
     time: float = 0.0
     duration: float = 0.0
     fingering: int | str = 0
+    is_anchor: bool = False
     measure: int = 0
     chordnr: int = 0
     NinChord: int = 0
