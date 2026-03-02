@@ -96,6 +96,30 @@ def build_parser() -> argparse.ArgumentParser:
         "-b", "--below-beam", help="Show fingering numbers below beam line", action="store_true"
     )
     parser.add_argument(
+        "--colorize-hands",
+        action="store_true",
+        help="Colorize annotated notes/fingerings by hand.",
+    )
+    parser.add_argument(
+        "--colorize-by-cost",
+        action="store_true",
+        help="Colorize notes/fingerings by computed cost (green->red).",
+    )
+    parser.add_argument(
+        "--rh-color",
+        metavar="",
+        type=str,
+        default="#d62828",
+        help="[#d62828] Color for right-hand annotations/notes.",
+    )
+    parser.add_argument(
+        "--lh-color",
+        metavar="",
+        type=str,
+        default="#1d4ed8",
+        help="[#1d4ed8] Color for left-hand annotations/notes.",
+    )
+    parser.add_argument(
         "-v", "--with-vedo", help="Play 3D scene after processing", action="store_true"
     )
     parser.add_argument("-z", "--sound-off", help="Disable sound", action="store_true")
@@ -145,6 +169,8 @@ def show_startup_banner(args: argparse.Namespace) -> None:
     ]
     if args.sound_off:
         lines.append("[cyan]Audio:[/cyan] off")
+    if args.colorize_hands:
+        lines.append(f"[cyan]Colors:[/cyan] RH {args.rh_color} | LH {args.lh_color}")
 
     body = "\n".join(lines)
     try:

@@ -33,6 +33,8 @@ _STEP_TO_SEMITONE = {
 _CIRCLED_FINGER = {1: "①", 2: "②", 3: "③", 4: "④", 5: "⑤"}
 _CIRCLED_TO_FINGER = {v: k for k, v in _CIRCLED_FINGER.items()}
 _FINGERING_LYRIC_NUMBER = "pianoplayer-fingering"
+_HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{6})$")
+_COLOR_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
 
 
 @dataclass(slots=True)
@@ -487,6 +489,7 @@ def _set_note_fingering(
     lyrics: bool,
     *,
     anchored: bool,
+    color: str | None = None,
 ) -> None:
     text = str(fingering)
     if anchored and isinstance(fingering, int) and fingering in _CIRCLED_FINGER:
@@ -495,8 +498,13 @@ def _set_note_fingering(
     _clear_note_fingering(note_el, lyrics)
 
     if lyrics:
-        lyric_el = ET.SubElement(note_el, "lyric", {"number": _FINGERING_LYRIC_NUMBER})
+        attrs = {"number": _FINGERING_LYRIC_NUMBER}
+        if color:
+            attrs["color"] = color
+        lyric_el = ET.SubElement(note_el, "lyric", attrs)
         text_el = ET.SubElement(lyric_el, "text")
+        if color:
+            text_el.set("color", color)
         text_el.text = text
         return
 
@@ -507,7 +515,30 @@ def _set_note_fingering(
     if technical_el is None:
         technical_el = ET.SubElement(notations_el, "technical")
     fingering_el = ET.SubElement(technical_el, "fingering")
+    if color:
+        fingering_el.set("color", color)
     fingering_el.text = text
+
+
+def _color_from_cost(value: float, min_cost: float, max_cost: float) -> str:
+    """Map normalized cost to a green->yellow->red gradient."""
+    if max_cost <= min_cost:
+        t = 0.0
+    else:
+        t = (value - min_cost) / (max_cost - min_cost)
+    t = max(0.0, min(1.0, t))
+
+    # 0.0 -> green, 0.5 -> yellow, 1.0 -> red
+    if t <= 0.5:
+        u = t / 0.5
+        c0 = (34, 197, 94)   # green-500
+        c1 = (245, 158, 11)  # amber-500
+    else:
+        u = (t - 0.5) / 0.5
+        c0 = (245, 158, 11)  # amber-500
+        c1 = (220, 38, 38)   # red-600
+    rgb = tuple(int(round(c0[i] + (c1[i] - c0[i]) * u)) for i in range(3))
+    return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
 
 
 def annotate_part_with_fingering(
@@ -517,12 +548,48 @@ def annotate_part_with_fingering(
     lyrics: bool,
     skip_chords_with: int = 4,
     target_staff: int | None = None,
+    hand_color: str | None = None,
+    colorize_by_cost: bool = False,
 ) -> None:
     """Write generated fingering values back into one MusicXML part.
 
     When `target_staff` is set, only notes on that staff are consumed and annotated.
     """
     seq = list(hand_noteseq)
+    color = None
+    if hand_color:
+        token = hand_color.strip()
+        if _HEX_COLOR_RE.match(token) or _COLOR_NAME_RE.match(token):
+            color = token
+
+    cost_min = 0.0
+    cost_max = 0.0
+    if colorize_by_cost and seq:
+        valid_costs = []
+        for note in seq:
+            raw = getattr(note, "cost", None)
+            try:
+                val = float(raw)
+            except (TypeError, ValueError):
+                continue
+            if val >= 0:
+                valid_costs.append(val)
+        if valid_costs:
+            cost_min = min(valid_costs)
+            cost_max = max(valid_costs)
+
+    def pick_color(note_obj: INote) -> str | None:
+        if colorize_by_cost:
+            raw = getattr(note_obj, "cost", None)
+            try:
+                val = float(raw)
+            except (TypeError, ValueError):
+                return None
+            if val >= 0:
+                return _color_from_cost(val, cost_min, cost_max)
+            return None
+        return color
+
     idx = 0
 
     for evt in part.events:
@@ -542,13 +609,17 @@ def annotate_part_with_fingering(
                 logger.warning("Not enough generated notes to annotate note at idx=%s", idx)
                 return
             finger = _valid_output_finger(seq[idx].fingering)
+            note_color = pick_color(seq[idx])
             if finger is not None:
                 _set_note_fingering(
                     evt.notes[0],
                     finger,
                     lyrics,
                     anchored=bool(getattr(seq[idx], "is_anchor", False)),
+                    color=note_color,
                 )
+                if note_color:
+                    evt.notes[0].set("color", note_color)
             idx += 1
             continue
 
@@ -570,13 +641,17 @@ def annotate_part_with_fingering(
                     return
                 if chord_len < skip_chords_with:
                     finger = _valid_output_finger(seq[idx].fingering)
+                    note_color = pick_color(seq[idx])
                     if finger is not None:
                         _set_note_fingering(
                             note_el,
                             finger,
                             lyrics,
                             anchored=bool(getattr(seq[idx], "is_anchor", False)),
+                            color=note_color,
                         )
+                        if note_color:
+                            note_el.set("color", note_color)
                 idx += 1
 
 

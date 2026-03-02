@@ -52,6 +52,10 @@ class AnnotateOptions:
     quiet: bool = False
     musescore: bool = False
     below_beam: bool = False
+    colorize_hands: bool = False
+    colorize_by_cost: bool = False
+    rh_color: str = "#d62828"
+    lh_color: str = "#1d4ed8"
     with_vedo: bool = False
     sound_off: bool = False
     left_only: bool = False

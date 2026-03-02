@@ -262,6 +262,57 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     .field { display: grid; gap: 0.3rem; }
     .field.full { grid-column: 1 / -1; }
     .field.hidden { display: none; }
+    .field.muted { opacity: 0.5; }
+    .muted { opacity: 0.5; }
+
+    .radio-group {
+      display: flex;
+      gap: 0.9rem;
+      align-items: center;
+      padding-top: 0.25rem;
+    }
+
+    .radio-group label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-weight: 600;
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    .radio-group input[type="radio"],
+    .radio-group input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      padding: 0;
+    }
+
+    .colorize-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin-left: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .colorize-inline .color-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .colorize-inline .color-chip label {
+      font-weight: 700;
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    .colorize-inline .color-chip input[type="text"] {
+      width: 8.2rem;
+      padding: 0.38rem 0.5rem;
+      font-size: 0.9rem;
+    }
 
     label {
       font-size: 0.82rem;
@@ -496,11 +547,38 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
               <p class="adv-title">Output</p>
               <div class="grid">
                 <div class="field">
-                  <label for="below_beam">Show annotations below beam</label>
-                  <select id="below_beam" name="below_beam">
-                    <option value="false" selected>False</option>
-                    <option value="true">True</option>
-                  </select>
+                  <div class="radio-group">
+                    <label for="below_beam">
+                      <input id="below_beam" type="checkbox" name="below_beam" value="true" />
+                      Show annotations below beam
+                    </label>
+                  </div>
+                </div>
+                <div class="field full">
+                  <div class="radio-group">
+                    <label for="colorize_hands">
+                      <input id="colorize_hands" type="checkbox" name="colorize_hands" value="true" />
+                      Colorize hands
+                    </label>
+                    <span class="colorize-inline">
+                      <span class="color-chip" id="lh_color_field">
+                        <label for="lh_color">LH</label>
+                        <input id="lh_color" name="lh_color" type="text" value="#1d4ed8" />
+                      </span>
+                      <span class="color-chip" id="rh_color_field">
+                        <label for="rh_color">RH</label>
+                        <input id="rh_color" name="rh_color" type="text" value="#d62828" />
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                <div class="field full">
+                  <div class="radio-group">
+                    <label for="colorize_by_cost">
+                      <input id="colorize_by_cost" type="checkbox" name="colorize_by_cost" value="true" />
+                      Colorize by cost
+                    </label>
+                  </div>
                 </div>
               </div>
             </section>
@@ -516,20 +594,20 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
                   </select>
                 </div>
                 <div class="field">
-                  <label for="rpart">Right Part number</label>
-                  <input id="rpart" name="rpart" type="number" min="0" value="0" />
-                </div>
-                <div class="field">
                   <label for="lpart">Left Part number</label>
                   <input id="lpart" name="lpart" type="number" min="0" value="1" />
                 </div>
                 <div class="field">
-                  <label for="rstaff">Right Staff number (0=auto)</label>
-                  <input id="rstaff" name="rstaff" type="number" min="0" value="0" />
+                  <label for="rpart">Right Part number</label>
+                  <input id="rpart" name="rpart" type="number" min="0" value="0" />
                 </div>
                 <div class="field">
                   <label for="lstaff">Left Staff number (0=auto)</label>
                   <input id="lstaff" name="lstaff" type="number" min="0" value="0" />
+                </div>
+                <div class="field">
+                  <label for="rstaff">Right Staff number (0=auto)</label>
+                  <input id="rstaff" name="rstaff" type="number" min="0" value="0" />
                 </div>
               </div>
             </section>
@@ -561,6 +639,13 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     const statusEl = document.getElementById("status");
     const submitBtn = document.getElementById("submit-btn");
     const autoRoutingEl = document.getElementById("auto_routing");
+    const belowBeamEl = document.getElementById("below_beam");
+    const colorizeHandsEl = document.getElementById("colorize_hands");
+    const colorizeByCostEl = document.getElementById("colorize_by_cost");
+    const rhColorEl = document.getElementById("rh_color");
+    const lhColorEl = document.getElementById("lh_color");
+    const rhColorFieldEl = document.getElementById("rh_color_field");
+    const lhColorFieldEl = document.getElementById("lh_color_field");
     const manualRoutingInputs = [
       document.getElementById("rpart"),
       document.getElementById("lpart"),
@@ -596,6 +681,23 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     autoRoutingEl.addEventListener("change", syncRoutingMode);
     syncRoutingMode();
 
+    function syncColorizeMode() {
+      const enabled = !!(colorizeHandsEl && colorizeHandsEl.checked);
+      const costMode = !!(colorizeByCostEl && colorizeByCostEl.checked);
+      const allowManualColor = enabled && !costMode;
+      [rhColorEl, lhColorEl].forEach((el) => {
+        if (!el) return;
+        el.disabled = !allowManualColor;
+      });
+      [rhColorFieldEl, lhColorFieldEl].forEach((el) => {
+        if (!el) return;
+        el.classList.toggle("muted", !allowManualColor);
+      });
+    }
+    if (colorizeHandsEl) colorizeHandsEl.addEventListener("change", syncColorizeMode);
+    if (colorizeByCostEl) colorizeByCostEl.addEventListener("change", syncColorizeMode);
+    syncColorizeMode();
+
     fileInputEl.addEventListener("change", () => {
       const files = fileInputEl.files;
       if (files && files.length > 0) {
@@ -618,6 +720,9 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
         formData.delete("hand_mode");
         formData.set("left_only", handMode === "left" ? "true" : "false");
         formData.set("right_only", handMode === "right" ? "true" : "false");
+        formData.set("below_beam", belowBeamEl && belowBeamEl.checked ? "true" : "false");
+        formData.set("colorize_hands", colorizeHandsEl && colorizeHandsEl.checked ? "true" : "false");
+        formData.set("colorize_by_cost", colorizeByCostEl && colorizeByCostEl.checked ? "true" : "false");
 
         const response = await fetch("/annotate", { method: "POST", body: formData });
         if (!response.ok) {

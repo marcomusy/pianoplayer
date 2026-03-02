@@ -17,7 +17,11 @@ from tkinter import (
     Tk,
     messagebox,
 )
+from tkinter import (
+    Entry as TkEntry,
+)
 from tkinter import filedialog as tk_filedialog
+from tkinter import font as tkfont
 from tkinter.ttk import (
     Button,
     Checkbutton,
@@ -56,6 +60,7 @@ class PianoGUI(Frame):
             default_input = str(fallback) if fallback is not None else ""
 
         self.filename_var = StringVar(value=default_input)
+        self._default_input_hint = default_input
         self.output_file_var = StringVar(value="output.xml")
         self.right_enabled = BooleanVar(value=True)
         self.left_enabled = BooleanVar(value=True)
@@ -74,6 +79,10 @@ class PianoGUI(Frame):
         self.with_vedo_var = BooleanVar(value=False)
         self.sound_off_var = BooleanVar(value=False)
         self.below_beam_var = BooleanVar(value=False)
+        self.colorize_hands_var = BooleanVar(value=False)
+        self.colorize_by_cost_var = BooleanVar(value=False)
+        self.rh_color_var = StringVar(value="#d62828")
+        self.lh_color_var = StringVar(value="#1d4ed8")
         self.quiet_var = BooleanVar(value=False)
         self.auto_open_musescore_var = BooleanVar(value=False)
 
@@ -84,6 +93,10 @@ class PianoGUI(Frame):
         self._banner_ratio = (1, 1)
         self._banner_label = None
         self._busy = False
+        default_font = tkfont.nametofont("TkDefaultFont")
+        self._filename_font_normal = default_font.copy()
+        self._filename_font_italic = default_font.copy()
+        self._filename_font_italic.configure(slant="italic")
         self.init_ui()
 
     def init_ui(self) -> None:
@@ -130,20 +143,22 @@ class PianoGUI(Frame):
 
         io_row = TtkFrame(container)
         io_row.pack(fill="x", pady=(0, 8))
-        Label(io_row, text="Input Score").pack(side="left")
-        Entry(io_row, textvariable=self.filename_var).pack(
+        self.import_btn = Button(
+            io_row,
+            text="Import Score",
+            style="Primary.TButton",
+            command=self.import_cmd,
+        )
+        self.import_btn.pack(side="left")
+        self.filename_entry = TkEntry(io_row, textvariable=self.filename_var)
+        self.filename_entry.pack(
             side="left",
             fill="x",
             expand=True,
             padx=8,
         )
-        self.import_btn = Button(
-            io_row,
-            text="Import Score",
-            style="Secondary.TButton",
-            command=self.import_cmd,
-        )
-        self.import_btn.pack(side="left")
+        self.filename_entry.bind("<KeyRelease>", self._refresh_filename_style)
+        self.after(0, self._refresh_filename_style)
 
         notebook = Notebook(container)
         notebook.pack(fill=BOTH, expand=True)
@@ -183,9 +198,22 @@ class PianoGUI(Frame):
         self.quit_btn.pack(
             side="right"
         )
-        status_wrap = TtkFrame(bottom)
-        status_wrap.pack(side="left", fill="x", expand=True, padx=10)
-        Label(status_wrap, textvariable=self.status_var, style="Hint.TLabel").pack(anchor="center")
+        status_wrap = Frame(
+            bottom,
+            bg=bg,
+            highlightthickness=1,
+            highlightbackground="#cbd5e1",
+            highlightcolor="#cbd5e1",
+            bd=0,
+        )
+        status_wrap.pack(side="left", fill="x", expand=True, padx=12, pady=1, ipady=2)
+        Label(
+            status_wrap,
+            textvariable=self.status_var,
+            style="Hint.TLabel",
+            justify="center",
+            anchor="center",
+        ).pack(fill="x", padx=10, pady=3)
 
     def _set_busy(self, busy: bool, alpha: float = 0.78) -> None:
         """Apply a lightweight busy visual state while generation is running."""
@@ -340,10 +368,28 @@ class PianoGUI(Frame):
         Checkbutton(opts, text="Show annotations below beam", variable=self.below_beam_var).grid(
             row=9, column=0, sticky="w", padx=8, pady=6
         )
+        Checkbutton(
+            opts,
+            text="Colorize hands",
+            variable=self.colorize_hands_var,
+            command=self._sync_colorize_mode,
+        ).grid(row=10, column=0, sticky="w", padx=8, pady=6)
+        colors_row = TtkFrame(opts)
+        colors_row.grid(row=10, column=1, sticky="w", padx=8, pady=6)
+        Label(colors_row, text="RH").pack(side="left")
+        self.rh_color_entry = Entry(colors_row, textvariable=self.rh_color_var, width=10)
+        self.rh_color_entry.pack(side="left", padx=(4, 10))
+        Label(colors_row, text="LH").pack(side="left")
+        self.lh_color_entry = Entry(colors_row, textvariable=self.lh_color_var, width=10)
+        self.lh_color_entry.pack(side="left", padx=(4, 0))
+        Checkbutton(opts, text="Colorize by cost", variable=self.colorize_by_cost_var).grid(
+            row=11, column=0, sticky="w", padx=8, pady=6
+        )
         Checkbutton(opts, text="Quiet logs", variable=self.quiet_var).grid(
-            row=10, column=0, sticky="w", padx=8, pady=6
+            row=12, column=0, sticky="w", padx=8, pady=6
         )
         self._sync_routing_mode()
+        self._sync_colorize_mode()
 
     def _sync_routing_mode(self) -> None:
         """Enable manual part/staff controls only when auto-routing is disabled."""
@@ -364,6 +410,18 @@ class PianoGUI(Frame):
             )
         else:
             self.routing_hint_var.set("Routing: manual (set part and staff for each hand).")
+
+    def _sync_colorize_mode(self) -> None:
+        """Enable color fields only when hand colorization is active."""
+        enabled = bool(self.colorize_hands_var.get())
+        state = ["!disabled"] if enabled else ["disabled"]
+        for widget in (
+            getattr(self, "rh_color_entry", None),
+            getattr(self, "lh_color_entry", None),
+        ):
+            if widget is None:
+                continue
+            widget.state(state)
 
     def _on_basic_resize(self, _event) -> None:
         """Resize banner when the basic tab geometry changes."""
@@ -407,7 +465,24 @@ class PianoGUI(Frame):
         filename = tk_filedialog.askopenfilename(filetypes=ftypes)
         if filename:
             self.filename_var.set(filename)
+            self._refresh_filename_style()
             self.status_var.set("Status: Loaded input score")
+
+    def _refresh_filename_style(self, _event=None) -> None:
+        """Render the default sample path as an italic hint in the filename entry."""
+        if not hasattr(self, "filename_entry"):
+            return
+        current = self.filename_var.get().strip()
+        if self._default_input_hint and current == self._default_input_hint:
+            self.filename_entry.configure(
+                fg="#64748b",
+                font=self._filename_font_italic,
+            )
+        else:
+            self.filename_entry.configure(
+                fg="#111827",
+                font=self._filename_font_normal,
+            )
 
     @staticmethod
     def _as_int(value: int | str, default: int) -> int:
@@ -457,6 +532,10 @@ class PianoGUI(Frame):
                 musescore=bool(self.auto_open_musescore_var.get())
                 and platform.system() != "Windows",
                 below_beam=bool(self.below_beam_var.get()),
+                colorize_hands=bool(self.colorize_hands_var.get()),
+                colorize_by_cost=bool(self.colorize_by_cost_var.get()),
+                rh_color=(self.rh_color_var.get().strip() or "#d62828"),
+                lh_color=(self.lh_color_var.get().strip() or "#1d4ed8"),
                 with_vedo=bool(self.with_vedo_var.get()),
                 sound_off=bool(self.sound_off_var.get()),
                 hand_size=(self.hand_size_var.get() or "M"),
@@ -510,7 +589,7 @@ class PianoGUI(Frame):
 def launch() -> None:
     """Create and run the PianoPlayer GUI application."""
     root = Tk()
-    root.geometry("700x620")
-    root.minsize(700, 620)
+    root.geometry("700x680")
+    root.minsize(700, 680)
     PianoGUI(root)
     root.mainloop()

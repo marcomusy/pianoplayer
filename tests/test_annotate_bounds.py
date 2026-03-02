@@ -145,3 +145,55 @@ def test_noteseq_from_part_uses_configurable_chord_stagger() -> None:
     assert len(seq_zero) == 3
     assert seq_default[0].time < seq_default[1].time < seq_default[2].time
     assert seq_zero[0].time == seq_zero[1].time == seq_zero[2].time == 10.0
+
+
+def test_annotate_applies_hand_color_to_note_and_fingering() -> None:
+    score = parse_musicxml("scores/test_scales.xml")
+    part = score.parts[0]
+    seq = reader(score, beam=0)
+    assert seq
+    seq[0].fingering = 3
+
+    annotate_part_with_fingering(part, seq[:1], lyrics=False, hand_color="#112233")
+
+    first_note = part.events[0].notes[0]
+    fingering = first_note.find("./notations/technical/fingering")
+    assert fingering is not None
+    assert first_note.attrib.get("color") == "#112233"
+    assert fingering.attrib.get("color") == "#112233"
+
+
+def test_annotate_accepts_named_hand_color() -> None:
+    score = parse_musicxml("scores/test_scales.xml")
+    part = score.parts[0]
+    seq = reader(score, beam=0)
+    assert seq
+    seq[0].fingering = 2
+
+    annotate_part_with_fingering(part, seq[:1], lyrics=False, hand_color="royalblue")
+
+    first_note = part.events[0].notes[0]
+    fingering = first_note.find("./notations/technical/fingering")
+    assert fingering is not None
+    assert first_note.attrib.get("color") == "royalblue"
+    assert fingering.attrib.get("color") == "royalblue"
+
+
+def test_annotate_colorize_by_cost_applies_gradient() -> None:
+    score = parse_musicxml("scores/test_scales.xml")
+    part = score.parts[0]
+    seq = reader(score, beam=0)
+    assert len(seq) >= 2
+
+    seq[0].fingering = 2
+    seq[1].fingering = 3
+    seq[0].cost = 0.1
+    seq[1].cost = 9.0
+
+    annotate_part_with_fingering(part, seq[:2], lyrics=False, colorize_by_cost=True)
+
+    first = part.events[0].notes[0]
+    second = part.events[1].notes[0]
+    assert first.attrib.get("color")
+    assert second.attrib.get("color")
+    assert first.attrib.get("color") != second.attrib.get("color")

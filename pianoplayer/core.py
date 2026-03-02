@@ -156,6 +156,10 @@ def run_annotate(
     quiet=False,
     musescore=False,
     below_beam=False,
+    colorize_hands=False,
+    colorize_by_cost=False,
+    rh_color="#d62828",
+    lh_color="#1d4ed8",
     with_vedo=0,
     sound_off=False,
     left_only=False,
@@ -178,6 +182,10 @@ def run_annotate(
         quiet=quiet,
         musescore=musescore,
         below_beam=below_beam,
+        colorize_hands=colorize_hands,
+        colorize_by_cost=colorize_by_cost,
+        rh_color=rh_color,
+        lh_color=lh_color,
         with_vedo=with_vedo,
         sound_off=sound_off,
         left_only=left_only,
@@ -207,7 +215,7 @@ def _resolve_input_filename(filename: str) -> str:
 
     candidate = os.path.join("scores", filename)
     if os.path.exists(candidate):
-        logger.info("Resolved input file '%s' to '%s'.", filename, candidate)
+        logger.debug("Resolved input file '%s' to '%s'.", filename, candidate)
         return candidate
 
     raise FileNotFoundError(f"Input score not found: {filename}")
@@ -497,6 +505,11 @@ def write_annotated_output(args, score_info, rh, lh):
     if args.outputfile is None:
         return
 
+    colorize_hands = bool(getattr(args, "colorize_hands", False))
+    colorize_by_cost = bool(getattr(args, "colorize_by_cost", False))
+    rh_color = str(getattr(args, "rh_color", "#d62828"))
+    lh_color = str(getattr(args, "lh_color", "#1d4ed8"))
+
     if os.path.splitext(args.outputfile)[1] == ".txt":
         # Legacy PIG writer path.
         pig_rows = []
@@ -573,6 +586,8 @@ def write_annotated_output(args, score_info, rh, lh):
                 lyrics=rh.lyrics,
                 skip_chords_with=4,
                 target_staff=getattr(args, "_resolved_rstaff", None),
+                hand_color=(rh_color if colorize_hands else None),
+                colorize_by_cost=colorize_by_cost,
             )
 
     if not args.right_only and lh is not None:
@@ -589,6 +604,8 @@ def write_annotated_output(args, score_info, rh, lh):
                 lyrics=lh.lyrics,
                 skip_chords_with=4,
                 target_staff=getattr(args, "_resolved_lstaff", None),
+                hand_color=(lh_color if colorize_hands else None),
+                colorize_by_cost=colorize_by_cost,
             )
 
     score_info.write(args.outputfile)
@@ -684,7 +701,7 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         return f"part {part}"
 
     def styled_status(status: str) -> str:
-        if status.startswith("ok"):
+        if status.startswith("ok "):
             return f"[green]{status}[/green]"
         if status.startswith("skipped"):
             return f"[yellow]{status}[/yellow]"
@@ -774,6 +791,27 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
 
     rh_status = hand_status(is_right=True, score_info=score_info).replace("RH=", "")
     lh_status = hand_status(is_right=False, score_info=score_info).replace("LH=", "")
+    colorize_by_cost = bool(getattr(args, "colorize_by_cost", False))
+
+    cost_values: list[float] = []
+    for hand in (rh, lh):
+        if hand is None:
+            continue
+        for note in getattr(hand, "noteseq", []) or []:
+            raw = getattr(note, "cost", None)
+            try:
+                val = float(raw)
+            except (TypeError, ValueError):
+                continue
+            if val >= 0:
+                cost_values.append(val)
+    if cost_values:
+        cost_range_info = (
+            f"{min(cost_values):.2f} ... {max(cost_values):.2f}"
+        )
+    else:
+        cost_range_info = "n.a."
+    cost_mode_info = "ON" if colorize_by_cost else "off"
 
     try:
         from rich.console import Console
@@ -787,11 +825,13 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         table.add_row("Output", str(args.outputfile))
         table.add_row("Depth", depth_info)
         table.add_row("Parts", parts_info)
-        table.add_row("RH Route", hand_route(is_right=True))
-        table.add_row("LH Route", hand_route(is_right=False))
-        table.add_row("Elapsed", f"{elapsed_s:.2f} s")
+        # table.add_row("RH Route", hand_route(is_right=True))
+        # table.add_row("LH Route", hand_route(is_right=False))
         table.add_row("Right Hand", f"{styled_status(rh_status)} | notes={rh_count}")
-        table.add_row("Left Hand", f"{styled_status(lh_status)} | notes={lh_count}")
+        table.add_row("Left  Hand", f"{styled_status(lh_status)} | notes={lh_count}")
+        table.add_row("Cost Range", cost_range_info)
+        table.add_row("Cost Colors", cost_mode_info)
+        table.add_row("Elapsed Time", f"{elapsed_s:.2f} seconds")
         Console().print(table)
 
         # Show a final "next command" hint when output is not auto-opened.
@@ -808,7 +848,8 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         logger.info(
             (
                 "Summary | input=%s | output=%s | depth=%s | parts=%s | elapsed=%.2fs "
-                "| RH-route=%s | LH-route=%s | RH=%s(notes=%s) | LH=%s(notes=%s)"
+                "| RH-route=%s | LH-route=%s | cost-range=%s | cost-colors=%s "
+                "| RH=%s(notes=%s) | LH=%s(notes=%s)"
             ),
             args.filename,
             args.outputfile,
@@ -817,6 +858,8 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
             elapsed_s,
             hand_route(is_right=True),
             hand_route(is_right=False),
+            cost_range_info,
+            cost_mode_info,
             rh_status,
             rh_count,
             lh_status,
