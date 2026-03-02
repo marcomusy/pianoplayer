@@ -8,6 +8,7 @@ from pianoplayer.musicxml_io import (
     annotate_part_with_fingering,
     noteseq_from_part,
     parse_musicxml,
+    strip_layout_breaks,
 )
 from pianoplayer.scorereader import reader
 
@@ -197,3 +198,30 @@ def test_annotate_colorize_by_cost_applies_gradient() -> None:
     assert first.attrib.get("color")
     assert second.attrib.get("color")
     assert first.attrib.get("color") != second.attrib.get("color")
+
+
+def test_strip_layout_breaks_removes_page_break_only(tmp_path) -> None:
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1"><part-name>Piano</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <print new-page="yes" new-system="yes"/>
+      <attributes><divisions>1</divisions></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note>
+    </measure>
+  </part>
+</score-partwise>
+"""
+    path = tmp_path / "layout_breaks.xml"
+    path.write_text(xml, encoding="utf-8")
+    score = parse_musicxml(str(path))
+    strip_layout_breaks(score)
+    out = tmp_path / "layout_breaks_out.xml"
+    score.write(str(out))
+
+    root = ET.parse(out).getroot()
+    assert not root.findall(".//print[@new-page='yes']")
+    assert root.findall(".//print[@new-system='yes']")

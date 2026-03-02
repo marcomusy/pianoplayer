@@ -17,6 +17,7 @@ from pianoplayer.musicxml_io import (
     annotate_part_with_fingering,
     clear_part_fingering,
     parse_musicxml,
+    strip_layout_breaks,
 )
 from pianoplayer.scorereader import reader, reader_PIG, reader_pretty_midi
 
@@ -311,7 +312,7 @@ def _resolve_musicxml_routing(args: SimpleNamespace, score_info: Any) -> None:
         args._resolved_rstaff = int(args.rstaff) if int(args.rstaff) > 0 else None
         args._resolved_lstaff = int(args.lstaff) if int(args.lstaff) > 0 else None
 
-    logger.info(
+    logger.debug(
         "Resolved routing (%s): RH part %s%s | LH part %s%s",
         "auto" if auto_routing else "manual",
         args.rpart,
@@ -608,6 +609,7 @@ def write_annotated_output(args, score_info, rh, lh):
                 colorize_by_cost=colorize_by_cost,
             )
 
+    strip_layout_breaks(score_info)
     score_info.write(args.outputfile)
     logger.debug("Wrote annotated score to %s", args.outputfile)
 
@@ -769,7 +771,7 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
                 parts.append(f"RH={rh_anchors}")
             if not args.right_only:
                 parts.append(f"LH={lh_anchors}")
-            logger.info(
+            logger.debug(
                 "Detected pre-annotated fingers (%s). They will be preserved and used as anchors.",
                 ", ".join(parts),
             )

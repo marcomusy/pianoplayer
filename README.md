@@ -26,7 +26,7 @@ pip install "pianoplayer[all]"     # all optional extras
 ```
 
 <details>
-<summary><strong>Python Setup (Beginner-Friendly)</strong></summary>
+<summary><strong>Python Setup (beginner-friendly)</strong></summary>
 
 If you are new to Python, use one of these two approaches.
 
@@ -100,7 +100,8 @@ pianoplayer         # if no argument is given a GUI will pop up
 # Or
 pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rpart] [-lpart] [--rstaff] [--lstaff]
             [--auto-routing | --manual-routing]
-            [--quiet] [-m] [-b] [-v] [-z] [-l] [-r]
+            [--quiet] [-m] [-b] [--colorize-hands] [--colorize-by-cost]
+            [--rh-color] [--lh-color] [-v] [-z] [-l] [-r]
             [--hand-size {XXS,XS,S,M,L,XL,XXL}] [--chord-note-stagger-s]
             filename
 # Valid file formats: MusicXML, compressed MusicXML, MuseScore, MIDI, PIG
@@ -122,6 +123,10 @@ pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rpart] [-lpart] [--rstaff] [--lst
 #   --quiet               Switch off verbosity
 #   -m, --musescore       Open output in musescore after processing
 #   -b, --below-beam      Show fingering numbers below beam line
+#   --colorize-hands      Colorize annotated notes/fingerings by hand
+#   --colorize-by-cost    Colorize annotated notes/fingerings by computed cost (green->red)
+#   --rh-color            [#d62828] Right hand color (hex or typical color name)
+#   --lh-color            [#1d4ed8] Left hand color (hex or typical color name)
 #   -v, --with-vedo       Play 3D scene after processing
 #   -z, --sound-off       Disable sound
 #   -l, --left-only       Fingering for left hand only
@@ -146,6 +151,8 @@ Run `pianoplayer` with no filename to open the GUI, then:
 - press **Quit** (or `q` / `Ctrl+W`) to close the GUI
 - In **Advanced**, keep **Auto hand routing** enabled for default behavior, or disable it to set
   right/left part and staff manually.
+- In **Advanced**, you can color annotations by hand (`Colorize hands`) or by difficulty
+  (`Colorize by cost`).
 
 
 #### Example output, as displayed in Musescore:
@@ -182,6 +189,8 @@ You can change it with `-rpart` and `-lpart` command line options.
 `LH=staff 2`. Use `--rstaff` and `--lstaff` to override this behavior.
 - Depth of combinatorial search, from 5 up to 9 notes ahead of the currently playing note. By
 default the algorithm selects this number automatically based on the duration of the notes to be played.
+- Annotation colorization can be by hand or by computed cost. Cost colors use dynamic normalization
+(`min..max`) computed from the current run and shown in the run summary.
 
 ## Limitations
 - Some specific fingering combinations, considered too unlikely in the first place, are excluded from the search (e.g. the 3rd finger crossing the 4th).

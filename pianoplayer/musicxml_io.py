@@ -70,6 +70,18 @@ class ScoreInfo:
         self.tree.write(filename, encoding="utf-8", xml_declaration=True)
 
 
+def strip_layout_breaks(score: ScoreInfo) -> None:
+    """Remove explicit page-break directives from a parsed MusicXML tree."""
+    root = score.tree.getroot()
+    for measure_el in root.findall(".//part/measure"):
+        for print_el in list(measure_el.findall("print")):
+            # Keep system-break and other layout content; remove only forced page breaks.
+            print_el.attrib.pop("new-page", None)
+            # Drop now-empty print tags to keep output clean.
+            if not print_el.attrib and len(print_el) == 0:
+                measure_el.remove(print_el)
+
+
 def _note_name(step: str, alter: int) -> str:
     if alter == 0:
         return step
