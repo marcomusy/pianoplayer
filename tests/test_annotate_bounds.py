@@ -225,3 +225,41 @@ def test_strip_layout_breaks_removes_page_break_only(tmp_path) -> None:
     root = ET.parse(out).getroot()
     assert not root.findall(".//print[@new-page='yes']")
     assert root.findall(".//print[@new-system='yes']")
+
+
+def test_noteseq_marks_same_onset_same_staff_as_synthetic_chord() -> None:
+    note_a = ET.Element("note")
+    ET.SubElement(note_a, "staff").text = "1"
+    note_b = ET.Element("note")
+    ET.SubElement(note_b, "staff").text = "1"
+
+    part = PartInfo(
+        part_id="P1",
+        events=[
+            EventInfo(
+                kind="note",
+                measure=1,
+                offset=4.0,
+                duration=1.0,
+                tie_types=set(),
+                notes=[note_a],
+                pitches=[PitchInfo(name="E", octave=4, midi=64)],
+            ),
+            EventInfo(
+                kind="note",
+                measure=1,
+                offset=4.0,
+                duration=1.0,
+                tie_types=set(),
+                notes=[note_b],
+                pitches=[PitchInfo(name="B", octave=4, midi=71)],
+            ),
+        ],
+    )
+
+    seq = noteseq_from_part(part, chord_note_stagger_s=0.05)
+    assert len(seq) == 2
+    assert seq[0].isChord and seq[1].isChord
+    assert seq[0].chordID == seq[1].chordID
+    assert seq[0].NinChord == 2 and seq[1].NinChord == 2
+    assert seq[0].time < seq[1].time

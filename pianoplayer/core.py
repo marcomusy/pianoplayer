@@ -239,10 +239,10 @@ def _normalize_single_part_parts(args: SimpleNamespace, score_info: Any) -> None
         return
 
     if args.rpart != 0:
-        logger.info("Single-part score detected: remapping right-hand part %s -> 0", args.rpart)
+        logger.debug("Single-part score detected: remapping right-hand part %s -> 0", args.rpart)
         args.rpart = 0
     if args.lpart != 0:
-        logger.info("Single-part score detected: remapping left-hand part %s -> 0", args.lpart)
+        logger.debug("Single-part score detected: remapping left-hand part %s -> 0", args.lpart)
         args.lpart = 0
 
 

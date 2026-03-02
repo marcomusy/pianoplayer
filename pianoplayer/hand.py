@@ -184,6 +184,37 @@ class Hand:
 
     def ave_velocity(self, fingering: Sequence[int], notes: Sequence[INote]) -> float:
         """Compute average weighted finger velocity for a candidate fingering."""
+        chord_penalty = 0.0
+        chord_seen: dict[int, list[tuple[int, int]]] = {}
+        for i in range(self.depth):
+            n = notes[i]
+            if not n.isChord:
+                continue
+            cid = int(n.chordID)
+            fi = int(fingering[i])
+            if not (1 <= fi <= 5):
+                chord_penalty += 1.0e6
+                continue
+
+            prior = chord_seen.setdefault(cid, [])
+            for p_pitch, p_finger in prior:
+                # Disallow repeated finger on different pitches inside the same chord group.
+                if fi == p_finger and int(n.pitch) != p_pitch:
+                    chord_penalty += 1.0e6
+                    continue
+                # Enforce pitch/finger monotonicity by hand.
+                if self.LR == "right":
+                    if int(n.pitch) > p_pitch and fi <= p_finger:
+                        chord_penalty += 2.0e5
+                    elif int(n.pitch) < p_pitch and fi >= p_finger:
+                        chord_penalty += 2.0e5
+                else:
+                    if int(n.pitch) > p_pitch and fi >= p_finger:
+                        chord_penalty += 2.0e5
+                    elif int(n.pitch) < p_pitch and fi <= p_finger:
+                        chord_penalty += 2.0e5
+            prior.append((int(n.pitch), fi))
+
         # Evaluate candidates from a stable starting posture without mutating shared state.
         finger_positions = list(self.finger_positions)
         self.set_fingers_positions(
@@ -223,7 +254,7 @@ class Hand:
                 force_relaxed=False,
             )
 
-        return vmean / (self.depth - 1)
+        return (vmean / (self.depth - 1)) + chord_penalty
 
     def skip(self, fa: int, fb: int, na: INote, nb: INote, hf: float, lr: str, level: int) -> bool:
         """Return True when a local finger transition is considered invalid/unlikely."""
@@ -347,6 +378,52 @@ class Hand:
             )
         return best_fingering, minvel
 
+    def _enforce_chord_group_consistency(self, index: int, finger: int) -> int:
+        """Adjust finger to stay consistent with already-assigned notes in same chord group."""
+        if not (1 <= finger <= 5):
+            return finger
+        note = self.noteseq[index]
+        if not bool(getattr(note, "isChord", False)):
+            return finger
+
+        cid = int(getattr(note, "chordID", 0))
+        note_pitch = int(getattr(note, "pitch", 0))
+        peers: list[tuple[int, int]] = []
+        for prev in self.noteseq[:index]:
+            if not bool(getattr(prev, "isChord", False)):
+                continue
+            if int(getattr(prev, "chordID", 0)) != cid:
+                continue
+            prev_f = abs(int(getattr(prev, "fingering", 0) or 0))
+            if not (1 <= prev_f <= 5):
+                continue
+            peers.append((int(getattr(prev, "pitch", 0)), prev_f))
+
+        if not peers:
+            return finger
+
+        used = {pf for _, pf in peers}
+        candidates = [f for f in (1, 2, 3, 4, 5) if f not in used]
+        if not candidates:
+            candidates = [finger]
+
+        def penalty(cand: int) -> int:
+            p = 0
+            for peer_pitch, peer_finger in peers:
+                if self.LR == "right":
+                    if note_pitch > peer_pitch and cand <= peer_finger:
+                        p += 100 + (peer_finger - cand)
+                    elif note_pitch < peer_pitch and cand >= peer_finger:
+                        p += 100 + (cand - peer_finger)
+                else:
+                    if note_pitch > peer_pitch and cand >= peer_finger:
+                        p += 100 + (cand - peer_finger)
+                    elif note_pitch < peer_pitch and cand <= peer_finger:
+                        p += 100 + (peer_finger - cand)
+            return p
+
+        return min(candidates, key=lambda cand: (penalty(cand), abs(cand - finger)))
+
     def generate(
         self,
         start_measure: int = 0,
@@ -448,6 +525,7 @@ class Hand:
                     best_finger = out[0]
                     start_finger = out[1] if len(out) > 1 else out[0]
 
+                best_finger = self._enforce_chord_group_consistency(i, best_finger)
                 an.fingering = best_finger
                 self.set_fingers_positions(out, ninenotes, 0)
                 self.fingerseq.append(list(self.finger_positions))

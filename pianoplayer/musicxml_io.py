@@ -448,7 +448,49 @@ def noteseq_from_part(part: PartInfo, chord_note_stagger_s: float = 0.05) -> lis
 
     if len(noteseq) < 2:
         return []
+
+    _mark_colliding_notes_as_chords(noteseq, chord_note_stagger_s=chord_note_stagger_s)
     return noteseq
+
+
+def _mark_colliding_notes_as_chords(noteseq: list[INote], *, chord_note_stagger_s: float) -> None:
+    """Treat same-onset same-staff multi-voice collisions as chord groups.
+
+    Some polyphonic MusicXML passages encode simultaneity as separate voices
+    rather than `<chord>` tags. The optimizer expects chord constraints to
+    be explicit via `isChord/chordID`, so convert these collisions into
+    synthetic chord groups.
+    """
+    groups: dict[tuple[int, int, float], list[INote]] = {}
+    for note in noteseq:
+        if note.isChord:
+            continue
+        key = (int(note.measure or 0), int(note.staff or 0), round(float(note.time), 6))
+        groups.setdefault(key, []).append(note)
+
+    next_chord_id = 0
+    for note in noteseq:
+        if note.isChord:
+            next_chord_id = max(next_chord_id, int(note.chordID) + 1)
+
+    stagger = max(0.0, float(chord_note_stagger_s))
+    for (_measure, _staff, onset), notes in groups.items():
+        if len(notes) < 2:
+            continue
+
+        # Use low->high pitch ordering so existing hand-specific chord rules apply.
+        notes.sort(key=lambda n: (int(n.pitch), int(n.noteID)))
+        count = len(notes)
+        chord_id = next_chord_id
+        next_chord_id += 1
+
+        for j, note in enumerate(notes):
+            note.isChord = True
+            note.chordID = chord_id
+            note.chordnr = j
+            note.NinChord = count
+            note.time = onset - stagger * (count - j - 1)
+            note.duration += stagger * (count - 1)
 
 
 def _is_fingering_text(text: str) -> bool:

@@ -146,3 +146,56 @@ def test_core_limited_measures_do_not_write_zero_fingering(tmp_path) -> None:
     fingerings = root.findall(".//fingering")
     assert fingerings
     assert all((f.text or "").strip() != "0" for f in fingerings)
+
+
+def test_scarlatti_k027_voice_collision_is_treated_like_chord(tmp_path) -> None:
+    output = tmp_path / "scarlatti_k027_out.xml"
+    args = SimpleNamespace(
+        filename="scores/scarlatti_k027.xml",
+        outputfile=str(output),
+        n_measures=3,
+        start_measure=1,
+        depth=0,
+        rpart=0,
+        lpart=1,
+        quiet=True,
+        musescore=False,
+        below_beam=False,
+        with_vedo=False,
+        sound_off=True,
+        left_only=False,
+        right_only=False,
+        hand_size="M",
+        chord_note_stagger_s=0.05,
+        cost_path=None,
+    )
+    core.annotate(args)
+    root = ET.parse(output).getroot()
+    part = root.find("part")
+    assert part is not None
+    measure1 = None
+    for measure in part.findall("measure"):
+        if measure.attrib.get("number") == "1":
+            measure1 = measure
+            break
+    assert measure1 is not None
+
+    f_b4 = ""
+    f_e4 = ""
+    for note in measure1.findall("note"):
+        if note.find("rest") is not None:
+            continue
+        if note.findtext("staff", "") != "1":
+            continue
+        step = note.findtext("pitch/step", "")
+        octave = note.findtext("pitch/octave", "")
+        voice = note.findtext("voice", "")
+        finger = note.findtext("./notations/technical/fingering", "").strip()
+        if step == "B" and octave == "4" and voice == "1":
+            f_b4 = finger
+        if step == "E" and octave == "4" and voice == "2":
+            f_e4 = finger
+
+    assert f_b4 and f_e4
+    assert f_b4 != f_e4
+    assert int(f_b4) > int(f_e4)
