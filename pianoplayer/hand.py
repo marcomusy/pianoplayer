@@ -334,6 +334,17 @@ class Hand:
                 backtrack(level + 1)
 
         backtrack(0)
+        if minvel >= 1.0e10:
+            # If all branches are pruned by constraints, avoid propagating
+            # the sentinel cost and provide a deterministic fallback.
+            fallback_finger = u_start[0] if u_start else 3
+            best_fingering = [fallback_finger for _ in range(9)]
+            minvel = self.ave_velocity(best_fingering, nseq)
+            logger.debug(
+                "No valid search branch at depth %s; using fallback finger %s.",
+                depth,
+                fallback_finger,
+            )
         return best_fingering, minvel
 
     def generate(
