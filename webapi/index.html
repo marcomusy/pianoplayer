@@ -58,14 +58,12 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
         radial-gradient(950px 420px at 5% -20%, #dbeafe 0%, transparent 62%),
         radial-gradient(860px 400px at 92% -16%, #cffafe 0%, transparent 58%),
         linear-gradient(170deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
       padding: 1.25rem;
     }
 
     .wrap {
       width: min(960px, 100%);
+      margin: 0 auto;
       display: grid;
       gap: 1rem;
       grid-template-columns: 1fr;
@@ -99,14 +97,28 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     }
 
     .subtitle {
-      margin: 1.45rem auto 0.9rem;
-      color: #0f172a;
+      margin: 1.3rem auto 0.9rem;
+      width: fit-content;
       font-size: clamp(0.95rem, 1.45vw, 1.18rem);
-      font-weight: 800;
+      font-weight: 900;
       line-height: 1.25;
-      letter-spacing: .01em;
+      letter-spacing: .015em;
       text-align: center;
       white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 0.42rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid #c7e7df;
+      background: linear-gradient(145deg, #f0fdfa, #eef2ff);
+      color: #0f172a;
+      box-shadow: 0 8px 20px -16px #0f172a;
+    }
+
+    .subtitle .spark {
+      color: #0f766e;
+      font-size: 1.05em;
     }
 
     .hero-links {
@@ -114,6 +126,7 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
       display: flex;
       flex-wrap: wrap;
       gap: 0.55rem;
+      justify-content: center;
     }
 
     .affiliation {
@@ -125,7 +138,7 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     }
 
     .affiliation img {
-      height: 32px;
+      height: 38px;
       width: auto;
       display: block;
       background: #ffffffd6;
@@ -180,7 +193,7 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
 
     .io-row {
       display: grid;
-      grid-template-columns: 150px 1fr;
+      grid-template-columns: 96px minmax(0, 1fr);
       align-items: center;
       gap: 0.55rem;
       margin-bottom: 0.8rem;
@@ -225,7 +238,30 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
       gap: 0.8rem;
     }
 
+    .adv-groups {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .adv-group {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 0.65rem;
+      background: #ffffff;
+    }
+
+    .adv-title {
+      margin: 0 0 0.55rem;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #334155;
+      text-transform: uppercase;
+    }
+
     .field { display: grid; gap: 0.3rem; }
+    .field.full { grid-column: 1 / -1; }
+    .field.hidden { display: none; }
 
     label {
       font-size: 0.82rem;
@@ -248,6 +284,50 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     input:focus, select:focus {
       border-color: #14b8a6;
       box-shadow: 0 0 0 3px #ccfbf1;
+    }
+
+    .file-picker {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      min-height: 2.8rem;
+      padding: 0.5rem 0.62rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #ffffff;
+    }
+
+    .file-input-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+
+    .file-btn {
+      border: 1px solid #94a3b8;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #0f172a;
+      padding: 0.42rem 0.72rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .file-hint {
+      color: #64748b;
+      font-size: 0.88rem;
+      font-weight: 500;
+      font-style: italic;
+      opacity: 0.82;
+      line-height: 1.2;
     }
 
     .actions {
@@ -343,14 +423,20 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
           PyPI Package
         </a>
       </div>
-      <p class="subtitle">Upload a score and download the annotated MusicXML output.</p>
     </section>
 
     <section class="card">
+      <p class="subtitle"><span class="spark">✦</span>
+        Upload a score and download the annotated MusicXML output
+        <span class="spark">✦</span></p>
       <form id="annotate-form">
         <div class="io-row">
           <label for="file">Input Score</label>
-          <input id="file" name="file" type="file" accept=".xml,.mxl,.mid,.midi,.mscz,.mscx,.txt" required />
+          <div class="file-picker">
+            <input id="file" class="file-input-hidden" name="file" type="file" accept=".xml,.mxl,.mid,.midi,.mscz,.mscx,.txt" required />
+            <label class="file-btn" for="file">Choose file</label>
+            <span id="file-hint" class="file-hint">.xml, .mxl, .mid, .midi, .mscz, .mscx, .txt</span>
+          </div>
         </div>
 
         <div class="tabs" role="tablist" aria-label="Options Tabs">
@@ -391,34 +477,62 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
         </div>
 
         <div id="advanced-panel" class="panel" role="tabpanel">
-          <div class="grid">
-            <div class="field">
-              <label for="depth">Depth of search (0=auto)</label>
-              <input id="depth" name="depth" type="number" min="0" max="9" value="0" />
-            </div>
+          <div class="adv-groups">
+            <section class="adv-group">
+              <p class="adv-title">Solver</p>
+              <div class="grid">
+                <div class="field">
+                  <label for="depth">Depth of search (0=auto)</label>
+                  <input id="depth" name="depth" type="number" min="0" max="9" value="0" />
+                </div>
+                <div class="field">
+                  <label for="chord_note_stagger_s">Chord Stagger (seconds)</label>
+                  <input id="chord_note_stagger_s" name="chord_note_stagger_s" type="number" step="0.01" min="0" value="0.05" />
+                </div>
+              </div>
+            </section>
 
-            <div class="field">
-              <label for="chord_note_stagger_s">Chord Stagger (sec)</label>
-              <input id="chord_note_stagger_s" name="chord_note_stagger_s" type="number" step="0.01" min="0" value="0.05" />
-            </div>
+            <section class="adv-group">
+              <p class="adv-title">Output</p>
+              <div class="grid">
+                <div class="field">
+                  <label for="below_beam">Show annotations below beam</label>
+                  <select id="below_beam" name="below_beam">
+                    <option value="false" selected>False</option>
+                    <option value="true">True</option>
+                  </select>
+                </div>
+              </div>
+            </section>
 
-            <div class="field">
-              <label for="rbeam">Right Beam number</label>
-              <input id="rbeam" name="rbeam" type="number" min="0" value="0" />
-            </div>
-
-            <div class="field">
-              <label for="lbeam">Left Beam number</label>
-              <input id="lbeam" name="lbeam" type="number" min="0" value="1" />
-            </div>
-
-            <div class="field">
-              <label for="below_beam">Show annotations below beam</label>
-              <select id="below_beam" name="below_beam">
-                <option value="false" selected>False</option>
-                <option value="true">True</option>
-              </select>
-            </div>
+            <section class="adv-group">
+              <p class="adv-title">Routing</p>
+              <div class="grid">
+                <div class="field full">
+                  <label for="auto_routing">Routing Mode</label>
+                  <select id="auto_routing" name="auto_routing">
+                    <option value="true" selected>Auto (recommended)</option>
+                    <option value="false">Manual</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="rpart">Right Part number</label>
+                  <input id="rpart" name="rpart" type="number" min="0" value="0" />
+                </div>
+                <div class="field">
+                  <label for="lpart">Left Part number</label>
+                  <input id="lpart" name="lpart" type="number" min="0" value="1" />
+                </div>
+                <div class="field">
+                  <label for="rstaff">Right Staff number (0=auto)</label>
+                  <input id="rstaff" name="rstaff" type="number" min="0" value="0" />
+                </div>
+                <div class="field">
+                  <label for="lstaff">Left Staff number (0=auto)</label>
+                  <input id="lstaff" name="lstaff" type="number" min="0" value="0" />
+                </div>
+              </div>
+            </section>
           </div>
         </div>
 
@@ -436,14 +550,23 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     </section>
   </div>
 
-  <a class="affiliation" href="#" aria-label="Affiliation logo">
+  <a class="affiliation" href="https://www.elisava.net/en/" target="_blank" rel="noopener noreferrer" aria-label="Elisava website">
     <img src="/images/Logo-Elisava-UVic-UCC-horizontal-negro.png" alt="Affiliation logo" />
   </a>
 
   <script>
     const form = document.getElementById("annotate-form");
+    const fileInputEl = document.getElementById("file");
+    const fileHintEl = document.getElementById("file-hint");
     const statusEl = document.getElementById("status");
     const submitBtn = document.getElementById("submit-btn");
+    const autoRoutingEl = document.getElementById("auto_routing");
+    const manualRoutingInputs = [
+      document.getElementById("rpart"),
+      document.getElementById("lpart"),
+      document.getElementById("rstaff"),
+      document.getElementById("lstaff"),
+    ];
     const tabs = Array.from(document.querySelectorAll(".tab"));
     const panels = Array.from(document.querySelectorAll(".panel"));
 
@@ -460,6 +583,26 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
         const panel = document.getElementById(tab.dataset.target);
         if (panel) panel.classList.add("active");
       });
+    });
+
+    function syncRoutingMode() {
+      const auto = autoRoutingEl.value === "true";
+      manualRoutingInputs.forEach((el) => {
+        if (!el) return;
+        const field = el.closest(".field");
+        if (field) field.classList.toggle("hidden", auto);
+      });
+    }
+    autoRoutingEl.addEventListener("change", syncRoutingMode);
+    syncRoutingMode();
+
+    fileInputEl.addEventListener("change", () => {
+      const files = fileInputEl.files;
+      if (files && files.length > 0) {
+        fileHintEl.textContent = files[0].name;
+      } else {
+        fileHintEl.textContent = ".xml, .mxl, .mid, .midi, .mscz, .mscx, .txt";
+      }
     });
 
     form.addEventListener("submit", async (ev) => {
