@@ -96,8 +96,20 @@ def _pitch_from_note(note_el: ET.Element) -> PitchInfo | None:
     return PitchInfo(name=_note_name(step, alter), octave=octave, midi=midi)
 
 
+def _note_staff(note_el: ET.Element) -> int:
+    """Return MusicXML staff number for one note element (0 when missing)."""
+    staff_text = note_el.findtext("staff", "")
+    if staff_text and staff_text.strip().isdigit():
+        return int(staff_text.strip())
+    return 0
+
+
 def _drop_shorter_simultaneous_duplicates(events: list[EventInfo]) -> list[EventInfo]:
-    """Drop duplicate notes sharing same onset+pitch, keeping the strongest candidate."""
+    """Drop duplicate notes sharing same onset+pitch+staff.
+
+    This keeps voice-unison duplicates out of the optimizer while preserving
+    duplicates that belong to different staves.
+    """
     winner_by_key: dict[tuple[int, int], tuple[int, int, float, int]] = {}
     losers_by_event: dict[int, set[int]] = {}
 
@@ -107,7 +119,8 @@ def _drop_shorter_simultaneous_duplicates(events: list[EventInfo]) -> list[Event
 
         for note_idx, pitch in enumerate(evt.pitches):
             onset_key = int(round(evt.offset * 1_000_000))
-            key = (onset_key, pitch.midi)
+            staff = _note_staff(evt.notes[note_idx]) if note_idx < len(evt.notes) else 0
+            key = (onset_key, staff, pitch.midi)
 
             anchor_bonus = 0
             if note_idx < len(evt.notes):
@@ -384,6 +397,7 @@ def noteseq_from_part(part: PartInfo, chord_note_stagger_s: float = 0.05) -> lis
             an.pitch = p.midi
             an.time = evt.offset
             an.duration = evt.duration
+            an.staff = _note_staff(evt.notes[0]) if evt.notes else 0
             an.isBlack = (p.midi % 12) in [1, 3, 6, 8, 10]
             an.fingering = _extract_note_fingering(evt.notes[0])
             an.is_anchor = an.fingering in {1, 2, 3, 4, 5}
@@ -409,6 +423,7 @@ def noteseq_from_part(part: PartInfo, chord_note_stagger_s: float = 0.05) -> lis
                 an.x = keypos(an)
                 an.time = evt.offset - chord_note_stagger_s * (count - j - 1)
                 an.duration = evt.duration + chord_note_stagger_s * (count - 1)
+                an.staff = _note_staff(evt.notes[j]) if j < len(evt.notes) else 0
                 an.isBlack = (p.midi % 12) in [1, 3, 6, 8, 10]
                 if j < len(evt.notes):
                     an.fingering = _extract_note_fingering(evt.notes[j])
@@ -501,8 +516,12 @@ def annotate_part_with_fingering(
     *,
     lyrics: bool,
     skip_chords_with: int = 4,
+    target_staff: int | None = None,
 ) -> None:
-    """Write generated fingering values back into the corresponding MusicXML part."""
+    """Write generated fingering values back into one MusicXML part.
+
+    When `target_staff` is set, only notes on that staff are consumed and annotated.
+    """
     seq = list(hand_noteseq)
     idx = 0
 
@@ -513,6 +532,8 @@ def annotate_part_with_fingering(
             continue
 
         if evt.kind == "note" and evt.notes:
+            if target_staff is not None and _note_staff(evt.notes[0]) != target_staff:
+                continue
             if idx >= len(seq):
                 logger.warning("Not enough generated notes to annotate note at idx=%s", idx)
                 return
@@ -528,8 +549,14 @@ def annotate_part_with_fingering(
             continue
 
         if evt.kind == "chord" and evt.notes:
-            chord_len = len(evt.notes)
-            for note_el in evt.notes:
+            # In single-part piano scores, this lets RH/LH annotate only staff 1/2.
+            notes_to_annotate = (
+                [n for n in evt.notes if _note_staff(n) == target_staff]
+                if target_staff is not None
+                else list(evt.notes)
+            )
+            chord_len = len(notes_to_annotate)
+            for note_el in notes_to_annotate:
                 if idx >= len(seq):
                     logger.warning("Not enough generated notes to annotate chord at idx=%s", idx)
                     return
@@ -543,3 +570,14 @@ def annotate_part_with_fingering(
                             anchored=bool(getattr(seq[idx], "is_anchor", False)),
                         )
                 idx += 1
+
+
+def clear_part_fingering(part: PartInfo, *, lyrics: bool, target_staff: int | None = None) -> None:
+    """Remove existing fingering markup from one part (optionally one staff only)."""
+    for evt in part.events:
+        if evt.kind not in {"note", "chord"}:
+            continue
+        for note_el in evt.notes:
+            if target_staff is not None and _note_staff(note_el) != target_staff:
+                continue
+            _clear_note_fingering(note_el, lyrics)

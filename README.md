@@ -98,8 +98,10 @@ In the output score, these anchored fingers are rendered as circled numbers.
 ```bash
 pianoplayer         # if no argument is given a GUI will pop up
 # Or
-pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-b] [-v]
-            [-z] [-l] [-r] [--hand-size {XXS,XS,S,M,L,XL,XXL}] [--chord-note-stagger-s]
+pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rpart] [-lpart] [--rstaff] [--lstaff]
+            [--auto-routing | --manual-routing]
+            [--quiet] [-m] [-b] [-v] [-z] [-l] [-r]
+            [--hand-size {XXS,XS,S,M,L,XL,XXL}] [--chord-note-stagger-s]
             filename
 # Valid file formats: MusicXML, compressed MusicXML, MuseScore, MIDI, PIG
 # (.xml, .mxl, .mscz, .mscx, .mid, .midi, .txt)
@@ -111,8 +113,12 @@ pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-
 #   -n , --n-measures     [1000] Number of score measures to scan
 #   -s , --start-measure  Start from measure number [1]
 #   -d , --depth          [auto] Depth of combinatorial search, [5-9]
-#   -rbeam                [0] Specify Right Hand beam number
-#   -lbeam                [1] Specify Left Hand beam number
+#   -rpart                [0] Specify Right Hand part number
+#   -lpart                [1] Specify Left Hand part number
+#   --rstaff              [auto] Right-hand staff number for single-part MusicXML
+#   --lstaff              [auto] Left-hand staff number for single-part MusicXML
+#   --auto-routing        Resolve part/staff routing automatically (default)
+#   --manual-routing      Use explicit -rpart/-lpart/--rstaff/--lstaff values
 #   --quiet               Switch off verbosity
 #   -m, --musescore       Open output in musescore after processing
 #   -b, --below-beam      Show fingering numbers below beam line
@@ -124,6 +130,11 @@ pianoplayer [-h] [--gui] [-o] [-n] [-s] [-d] [-rbeam] [-lbeam] [--quiet] [-m] [-
 #   --chord-note-stagger-s [0.05] Small note staggering used to represent chords
 ```
 
+Routing defaults are automatic and shown in the run summary:
+- In **2-part** piano scores, hands are selected by `-rpart/-lpart`.
+- In **1-part, 2-staff** piano scores, hands are selected by staff (`RH -> staff 1`, `LH -> staff 2`).
+- Use `--manual-routing` plus `--rstaff/--lstaff` to override routing explicitly.
+
 ### GUI Usage
 Run `pianoplayer` with no filename to open the GUI, then:
 
@@ -133,6 +144,8 @@ Run `pianoplayer` with no filename to open the GUI, then:
 - press **GENERATE** (`output.xml` is written)
 - press **Musescore** to visualize the annotated score (Linux/macOS only)
 - press **Quit** (or `q` / `Ctrl+W`) to close the GUI
+- In **Advanced**, keep **Auto hand routing** enabled for default behavior, or disable it to set
+  right/left part and staff manually.
 
 
 #### Example output, as displayed in Musescore:
@@ -163,8 +176,10 @@ minimizes the effort of the hand avoiding unnecessary movements.
 
 ## Parameters you can change:
 - Your hand size (from 'XXS' to 'XXL') which sets the relaxed distance between thumb and pinkie.
-- The beam number associated to the right hand is by default nr.0 (nr.1 for left hand).
-You can change it with `-rbeam` and `-lbeam` command line options.
+- The default part routing is `rpart=0` and `lpart=1`.
+You can change it with `-rpart` and `-lpart` command line options.
+- In single-part MusicXML files that contain 2 staves, routing defaults to `RH=staff 1` and
+`LH=staff 2`. Use `--rstaff` and `--lstaff` to override this behavior.
 - Depth of combinatorial search, from 5 up to 9 notes ahead of the currently playing note. By
 default the algorithm selects this number automatically based on the duration of the notes to be played.
 

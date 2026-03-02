@@ -25,6 +25,7 @@ class INote:
     fingering: int | str = 0
     is_anchor: bool = False
     measure: int = 0
+    staff: int = 0
     chordnr: int = 0
     NinChord: int = 0
     chordID: int = 0
@@ -43,8 +44,11 @@ class AnnotateOptions:
     n_measures: int = 1000
     start_measure: int = 1
     depth: int = 0
-    rbeam: int = 0
-    lbeam: int = 1
+    rpart: int = 0
+    lpart: int = 1
+    rstaff: int = 0
+    lstaff: int = 0
+    auto_routing: bool = True
     quiet: bool = False
     musescore: bool = False
     below_beam: bool = False
@@ -62,6 +66,12 @@ class AnnotateOptions:
         for field_name in cls.__dataclass_fields__:  # type: ignore[attr-defined]
             if hasattr(args, field_name):
                 payload[field_name] = getattr(args, field_name)
+
+        # Compatibility aliases after beam->part rename.
+        if "rpart" not in payload and hasattr(args, "rbeam"):
+            payload["rpart"] = getattr(args, "rbeam")
+        if "lpart" not in payload and hasattr(args, "lbeam"):
+            payload["lpart"] = getattr(args, "lbeam")
 
         # Backward compatibility for legacy boolean hand-size flags.
         if "hand_size" not in payload:

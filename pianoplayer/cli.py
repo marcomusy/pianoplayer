@@ -52,11 +52,39 @@ def build_parser() -> argparse.ArgumentParser:
         default=0,
     )
     parser.add_argument(
-        "-rbeam", metavar="", type=int, help="[0] Specify Right Hand beam number", default=0
+        "-rpart", metavar="", type=int, help="[0] Specify Right Hand part number", default=0
     )
     parser.add_argument(
-        "-lbeam", metavar="", type=int, help="[1] Specify Left Hand beam number", default=1
+        "-lpart", metavar="", type=int, help="[1] Specify Left Hand part number", default=1
     )
+    parser.add_argument(
+        "--rstaff",
+        metavar="",
+        type=int,
+        default=0,
+        help="[auto] Right-hand staff number for MusicXML (single-part scores).",
+    )
+    parser.add_argument(
+        "--lstaff",
+        metavar="",
+        type=int,
+        default=0,
+        help="[auto] Left-hand staff number for MusicXML (single-part scores).",
+    )
+    routing_group = parser.add_mutually_exclusive_group()
+    routing_group.add_argument(
+        "--auto-routing",
+        dest="auto_routing",
+        action="store_true",
+        help="Let PianoPlayer resolve part/staff routing automatically (default).",
+    )
+    routing_group.add_argument(
+        "--manual-routing",
+        dest="auto_routing",
+        action="store_false",
+        help="Use explicit -rpart/-lpart/--rstaff/--lstaff values.",
+    )
+    parser.set_defaults(auto_routing=True)
     parser.add_argument(
         "--cost-path", metavar="", type=str, help="Path to save cost function", default=None
     )

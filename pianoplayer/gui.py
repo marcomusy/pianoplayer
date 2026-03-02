@@ -11,6 +11,7 @@ from tkinter import (
     DoubleVar,
     Frame,
     IntVar,
+    PhotoImage,
     StringVar,
     TclError,
     Tk,
@@ -64,8 +65,11 @@ class PianoGUI(Frame):
         self.start_measure_var = IntVar(value=1)
 
         self.depth_var = IntVar(value=0)
-        self.rbeam_var = IntVar(value=0)
-        self.lbeam_var = IntVar(value=1)
+        self.auto_routing_var = BooleanVar(value=True)
+        self.rpart_var = IntVar(value=0)
+        self.lpart_var = IntVar(value=1)
+        self.rstaff_var = IntVar(value=0)
+        self.lstaff_var = IntVar(value=0)
         self.chord_stagger_var = DoubleVar(value=0.05)
         self.with_vedo_var = BooleanVar(value=False)
         self.sound_off_var = BooleanVar(value=False)
@@ -73,7 +77,12 @@ class PianoGUI(Frame):
         self.quiet_var = BooleanVar(value=False)
         self.auto_open_musescore_var = BooleanVar(value=False)
 
-        self.status_var = StringVar(value="Ready")
+        self.status_var = StringVar(value="Status: Ready")
+        self.routing_hint_var = StringVar(value="")
+        self._banner_raw = None
+        self._banner_img = None
+        self._banner_ratio = (1, 1)
+        self._banner_label = None
         self._busy = False
         self.init_ui()
 
@@ -89,6 +98,12 @@ class PianoGUI(Frame):
         style.configure("TLabelframe", background=bg)
         style.configure("TLabelframe.Label", background=bg)
         style.configure("TLabel", background=bg)
+        style.configure(
+            "Hint.TLabel",
+            background=bg,
+            foreground="#475569",
+            font=("TkDefaultFont", 9, "italic"),
+        )
         style.configure("TCheckbutton", background=bg)
         style.configure("TNotebook", background=bg)
         style.configure("TNotebook.Tab", background="#e8edf5", padding=(12, 6))
@@ -168,7 +183,9 @@ class PianoGUI(Frame):
         self.quit_btn.pack(
             side="right"
         )
-        Label(bottom, textvariable=self.status_var).pack(side="right", padx=10)
+        status_wrap = TtkFrame(bottom)
+        status_wrap.pack(side="left", fill="x", expand=True, padx=10)
+        Label(status_wrap, textvariable=self.status_var, style="Hint.TLabel").pack(anchor="center")
 
     def _set_busy(self, busy: bool, alpha: float = 0.78) -> None:
         """Apply a lightweight busy visual state while generation is running."""
@@ -198,7 +215,7 @@ class PianoGUI(Frame):
 
     def _build_basic_tab(self, parent: TtkFrame) -> None:
         """Build frequently used options."""
-        opts = LabelFrame(parent, text="Core Options")
+        opts = LabelFrame(parent, text="Options")
         opts.pack(fill="x", padx=10, pady=10)
 
         Label(opts, text="Output File").grid(row=0, column=0, sticky="w", padx=8, pady=6)
@@ -235,9 +252,21 @@ class PianoGUI(Frame):
                 variable=self.auto_open_musescore_var,
             ).grid(row=5, column=0, columnspan=2, sticky="w", padx=8, pady=(4, 8))
 
+        banner_path = Path("webapi/images/banner.png")
+        if banner_path.exists():
+            try:
+                self._banner_raw = PhotoImage(file=str(banner_path))
+                self._banner_label = Label(parent)
+                self._banner_label.pack(fill="x", padx=10, pady=(0, 10))
+                parent.bind("<Configure>", self._on_basic_resize)
+                self.after(0, self._resize_banner)
+            except TclError:
+                # Some Tk builds may not support PNG decoding.
+                pass
+
     def _build_advanced_tab(self, parent: TtkFrame) -> None:
         """Build less frequently used configuration options."""
-        opts = LabelFrame(parent, text="Advanced Options")
+        opts = LabelFrame(parent, text="Options")
         opts.pack(fill="x", padx=10, pady=10)
 
         Label(opts, text="Depth of search (0=auto)").grid(
@@ -251,17 +280,46 @@ class PianoGUI(Frame):
             row=0, column=1, sticky="w", padx=8, pady=6
         )
 
-        Label(opts, text="Right Beam number").grid(row=1, column=0, sticky="w", padx=8, pady=6)
-        Spinbox(opts, from_=0, to=16, textvariable=self.rbeam_var, width=8).grid(
-            row=1, column=1, sticky="w", padx=8, pady=6
+        Checkbutton(
+            opts,
+            text="Auto hand routing (recommended)",
+            variable=self.auto_routing_var,
+            command=self._sync_routing_mode,
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=8, pady=6)
+
+        Label(opts, textvariable=self.routing_hint_var, style="Hint.TLabel").grid(
+            row=2, column=0, columnspan=2, sticky="w", padx=8, pady=(0, 6)
         )
 
-        Label(opts, text="Left Beam number").grid(row=2, column=0, sticky="w", padx=8, pady=6)
-        Spinbox(opts, from_=0, to=16, textvariable=self.lbeam_var, width=8).grid(
-            row=2, column=1, sticky="w", padx=8, pady=6
+        Label(opts, text="Right Part number").grid(row=3, column=0, sticky="w", padx=8, pady=6)
+        self.rpart_spin = Spinbox(opts, from_=0, to=16, textvariable=self.rpart_var, width=8)
+        self.rpart_spin.grid(
+            row=3, column=1, sticky="w", padx=8, pady=6
         )
 
-        Label(opts, text="Chord Stagger (sec)").grid(row=3, column=0, sticky="w", padx=8, pady=6)
+        Label(opts, text="Left Part number").grid(row=4, column=0, sticky="w", padx=8, pady=6)
+        self.lpart_spin = Spinbox(opts, from_=0, to=16, textvariable=self.lpart_var, width=8)
+        self.lpart_spin.grid(
+            row=4, column=1, sticky="w", padx=8, pady=6
+        )
+
+        Label(opts, text="Right Staff number (0=auto)").grid(
+            row=5, column=0, sticky="w", padx=8, pady=6
+        )
+        self.rstaff_spin = Spinbox(opts, from_=0, to=16, textvariable=self.rstaff_var, width=8)
+        self.rstaff_spin.grid(
+            row=5, column=1, sticky="w", padx=8, pady=6
+        )
+
+        Label(opts, text="Left Staff number (0=auto)").grid(
+            row=6, column=0, sticky="w", padx=8, pady=6
+        )
+        self.lstaff_spin = Spinbox(opts, from_=0, to=16, textvariable=self.lstaff_var, width=8)
+        self.lstaff_spin.grid(
+            row=6, column=1, sticky="w", padx=8, pady=6
+        )
+
+        Label(opts, text="Chord Stagger (sec)").grid(row=7, column=0, sticky="w", padx=8, pady=6)
         Spinbox(
             opts,
             from_=0.0,
@@ -269,22 +327,73 @@ class PianoGUI(Frame):
             increment=0.01,
             textvariable=self.chord_stagger_var,
             width=8,
-        ).grid(row=3, column=1, sticky="w", padx=8, pady=6)
+        ).grid(row=7, column=1, sticky="w", padx=8, pady=6)
 
         # 3D playback controls.
         Checkbutton(opts, text="Enable 3D playback (vedo)", variable=self.with_vedo_var).grid(
-            row=4, column=0, sticky="w", padx=8, pady=6
+            row=8, column=0, sticky="w", padx=8, pady=6
         )
         Checkbutton(opts, text="3D sound off", variable=self.sound_off_var).grid(
-            row=4, column=1, sticky="w", padx=8, pady=6
+            row=8, column=1, sticky="w", padx=8, pady=6
         )
         # Output/diagnostic toggles.
         Checkbutton(opts, text="Show annotations below beam", variable=self.below_beam_var).grid(
-            row=5, column=0, sticky="w", padx=8, pady=6
+            row=9, column=0, sticky="w", padx=8, pady=6
         )
         Checkbutton(opts, text="Quiet logs", variable=self.quiet_var).grid(
-            row=6, column=0, sticky="w", padx=8, pady=6
+            row=10, column=0, sticky="w", padx=8, pady=6
         )
+        self._sync_routing_mode()
+
+    def _sync_routing_mode(self) -> None:
+        """Enable manual part/staff controls only when auto-routing is disabled."""
+        auto = bool(self.auto_routing_var.get())
+        state = ["disabled"] if auto else ["!disabled"]
+        for widget in (
+            getattr(self, "rpart_spin", None),
+            getattr(self, "lpart_spin", None),
+            getattr(self, "rstaff_spin", None),
+            getattr(self, "lstaff_spin", None),
+        ):
+            if widget is None:
+                continue
+            widget.state(state)
+        if auto:
+            self.routing_hint_var.set(
+                "Routing: automatic (PianoPlayer will select part and staff)."
+            )
+        else:
+            self.routing_hint_var.set("Routing: manual (set part and staff for each hand).")
+
+    def _on_basic_resize(self, _event) -> None:
+        """Resize banner when the basic tab geometry changes."""
+        self._resize_banner()
+
+    def _resize_banner(self) -> None:
+        """Scale banner down so it fits horizontally in current window width."""
+        if self._banner_raw is None or self._banner_label is None:
+            return
+        available = max(220, self.winfo_width() - 60)
+        raw_w = self._banner_raw.width()
+        if raw_w <= available:
+            ratio = (1, 1)
+        else:
+            # Find best rational downscale num/den (<=1) maximizing rendered width <= available.
+            best_num, best_den = 1, max(1, (raw_w + available - 1) // available)
+            best_w = raw_w * best_num // best_den
+            for den in range(1, 41):
+                for num in range(1, den + 1):
+                    w = raw_w * num // den
+                    if w <= available and w > best_w:
+                        best_num, best_den, best_w = num, den, w
+            ratio = (best_num, best_den)
+
+        if ratio == self._banner_ratio and self._banner_img is not None:
+            return
+        self._banner_ratio = ratio
+        num, den = ratio
+        self._banner_img = self._banner_raw.zoom(num, num).subsample(den, den)
+        self._banner_label.configure(image=self._banner_img)
 
     def import_cmd(self) -> None:
         """Open a file picker and store the selected input score path."""
@@ -298,7 +407,7 @@ class PianoGUI(Frame):
         filename = tk_filedialog.askopenfilename(filetypes=ftypes)
         if filename:
             self.filename_var.set(filename)
-            self.status_var.set("Loaded input score")
+            self.status_var.set("Status: Loaded input score")
 
     @staticmethod
     def _as_int(value: int | str, default: int) -> int:
@@ -327,19 +436,23 @@ class PianoGUI(Frame):
             messagebox.showerror("PianoPlayer", "Select at least one hand to scan.")
             return
 
-        self.status_var.set(f"Generating: {output_file}")
+        self.status_var.set(f"Status: Generating {output_file}")
         self.parent.update_idletasks()
         self._set_busy(True)
         try:
             # Collect current widget values and call the synchronous core runner.
+            auto_routing = bool(self.auto_routing_var.get())
             core.run_annotate(
                 filename=filename,
                 outputfile=output_file,
                 n_measures=max(1, self._as_int(self.n_measures_var.get(), 1000)),
                 start_measure=max(1, self._as_int(self.start_measure_var.get(), 1)),
                 depth=max(0, self._as_int(self.depth_var.get(), 0)),
-                rbeam=max(0, self._as_int(self.rbeam_var.get(), 0)),
-                lbeam=max(0, self._as_int(self.lbeam_var.get(), 1)),
+                rpart=0 if auto_routing else max(0, self._as_int(self.rpart_var.get(), 0)),
+                lpart=1 if auto_routing else max(0, self._as_int(self.lpart_var.get(), 1)),
+                rstaff=0 if auto_routing else max(0, self._as_int(self.rstaff_var.get(), 0)),
+                lstaff=0 if auto_routing else max(0, self._as_int(self.lstaff_var.get(), 0)),
+                auto_routing=auto_routing,
                 quiet=bool(self.quiet_var.get()),
                 musescore=bool(self.auto_open_musescore_var.get())
                 and platform.system() != "Windows",
@@ -351,10 +464,10 @@ class PianoGUI(Frame):
                 left_only=left_on and not right_on,
                 right_only=right_on and not left_on,
             )
-            self.status_var.set(f"Generated: {output_file}")
+            self.status_var.set(f"Status: Generated {output_file}")
         except (PianoPlayerError, ValueError) as exc:
             messagebox.showerror("PianoPlayer", str(exc))
-            self.status_var.set("Generation failed")
+            self.status_var.set("Status: Generation failed")
         finally:
             self._set_busy(False)
 
@@ -382,10 +495,10 @@ class PianoGUI(Frame):
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
-            self.status_var.set(f"Opened: {output_file}")
+            self.status_var.set(f"Status: Opened {output_file}")
         except Exception as exc:
             messagebox.showerror("PianoPlayer", f"Unable to open MuseScore: {exc}")
-            self.status_var.set("Unable to open output in MuseScore")
+            self.status_var.set("Status: Unable to open output")
         finally:
             self._set_busy(False)
 
@@ -397,6 +510,7 @@ class PianoGUI(Frame):
 def launch() -> None:
     """Create and run the PianoPlayer GUI application."""
     root = Tk()
-    root.geometry("700x500")
+    root.geometry("700x620")
+    root.minsize(700, 620)
     PianoGUI(root)
     root.mainloop()

@@ -13,7 +13,11 @@ from typing import Any
 from pianoplayer.errors import ConversionError, ExternalToolError, MissingDependencyError
 from pianoplayer.hand import Hand
 from pianoplayer.models import AnnotateOptions
-from pianoplayer.musicxml_io import annotate_part_with_fingering, parse_musicxml
+from pianoplayer.musicxml_io import (
+    annotate_part_with_fingering,
+    clear_part_fingering,
+    parse_musicxml,
+)
 from pianoplayer.scorereader import reader, reader_PIG, reader_pretty_midi
 
 logger = logging.getLogger(__name__)
@@ -144,8 +148,11 @@ def run_annotate(
     n_measures=1000,
     start_measure=1,
     depth=0,
-    rbeam=0,
-    lbeam=1,
+    rpart=0,
+    lpart=1,
+    rstaff=0,
+    lstaff=0,
+    auto_routing=True,
     quiet=False,
     musescore=False,
     below_beam=False,
@@ -163,8 +170,11 @@ def run_annotate(
         n_measures=n_measures,
         start_measure=start_measure,
         depth=depth,
-        rbeam=rbeam,
-        lbeam=lbeam,
+        rpart=rpart,
+        lpart=lpart,
+        rstaff=rstaff,
+        lstaff=lstaff,
+        auto_routing=auto_routing,
         quiet=quiet,
         musescore=musescore,
         below_beam=below_beam,
@@ -213,6 +223,103 @@ def _run_external(cmd: list[str], context: str) -> None:
         raise ExternalToolError(f"External command failed for {context}: {' '.join(cmd)}") from exc
 
 
+def _normalize_single_part_parts(args: SimpleNamespace, score_info: Any) -> None:
+    """Map selected-hand part to 0 when the score has only one part."""
+    parts = getattr(score_info, "parts", None)
+    if parts is None or len(parts) != 1:
+        return
+
+    if args.rpart != 0:
+        logger.info("Single-part score detected: remapping right-hand part %s -> 0", args.rpart)
+        args.rpart = 0
+    if args.lpart != 0:
+        logger.info("Single-part score detected: remapping left-hand part %s -> 0", args.lpart)
+        args.lpart = 0
+
+
+def _part_staffs(score_info: Any, part: int) -> set[int]:
+    """Collect declared MusicXML staff numbers for one part index."""
+    parts = getattr(score_info, "parts", None)
+    if parts is None or part < 0 or part >= len(parts):
+        return set()
+    staffs: set[int] = set()
+    for evt in parts[part].events:
+        for note_el in evt.notes:
+            txt = note_el.findtext("staff", "").strip()
+            if txt.isdigit():
+                staffs.add(int(txt))
+    return staffs
+
+
+def _resolve_staff_target(
+    args: SimpleNamespace, score_info: Any, *, is_right: bool
+) -> int | None:
+    """Resolve target staff for one hand.
+
+    Priority:
+    1. explicit `--rstaff/--lstaff`,
+    2. single-part auto defaults (RH->staff 1, LH->staff 2 when available),
+    3. `None` for part-based routing.
+    """
+    explicit = int(args.rstaff if is_right else args.lstaff)
+    if explicit > 0:
+        return explicit
+
+    parts = getattr(score_info, "parts", None)
+    if parts is None or len(parts) != 1:
+        return None
+
+    staffs = sorted(_part_staffs(score_info, 0))
+    if not staffs:
+        return None
+
+    if is_right:
+        if 1 in staffs:
+            return 1
+        return staffs[0]
+
+    if 2 in staffs:
+        return 2
+    if len(staffs) > 1:
+        return staffs[-1]
+    return staffs[0]
+
+
+def _resolve_musicxml_routing(args: SimpleNamespace, score_info: Any) -> None:
+    """Compute and store resolved part/staff routing for RH/LH."""
+    parts = getattr(score_info, "parts", None) or []
+    auto_routing = bool(getattr(args, "auto_routing", True))
+    if auto_routing:
+        _normalize_single_part_parts(args, score_info)
+        if len(parts) > 1:
+            args.rpart = max(0, min(int(args.rpart), len(parts) - 1))
+            args.lpart = max(0, min(int(args.lpart), len(parts) - 1))
+        args._resolved_rstaff = _resolve_staff_target(args, score_info, is_right=True)
+        args._resolved_lstaff = _resolve_staff_target(args, score_info, is_right=False)
+    else:
+        if parts:
+            args.rpart = max(0, min(int(args.rpart), len(parts) - 1))
+            args.lpart = max(0, min(int(args.lpart), len(parts) - 1))
+        args._resolved_rstaff = int(args.rstaff) if int(args.rstaff) > 0 else None
+        args._resolved_lstaff = int(args.lstaff) if int(args.lstaff) > 0 else None
+
+    logger.info(
+        "Resolved routing (%s): RH part %s%s | LH part %s%s",
+        "auto" if auto_routing else "manual",
+        args.rpart,
+        f" staff {args._resolved_rstaff}" if args._resolved_rstaff else "",
+        args.lpart,
+        f" staff {args._resolved_lstaff}" if args._resolved_lstaff else "",
+    )
+
+
+def _filter_noteseq_by_staff(noteseq: list[Any] | None, staff: int | None) -> list[Any] | None:
+    """Restrict one hand note sequence to a specific staff when requested."""
+    if noteseq is None or staff is None:
+        return noteseq
+    return [n for n in noteseq if int(getattr(n, "staff", 0)) == staff]
+
+
 def load_note_sequences(args):
     """Load score input and produce internal RH/LH note sequences."""
     args = _as_namespace(args)
@@ -232,27 +339,36 @@ def load_note_sequences(args):
             logger.info("Converting MuseScore file %s -> %s", args.filename, xmlfn)
             _run_external(["musescore", "-f", args.filename, "-o", xmlfn], "MuseScore conversion")
             score_info = parse_musicxml(xmlfn)
+            _resolve_musicxml_routing(args, score_info)
 
             if not args.left_only:
                 rh_noteseq = reader(
                     score_info,
-                    beam=args.rbeam,
+                    beam=args.rpart,
                     chord_note_stagger_s=args.chord_note_stagger_s,
+                )
+                rh_noteseq = _filter_noteseq_by_staff(
+                    rh_noteseq,
+                    args._resolved_rstaff,
                 )
 
             if not args.right_only:
                 lh_noteseq = reader(
                     score_info,
-                    beam=args.lbeam,
+                    beam=args.lpart,
                     chord_note_stagger_s=args.chord_note_stagger_s,
+                )
+                lh_noteseq = _filter_noteseq_by_staff(
+                    lh_noteseq,
+                    args._resolved_lstaff,
                 )
 
         elif ext == ".txt":
             # Legacy PIG format stores channels directly.
             if not args.left_only:
-                rh_noteseq = reader_PIG(args.filename, args.rbeam)
+                rh_noteseq = reader_PIG(args.filename, args.rpart)
             if not args.right_only:
-                lh_noteseq = reader_PIG(args.filename, args.lbeam)
+                lh_noteseq = reader_PIG(args.filename, args.lpart)
 
         elif ext in {".mid", ".midi"}:
             try:
@@ -267,33 +383,42 @@ def load_note_sequences(args):
 
             if not args.left_only:
                 rh_noteseq = reader_pretty_midi(
-                    pm.instruments[args.rbeam],
-                    beam=args.rbeam,
+                    pm.instruments[args.rpart],
+                    beam=args.rpart,
                     chord_note_stagger_s=args.chord_note_stagger_s,
                 )
 
             if not args.right_only:
                 lh_noteseq = reader_pretty_midi(
-                    pm.instruments[args.lbeam],
-                    beam=args.lbeam,
+                    pm.instruments[args.lpart],
+                    beam=args.lpart,
                     chord_note_stagger_s=args.chord_note_stagger_s,
                 )
 
         else:
             score_info = parse_musicxml(xmlfn)
+            _resolve_musicxml_routing(args, score_info)
 
             if not args.left_only:
                 rh_noteseq = reader(
                     score_info,
-                    beam=args.rbeam,
+                    beam=args.rpart,
                     chord_note_stagger_s=args.chord_note_stagger_s,
+                )
+                rh_noteseq = _filter_noteseq_by_staff(
+                    rh_noteseq,
+                    args._resolved_rstaff,
                 )
 
             if not args.right_only:
                 lh_noteseq = reader(
                     score_info,
-                    beam=args.lbeam,
+                    beam=args.lpart,
                     chord_note_stagger_s=args.chord_note_stagger_s,
+                )
+                lh_noteseq = _filter_noteseq_by_staff(
+                    lh_noteseq,
+                    args._resolved_lstaff,
                 )
     except ExternalToolError:
         raise
@@ -413,34 +538,57 @@ def write_annotated_output(args, score_info, rh, lh):
     if score_info is None:
         raise ValueError("Only MusicXML inputs can produce MusicXML output in this build.")
 
+    # In one-hand modes, clear stale fingering from the opposite part.
+    if len(score_info.parts) == 1:
+        single_part = score_info.parts[0]
+        if args.right_only:
+            clear_part_fingering(
+                single_part,
+                lyrics=args.below_beam,
+                target_staff=getattr(args, "_resolved_lstaff", None),
+            )
+        if args.left_only:
+            clear_part_fingering(
+                single_part,
+                lyrics=args.below_beam,
+                target_staff=getattr(args, "_resolved_rstaff", None),
+            )
+    else:
+        if args.right_only and len(score_info.parts) > args.lpart:
+            clear_part_fingering(score_info.parts[args.lpart], lyrics=args.below_beam)
+        if args.left_only and len(score_info.parts) > args.rpart:
+            clear_part_fingering(score_info.parts[args.rpart], lyrics=args.below_beam)
+
     if not args.left_only and rh is not None:
-        if len(score_info.parts) <= args.rbeam:
+        if len(score_info.parts) <= args.rpart:
             logger.debug(
-                "Skipping right-hand annotation: requested beam %s but score has %s part(s).",
-                args.rbeam,
+                "Skipping right-hand annotation: requested part %s but score has %s part(s).",
+                args.rpart,
                 len(score_info.parts),
             )
         else:
             annotate_part_with_fingering(
-                score_info.parts[args.rbeam],
+                score_info.parts[args.rpart],
                 rh.noteseq,
                 lyrics=rh.lyrics,
                 skip_chords_with=4,
+                target_staff=getattr(args, "_resolved_rstaff", None),
             )
 
     if not args.right_only and lh is not None:
-        if len(score_info.parts) <= args.lbeam:
+        if len(score_info.parts) <= args.lpart:
             logger.debug(
-                "Skipping left-hand annotation: requested beam %s but score has %s part(s).",
-                args.lbeam,
+                "Skipping left-hand annotation: requested part %s but score has %s part(s).",
+                args.lpart,
                 len(score_info.parts),
             )
         else:
             annotate_part_with_fingering(
-                score_info.parts[args.lbeam],
+                score_info.parts[args.lpart],
                 lh.noteseq,
                 lyrics=lh.lyrics,
                 skip_chords_with=4,
+                target_staff=getattr(args, "_resolved_lstaff", None),
             )
 
     score_info.write(args.outputfile)
@@ -520,10 +668,20 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         only_flag = args.left_only if is_right else args.right_only
         if only_flag:
             return f"{hand_name}=disabled"
-        beam = args.rbeam if is_right else args.lbeam
-        if score_info is not None and len(score_info.parts) <= beam:
-            return f"{hand_name}=skipped(beam {beam} out of range)"
-        return f"{hand_name}=ok(beam {beam})"
+        part = args.rpart if is_right else args.lpart
+        staff = getattr(args, "_resolved_rstaff" if is_right else "_resolved_lstaff", None)
+        if score_info is not None and len(score_info.parts) <= part:
+            return f"{hand_name}=skipped(part {part} out of range)"
+        if staff:
+            return f"{hand_name}=ok(part {part}, staff {staff})"
+        return f"{hand_name}=ok(part {part})"
+
+    def hand_route(is_right: bool) -> str:
+        part = args.rpart if is_right else args.lpart
+        staff = getattr(args, "_resolved_rstaff" if is_right else "_resolved_lstaff", None)
+        if staff:
+            return f"part {part}, staff {staff}"
+        return f"part {part}"
 
     def styled_status(status: str) -> str:
         if status.startswith("ok"):
@@ -619,13 +777,15 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         from rich.panel import Panel
         from rich.table import Table
 
-        table = Table(title="Run Summary", title_justify="left", show_header=False)
+        table = Table(title="  Run Summary", title_justify="left", show_header=False)
         table.add_column("Field", style="bold")
         table.add_column("Value", overflow="fold")
         table.add_row("Input", str(args.filename))
         table.add_row("Output", str(args.outputfile))
         table.add_row("Depth", depth_info)
         table.add_row("Parts", parts_info)
+        table.add_row("RH Route", hand_route(is_right=True))
+        table.add_row("LH Route", hand_route(is_right=False))
         table.add_row("Elapsed", f"{elapsed_s:.2f} s")
         table.add_row("Right Hand", f"{styled_status(rh_status)} | notes={rh_count}")
         table.add_row("Left Hand", f"{styled_status(lh_status)} | notes={lh_count}")
@@ -645,13 +805,15 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         logger.info(
             (
                 "Summary | input=%s | output=%s | depth=%s | parts=%s | elapsed=%.2fs "
-                "| RH=%s(notes=%s) | LH=%s(notes=%s)"
+                "| RH-route=%s | LH-route=%s | RH=%s(notes=%s) | LH=%s(notes=%s)"
             ),
             args.filename,
             args.outputfile,
             depth_info,
             parts_info,
             elapsed_s,
+            hand_route(is_right=True),
+            hand_route(is_right=False),
             rh_status,
             rh_count,
             lh_status,
