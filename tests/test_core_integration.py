@@ -93,7 +93,6 @@ def test_core_warns_and_clamps_depth(caplog) -> None:
     )
     caplog.set_level("WARNING")
     core.annotate(args)
-    assert args.depth == 9
     assert "above max 9" in caplog.text
 
 

@@ -694,7 +694,10 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
 
     # Normalize caller input and execution flags.
     show_progress = bool(getattr(args, "_show_progress", False))
-    args = _as_namespace(args)
+    if isinstance(args, AnnotateOptions):
+        args = args.to_namespace()
+    else:
+        args = AnnotateOptions.from_namespace(args).to_namespace()
 
     # Clamp manual search depth to the supported solver range.
     depth = int(getattr(args, "depth", 0))

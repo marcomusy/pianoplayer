@@ -532,6 +532,10 @@ def annotate_part_with_fingering(
             continue
 
         if evt.kind == "note" and evt.notes:
+            # Keep writer indexing consistent with `noteseq_from_part`, which only
+            # includes pitched notes.
+            if not evt.pitches or _pitch_from_note(evt.notes[0]) is None:
+                continue
             if target_staff is not None and _note_staff(evt.notes[0]) != target_staff:
                 continue
             if idx >= len(seq):
@@ -550,11 +554,15 @@ def annotate_part_with_fingering(
 
         if evt.kind == "chord" and evt.notes:
             # In single-part piano scores, this lets RH/LH annotate only staff 1/2.
-            notes_to_annotate = (
-                [n for n in evt.notes if _note_staff(n) == target_staff]
-                if target_staff is not None
-                else list(evt.notes)
-            )
+            notes_to_annotate = []
+            for note_el in evt.notes:
+                # Keep writer indexing consistent with `noteseq_from_part`, which
+                # skips non-pitched chord members.
+                if _pitch_from_note(note_el) is None:
+                    continue
+                if target_staff is not None and _note_staff(note_el) != target_staff:
+                    continue
+                notes_to_annotate.append(note_el)
             chord_len = len(notes_to_annotate)
             for note_el in notes_to_annotate:
                 if idx >= len(seq):
