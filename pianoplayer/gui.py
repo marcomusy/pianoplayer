@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from base64 import b64encode
 import platform
 import subprocess
+import sys
 from pathlib import Path
+from importlib.resources import read_binary
 from tkinter import (
     BOTH,
     BooleanVar,
@@ -46,15 +49,22 @@ class PianoGUI(Frame):
         """Initialize GUI state and build widgets."""
         super().__init__(parent, bg="white")
         self.parent = parent
+        self._project_root = Path(__file__).resolve().parent.parent
+        score_candidates = [self._project_root / "scores", Path("scores")]
+        for candidate in score_candidates:
+            if candidate.exists():
+                self._scores_dir = candidate
+                break
+        else:
+            self._scores_dir = score_candidates[0]
 
-        default_score = Path("scores/bach_invention4.xml")
+        default_score = self._scores_dir / "bach_invention4.xml"
         if default_score.exists():
             default_input = str(default_score)
         else:
-            scores_dir = Path("scores")
             fallback = None
-            if scores_dir.exists():
-                candidates = sorted(scores_dir.glob("*.xml")) + sorted(scores_dir.glob("*.mxl"))
+            if self._scores_dir.exists():
+                candidates = sorted(self._scores_dir.glob("*.xml")) + sorted(self._scores_dir.glob("*.mxl"))
                 if candidates:
                     fallback = candidates[0]
             default_input = str(fallback) if fallback is not None else ""
@@ -93,6 +103,7 @@ class PianoGUI(Frame):
         self._banner_img = None
         self._banner_ratio = (1, 1)
         self._banner_label = None
+        self._banner_parent = None
         self._busy = False
         default_font = tkfont.nametofont("TkDefaultFont")
         self._filename_font_normal = default_font.copy()
@@ -244,6 +255,7 @@ class PianoGUI(Frame):
 
     def _build_basic_tab(self, parent: TtkFrame) -> None:
         """Build frequently used options."""
+        self._banner_parent = parent
         opts = LabelFrame(parent, text="Options")
         opts.pack(fill="x", padx=10, pady=10)
 
@@ -281,17 +293,90 @@ class PianoGUI(Frame):
                 variable=self.auto_open_musescore_var,
             ).grid(row=5, column=0, columnspan=2, sticky="w", padx=8, pady=(4, 8))
 
-        banner_path = Path("webapi/images/banner.png")
-        if banner_path.exists():
+        if self._load_banner():
+            parent.bind("<Configure>", lambda _event: self._resize_banner())
+            self.after(0, self._resize_banner)
+
+    def _load_banner(self) -> bool:
+        """Load banner image from package resources or file-system fallback paths."""
+        try:
+            if self._set_banner_bytes(read_binary("webapi", "images/banner.png")):
+                return True
+        except Exception:
+            pass
+
+        banner_rel = Path("webapi") / "images" / "banner.png"
+        search_roots: list[Path] = [
+            self._project_root,
+            self._project_root.parent,
+            Path.cwd(),
+            Path(sys.executable).resolve().parent,
+        ]
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            search_roots.append(Path(meipass))
+        search_roots.extend(Path(path) for path in sys.path if path)
+
+        seen: set[Path] = set()
+        for root in search_roots:
+            candidate = root / banner_rel
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            if self._set_banner(candidate):
+                return True
+        return False
+
+    def _apply_banner(self) -> None:
+        """Attach the loaded image to the label and keep a widget reference."""
+        if self._banner_raw is None:
+            return
+        if self._banner_label is None:
+            self._banner_label = Label(self._banner_parent or self.parent)
+            self._banner_label.pack(fill="x", padx=10, pady=(0, 10))
+        self._banner_img = self._banner_raw
+        self._banner_label.configure(image=self._banner_img)
+        self._banner_label.image = self._banner_img
+
+    def _set_banner(self, banner_path: Path) -> bool:
+        """Attempt to load banner PNG, return True on success."""
+        if not banner_path.exists():
+            return False
+        try:
+            self._banner_raw = PhotoImage(file=str(banner_path))
+            self._apply_banner()
+            return True
+        except (TclError, OSError, ValueError):
+            # Some Tk builds may not support PNG decoding.
+            return False
+
+    def _set_banner_bytes(self, banner_bytes: bytes) -> bool:
+        """Attempt to load banner bytes, return True on success."""
+        if not banner_bytes:
+            return False
+        try:
+            self._banner_raw = PhotoImage(data=banner_bytes)
+            self._apply_banner()
+            return True
+        except (TclError, OSError, ValueError):
             try:
-                self._banner_raw = PhotoImage(file=str(banner_path))
-                self._banner_label = Label(parent)
-                self._banner_label.pack(fill="x", padx=10, pady=(0, 10))
-                parent.bind("<Configure>", self._on_basic_resize)
-                self.after(0, self._resize_banner)
-            except TclError:
-                # Some Tk builds may not support PNG decoding.
-                pass
+                self._banner_raw = PhotoImage(data=b64encode(banner_bytes), format="png")
+                self._apply_banner()
+                return True
+            except Exception:
+                # Optional fallback to Pillow when tkinter image handlers are missing.
+                try:
+                    from io import BytesIO
+                    from PIL import Image, ImageTk
+
+                    image = Image.open(BytesIO(banner_bytes))
+                    self._banner_raw = ImageTk.PhotoImage(image)
+                    self._apply_banner()
+                    return True
+                except Exception:
+                    return False
+        except Exception:
+            return False
 
     def _build_advanced_tab(self, parent: TtkFrame) -> None:
         """Build less frequently used configuration options."""
@@ -434,10 +519,6 @@ class PianoGUI(Frame):
             if widget is None:
                 continue
             widget.state(state)
-
-    def _on_basic_resize(self, _event) -> None:
-        """Resize banner when the basic tab geometry changes."""
-        self._resize_banner()
 
     def _resize_banner(self) -> None:
         """Scale banner down so it fits horizontally in current window width."""
