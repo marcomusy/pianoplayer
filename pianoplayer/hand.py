@@ -407,22 +407,23 @@ class Hand:
         if not candidates:
             candidates = [finger]
 
-        def penalty(cand: int) -> int:
-            p = 0
+        candidates_with_penalty: list[tuple[int, int, int]] = []
+        for cand in candidates:
+            penalty = 0
             for peer_pitch, peer_finger in peers:
                 if self.LR == "right":
                     if note_pitch > peer_pitch and cand <= peer_finger:
-                        p += 100 + (peer_finger - cand)
+                        penalty += 100 + (peer_finger - cand)
                     elif note_pitch < peer_pitch and cand >= peer_finger:
-                        p += 100 + (cand - peer_finger)
+                        penalty += 100 + (cand - peer_finger)
                 else:
                     if note_pitch > peer_pitch and cand >= peer_finger:
-                        p += 100 + (cand - peer_finger)
+                        penalty += 100 + (cand - peer_finger)
                     elif note_pitch < peer_pitch and cand <= peer_finger:
-                        p += 100 + (peer_finger - cand)
-            return p
+                        penalty += 100 + (peer_finger - cand)
+            candidates_with_penalty.append((penalty, abs(cand - finger), cand))
 
-        return min(candidates, key=lambda cand: (penalty(cand), abs(cand - finger)))
+        return min(candidates_with_penalty)[2]
 
     def generate(
         self,
@@ -446,16 +447,6 @@ class Hand:
 
         self.fingerseq = []
         try:
-            def preset_finger(value: int | str) -> int:
-                """Normalize pre-annotated fingers to 1..5, or 0 when absent/invalid."""
-                if isinstance(value, str):
-                    text = value.strip()
-                    if not text.lstrip("+-").isdigit():
-                        return 0
-                    value = int(text)
-                finger = abs(int(value))
-                return finger if 1 <= finger <= 5 else 0
-
             self.finger_positions = list(self.frest)
             self._has_position_state = False
             start_finger = 0
@@ -495,7 +486,17 @@ class Hand:
                 if not ninenotes:
                     break
 
-                anchored_finger = preset_finger(an.fingering)
+                anchored_finger = 0
+                raw_finger = an.fingering
+                if isinstance(raw_finger, str):
+                    text = raw_finger.strip()
+                    if text.lstrip("+-").isdigit():
+                        raw_finger = int(text)
+                if isinstance(raw_finger, int):
+                    normalized = abs(raw_finger)
+                    if 1 <= normalized <= 5:
+                        anchored_finger = normalized
+
                 if anchored_finger:
                     # Preserve existing annotation and resume optimization from this anchor.
                     an.fingering = anchored_finger

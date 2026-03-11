@@ -456,9 +456,9 @@ class PianoGUI(Frame):
         )
         Checkbutton(
             opts,
-            text="Colorize hands",
+            text="Colorize by hand",
             variable=self.colorize_hands_var,
-            command=self._sync_colorize_mode,
+            command=lambda: self._sync_colorize_mode("hands"),
         ).grid(row=10, column=0, sticky="w", padx=8, pady=6)
         colors_row = TtkFrame(opts)
         colors_row.grid(row=10, column=1, sticky="w", padx=8, pady=6)
@@ -472,13 +472,13 @@ class PianoGUI(Frame):
             opts,
             text="Colorize by cost",
             variable=self.colorize_by_cost_var,
-            command=self._sync_colorize_mode,
+            command=lambda: self._sync_colorize_mode("cost"),
         ).grid(row=11, column=0, sticky="w", padx=8, pady=6)
         Checkbutton(
             opts,
             text="Colorize by fingering",
             variable=self.colorize_by_fingering_var,
-            command=self._sync_colorize_mode,
+            command=lambda: self._sync_colorize_mode("fingering"),
         ).grid(row=12, column=0, sticky="w", padx=8, pady=6)
         Checkbutton(opts, text="Quiet logs", variable=self.quiet_var).grid(
             row=13, column=0, sticky="w", padx=8, pady=6
@@ -506,8 +506,21 @@ class PianoGUI(Frame):
         else:
             self.routing_hint_var.set("Routing: manual (set part and staff for each hand).")
 
-    def _sync_colorize_mode(self) -> None:
-        """Enable color fields only when hand colorization is active."""
+    def _sync_colorize_mode(self, selected=None) -> None:
+        """Keep colorization modes mutually exclusive and update manual color inputs."""
+        if selected == "hands":
+            if self.colorize_hands_var.get():
+                self.colorize_by_cost_var.set(False)
+                self.colorize_by_fingering_var.set(False)
+        elif selected == "cost":
+            if self.colorize_by_cost_var.get():
+                self.colorize_hands_var.set(False)
+                self.colorize_by_fingering_var.set(False)
+        elif selected == "fingering":
+            if self.colorize_by_fingering_var.get():
+                self.colorize_hands_var.set(False)
+                self.colorize_by_cost_var.set(False)
+
         enabled = bool(self.colorize_hands_var.get())
         cost_mode = bool(self.colorize_by_cost_var.get())
         fingering_mode = bool(self.colorize_by_fingering_var.get())
@@ -577,20 +590,6 @@ class PianoGUI(Frame):
                 font=self._filename_font_normal,
             )
 
-    @staticmethod
-    def _as_int(value: int | str, default: int) -> int:
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return default
-
-    @staticmethod
-    def _as_float(value: float | str, default: float) -> float:
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return default
-
     def generate_cmd(self) -> None:
         """Run fingering generation for the selected score/options."""
         filename = self.filename_var.get().strip()
@@ -608,18 +607,58 @@ class PianoGUI(Frame):
         self.parent.update_idletasks()
         self._set_busy(True)
         try:
+            try:
+                n_measures = int(self.n_measures_var.get())
+            except (TypeError, ValueError):
+                n_measures = 1000
+
+            try:
+                start_measure = int(self.start_measure_var.get())
+            except (TypeError, ValueError):
+                start_measure = 1
+
+            try:
+                depth = int(self.depth_var.get())
+            except (TypeError, ValueError):
+                depth = 0
+
+            try:
+                rpart = int(self.rpart_var.get())
+            except (TypeError, ValueError):
+                rpart = 0
+
+            try:
+                lpart = int(self.lpart_var.get())
+            except (TypeError, ValueError):
+                lpart = 1
+
+            try:
+                rstaff = int(self.rstaff_var.get())
+            except (TypeError, ValueError):
+                rstaff = 0
+
+            try:
+                lstaff = int(self.lstaff_var.get())
+            except (TypeError, ValueError):
+                lstaff = 0
+
+            try:
+                chord_stagger = float(self.chord_stagger_var.get())
+            except (TypeError, ValueError):
+                chord_stagger = 0.05
+
             # Collect current widget values and call the synchronous core runner.
             auto_routing = bool(self.auto_routing_var.get())
             core.run_annotate(
                 filename=filename,
                 outputfile=output_file,
-                n_measures=max(1, self._as_int(self.n_measures_var.get(), 1000)),
-                start_measure=max(1, self._as_int(self.start_measure_var.get(), 1)),
-                depth=max(0, self._as_int(self.depth_var.get(), 0)),
-                rpart=0 if auto_routing else max(0, self._as_int(self.rpart_var.get(), 0)),
-                lpart=1 if auto_routing else max(0, self._as_int(self.lpart_var.get(), 1)),
-                rstaff=0 if auto_routing else max(0, self._as_int(self.rstaff_var.get(), 0)),
-                lstaff=0 if auto_routing else max(0, self._as_int(self.lstaff_var.get(), 0)),
+                n_measures=max(1, n_measures),
+                start_measure=max(1, start_measure),
+                depth=max(0, depth),
+                rpart=0 if auto_routing else max(0, rpart),
+                lpart=1 if auto_routing else max(0, lpart),
+                rstaff=0 if auto_routing else max(0, rstaff),
+                lstaff=0 if auto_routing else max(0, lstaff),
                 auto_routing=auto_routing,
                 quiet=bool(self.quiet_var.get()),
                 musescore=bool(self.auto_open_musescore_var.get())
@@ -633,7 +672,7 @@ class PianoGUI(Frame):
                 with_vedo=bool(self.with_vedo_var.get()),
                 sound_off=bool(self.sound_off_var.get()),
                 hand_size=(self.hand_size_var.get() or "M"),
-                chord_note_stagger_s=max(0.0, self._as_float(self.chord_stagger_var.get(), 0.05)),
+                chord_note_stagger_s=max(0.0, chord_stagger),
                 left_only=left_on and not right_on,
                 right_only=right_on and not left_on,
             )

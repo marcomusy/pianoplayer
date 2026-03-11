@@ -151,48 +151,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def show_startup_banner(args: argparse.Namespace) -> None:
-    """Print a compact startup panel before the annotation run begins."""
-    if args.quiet or not args.filename:
-        return
-
-    if args.left_only:
-        hand_mode = "left hand only"
-    elif args.right_only:
-        hand_mode = "right hand only"
-    else:
-        hand_mode = "both hands"
-
-    lines = [
-        f"[bold]PianoPlayer[/bold] v{__version__}",
-        f"[dim]{__website__}[/dim]",
-        "",
-        f"[cyan]Input:[/cyan] {args.filename}",
-        f"[cyan]Output:[/cyan] {args.outputfile}",
-        f"[cyan]Mode:[/cyan] {hand_mode}",
-        f"[cyan]Hand size:[/cyan] {args.hand_size}",
-    ]
-    if args.sound_off:
-        lines.append("[cyan]Audio:[/cyan] off")
-    if args.colorize_hands:
-        lines.append(f"[cyan]Colors:[/cyan] RH {args.rh_color} | LH {args.lh_color}")
-    if args.colorize_by_fingering:
-        lines.append("[cyan]Colors:[/cyan] by fingering")
-
-    body = "\n".join(lines)
-    try:
-        from rich.console import Console
-        from rich.panel import Panel
-
-        Console().print(Panel.fit(body, border_style="bright_blue"))
-    except Exception:
-        print(f"PianoPlayer v{__version__}")
-        print(f"Input: {args.filename}")
-        print(f"Output: {args.outputfile}")
-        print(f"Mode: {hand_mode}")
-        print(f"Hand size: {args.hand_size}")
-
-
 def main() -> None:
     """CLI entry point."""
     parser = build_parser()
@@ -221,7 +179,43 @@ def main() -> None:
     from pianoplayer import core
 
     try:
-        show_startup_banner(args)
+        if not args.quiet and args.filename:
+            if args.left_only:
+                hand_mode = "left hand only"
+            elif args.right_only:
+                hand_mode = "right hand only"
+            else:
+                hand_mode = "both hands"
+
+            lines = [
+                f"[bold]PianoPlayer[/bold] v{__version__}",
+                f"[dim]{__website__}[/dim]",
+                "",
+                f"[cyan]Input:[/cyan] {args.filename}",
+                f"[cyan]Output:[/cyan] {args.outputfile}",
+                f"[cyan]Mode:[/cyan] {hand_mode}",
+                f"[cyan]Hand size:[/cyan] {args.hand_size}",
+            ]
+            if args.sound_off:
+                lines.append("[cyan]Audio:[/cyan] off")
+            if args.colorize_hands:
+                lines.append(f"[cyan]Colors:[/cyan] RH {args.rh_color} | LH {args.lh_color}")
+            if args.colorize_by_fingering:
+                lines.append("[cyan]Colors:[/cyan] by fingering")
+
+            body = "\n".join(lines)
+            try:
+                from rich.console import Console
+                from rich.panel import Panel
+
+                Console().print(Panel.fit(body, border_style="bright_blue"))
+            except Exception:
+                print(f"PianoPlayer v{__version__}")
+                print(f"Input: {args.filename}")
+                print(f"Output: {args.outputfile}")
+                print(f"Mode: {hand_mode}")
+                print(f"Hand size: {args.hand_size}")
+
         # Enable progress UI by default unless quiet mode is requested.
         args._show_progress = not args.quiet
         core.annotate(args)

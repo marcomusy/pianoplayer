@@ -268,7 +268,7 @@ class VirtualKeyboard:
 
         state = {"abort": False}
 
-        def _get_key(evt) -> str:
+        def _on_key(evt):
             key = (
                 getattr(evt, "keypress", "")
                 or getattr(evt, "keyPressed", "")
@@ -278,10 +278,8 @@ class VirtualKeyboard:
             if not key and interactor is not None:
                 with contextlib.suppress(Exception):
                     key = interactor.GetKeySym() or ""
-            return str(key).strip().lower()
+            key = str(key).strip().lower()
 
-        def _on_key(evt):
-            key = _get_key(evt)
             if key in {"escape", "esc", "q"}:
                 state["abort"] = True
                 try:

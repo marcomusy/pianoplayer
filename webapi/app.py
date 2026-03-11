@@ -25,18 +25,18 @@ INDEX_HTML = Path(__file__).with_name("index.html")
 IMAGES_DIR = Path(__file__).with_name("images")
 
 
-def _allowed_origins() -> list[str]:
-    raw = os.getenv("PIANOPLAYER_WEBAPI_ALLOW_ORIGINS", "*").strip()
-    if not raw:
-        return ["*"]
-    return [item.strip() for item in raw.split(",") if item.strip()]
-
-
 app = FastAPI(title="PianoPlayer Web API", version="1.0.0")
 app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
+
+_raw_allowed_origins = os.getenv("PIANOPLAYER_WEBAPI_ALLOW_ORIGINS", "*").strip()
+if not _raw_allowed_origins:
+    _allowed_origins = ["*"]
+else:
+    _allowed_origins = [item.strip() for item in _raw_allowed_origins.split(",") if item.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_allowed_origins(),
+    allow_origins=_allowed_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -104,35 +104,33 @@ async def annotate(
             output_path = tmp / "annotated.xml"
             input_path.write_bytes(content)
 
-            def _run_annotate() -> None:
-                core.run_annotate(
-                    filename=str(input_path),
-                    outputfile=str(output_path),
-                    n_measures=max(1, int(n_measures)),
-                    start_measure=max(1, int(start_measure)),
-                    depth=max(0, int(depth)),
-                    rpart=max(0, int(rpart)),
-                    lpart=max(0, int(lpart)),
-                    rstaff=max(0, int(rstaff)),
-                    lstaff=max(0, int(lstaff)),
-                    auto_routing=bool(auto_routing),
-                    quiet=True,
-                    musescore=False,
-                    below_beam=bool(below_beam),
-                    colorize_hands=bool(colorize_hands),
-                    colorize_by_cost=bool(colorize_by_cost),
-                    colorize_by_fingering=bool(colorize_by_fingering),
-                    rh_color=str(rh_color or "#d62828"),
-                    lh_color=str(lh_color or "#1d4ed8"),
-                    with_vedo=False,
-                    sound_off=True,
-                    left_only=bool(left_only),
-                    right_only=bool(right_only),
-                    hand_size=hand_size,
-                    chord_note_stagger_s=max(0.0, float(chord_note_stagger_s)),
-                )
-
-            await run_in_threadpool(_run_annotate)
+            await run_in_threadpool(
+                core.run_annotate,
+                filename=str(input_path),
+                outputfile=str(output_path),
+                n_measures=max(1, int(n_measures)),
+                start_measure=max(1, int(start_measure)),
+                depth=max(0, int(depth)),
+                rpart=max(0, int(rpart)),
+                lpart=max(0, int(lpart)),
+                rstaff=max(0, int(rstaff)),
+                lstaff=max(0, int(lstaff)),
+                auto_routing=bool(auto_routing),
+                quiet=True,
+                musescore=False,
+                below_beam=bool(below_beam),
+                colorize_hands=bool(colorize_hands),
+                colorize_by_cost=bool(colorize_by_cost),
+                colorize_by_fingering=bool(colorize_by_fingering),
+                rh_color=str(rh_color or "#af2828ff"),
+                lh_color=str(lh_color or "#1d4ed8"),
+                with_vedo=False,
+                sound_off=True,
+                left_only=bool(left_only),
+                right_only=bool(right_only),
+                hand_size=hand_size,
+                chord_note_stagger_s=max(0.0, float(chord_note_stagger_s)),
+            )
 
             if not output_path.exists():
                 raise HTTPException(

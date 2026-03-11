@@ -22,7 +22,7 @@ def main() -> int:
 
     data_sep = ";" if platform.system() == "Windows" else ":"
     scores_src = root / "scores"
-    add_data = f"{scores_src}{data_sep}scores"
+    webapi_images_src = root / "webapi" / "images"
 
     cmd = [
         sys.executable,
@@ -53,10 +53,16 @@ def main() -> int:
         "mpl_toolkits",
         "--collect-submodules",
         "pianoplayer",
-        "--add-data",
-        add_data,
+        "--collect-submodules",
+        "webapi",
+        "--collect-data",
+        "webapi",
         str(root / "pianoplayer" / "cli.py"),
     ]
+    if scores_src.exists():
+        cmd.extend(["--add-data", f"{scores_src}{data_sep}scores"])
+    if webapi_images_src.exists():
+        cmd.extend(["--add-data", f"{webapi_images_src}{data_sep}webapi/images"])
 
     env = os.environ.copy()
     env["PYTHONPATH"] = str(root)

@@ -28,15 +28,6 @@ _temp_audio_dir = Path(tempfile.gettempdir()) / "pianoplayer_audio"
 _temp_audio_dir.mkdir(parents=True, exist_ok=True)
 
 
-def _warn_missing_backend_once() -> None:
-    global _warned_missing_backend
-    if _warned_missing_backend:
-        return
-
-    logger.warning("Audio playback unavailable (install pygame).")
-    _warned_missing_backend = True
-
-
 def _init_pygame_mixer() -> bool:
     """Initialize pygame mixer lazily."""
     if pygame is None:
@@ -207,7 +198,10 @@ def soundof(
             except Exception:
                 pass
 
-    _warn_missing_backend_once()
+    global _warned_missing_backend
+    if not _warned_missing_backend:
+        logger.warning("Audio playback unavailable (install pygame).")
+        _warned_missing_backend = True
     return None
 
 

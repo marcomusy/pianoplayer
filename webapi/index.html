@@ -558,7 +558,7 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
                   <div class="radio-group">
                     <label for="colorize_hands">
                       <input id="colorize_hands" type="checkbox" name="colorize_hands" value="true" />
-                      Colorize hands
+                      Colorize by hand
                     </label>
                     <span class="colorize-inline">
                       <span class="color-chip" id="lh_color_field">
@@ -690,7 +690,23 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     autoRoutingEl.addEventListener("change", syncRoutingMode);
     syncRoutingMode();
 
-    function syncColorizeMode() {
+    function syncColorizeMode(ev) {
+      const source = ev && ev.target;
+      if (source) {
+        if (source.checked) {
+          if (source === colorizeHandsEl) {
+            if (colorizeByCostEl) colorizeByCostEl.checked = false;
+            if (colorizeByFingeringEl) colorizeByFingeringEl.checked = false;
+          } else if (source === colorizeByCostEl) {
+            if (colorizeHandsEl) colorizeHandsEl.checked = false;
+            if (colorizeByFingeringEl) colorizeByFingeringEl.checked = false;
+          } else if (source === colorizeByFingeringEl) {
+            if (colorizeHandsEl) colorizeHandsEl.checked = false;
+            if (colorizeByCostEl) colorizeByCostEl.checked = false;
+          }
+        }
+      }
+
       const enabled = !!(colorizeHandsEl && colorizeHandsEl.checked);
       const costMode = !!(colorizeByCostEl && colorizeByCostEl.checked);
       const fingeringMode = !!(colorizeByFingeringEl && colorizeByFingeringEl.checked);

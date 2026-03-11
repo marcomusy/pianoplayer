@@ -41,15 +41,9 @@ def _local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1] if tag.startswith("{") else tag
 
 
-def _namespace(element: ET.Element) -> str:
-    tag = element.tag
-    if tag.startswith("{"):
-        return tag[1 : tag.rindex("}")]
-    return ""
-
-
 def _qname(element: ET.Element, local: str) -> str:
-    namespace = _namespace(element)
+    tag = element.tag
+    namespace = tag[1 : tag.rindex("}")] if tag.startswith("{") and "}" in tag else ""
     return f"{{{namespace}}}{local}" if namespace else local
 
 
@@ -62,10 +56,6 @@ def _child(element: ET.Element, local: str) -> ET.Element | None:
         if _local_name(child.tag) == local:
             return child
     return None
-
-
-def _iter_local(node: ET.Element, local: str) -> list[ET.Element]:
-    return [el for el in node.iter() if _local_name(el.tag) == local]
 
 
 @dataclass(slots=True)
@@ -104,21 +94,13 @@ class ScoreInfo:
 def strip_layout_breaks(score: ScoreInfo) -> None:
     """Remove explicit page-break directives from a parsed MusicXML tree."""
     root = score.tree.getroot()
-    for measure_el in _iter_local(root, "measure"):
+    for measure_el in [el for el in root.iter() if _local_name(el.tag) == "measure"]:
         for print_el in list(_children(measure_el, "print")):
             # Keep system-break and other layout content; remove only forced page breaks.
             print_el.attrib.pop("new-page", None)
             # Drop now-empty print tags to keep output clean.
             if not print_el.attrib and len(print_el) == 0:
                 measure_el.remove(print_el)
-
-
-def _note_name(step: str, alter: int) -> str:
-    if alter == 0:
-        return step
-    if alter > 0:
-        return step + ("#" * alter)
-    return step + ("-" * abs(alter))
 
 
 def _pitch_from_note(note_el: ET.Element) -> PitchInfo | None:
@@ -136,9 +118,15 @@ def _pitch_from_note(note_el: ET.Element) -> PitchInfo | None:
     alter = int(alter_el.text) if alter_el is not None and alter_el.text is not None else 0
     octave = int(octave_el.text)
 
+    if alter == 0:
+        note_name = step
+    elif alter > 0:
+        note_name = step + ("#" * alter)
+    else:
+        note_name = step + ("-" * abs(alter))
     semitone = _STEP_TO_SEMITONE[step] + alter
     midi = (octave + 1) * 12 + semitone
-    return PitchInfo(name=_note_name(step, alter), octave=octave, midi=midi)
+    return PitchInfo(name=note_name, octave=octave, midi=midi)
 
 
 def _note_staff(note_el: ET.Element) -> int:
@@ -260,36 +248,37 @@ def _extract_note_fingering(note_el: ET.Element) -> int:
     return 0
 
 
-def _parse_mxl_tree(filename: str) -> ET.ElementTree:
-    """Parse a compressed MusicXML (.mxl) archive and return the score tree."""
-    with ZipFile(filename, "r") as archive:
-        members = set(archive.namelist())
-
-        # Standard MXL entry point via container descriptor.
-        if "META-INF/container.xml" in members:
-            container_root = ET.fromstring(archive.read("META-INF/container.xml"))
-            for rootfile in container_root.findall(".//{*}rootfile"):
-                full_path = rootfile.attrib.get("full-path", "").strip()
-                if not full_path or full_path not in members:
-                    continue
-                return ET.parse(BytesIO(archive.read(full_path)))
-
-        # Fallback for non-standard archives: first XML score payload.
-        for name in archive.namelist():
-            lname = name.lower()
-            if lname.endswith(".xml") and not lname.startswith("meta-inf/"):
-                return ET.parse(BytesIO(archive.read(name)))
-
-    raise ValueError(f"No MusicXML document found inside archive: {filename}")
-
-
 def parse_musicxml(filename: str) -> ScoreInfo:
     """Parse plain/compressed MusicXML and build lightweight score containers."""
     ext = Path(filename).suffix.lower()
+    tree: ET.ElementTree | None = None
     if ext == ".mxl":
-        tree = _parse_mxl_tree(filename)
+        with ZipFile(filename, "r") as archive:
+            members = set(archive.namelist())
+
+            # Standard MXL entry point via container descriptor.
+            if "META-INF/container.xml" in members:
+                container_root = ET.fromstring(archive.read("META-INF/container.xml"))
+                for rootfile in container_root.findall(".//{*}rootfile"):
+                    full_path = rootfile.attrib.get("full-path", "").strip()
+                    if not full_path or full_path not in members:
+                        continue
+                    tree = ET.parse(BytesIO(archive.read(full_path)))
+                    break
+            if tree is None:
+                # Fallback for non-standard archives: first XML score payload.
+                for name in archive.namelist():
+                    lname = name.lower()
+                    if lname.endswith(".xml") and not lname.startswith("meta-inf/"):
+                        tree = ET.parse(BytesIO(archive.read(name)))
+                        break
+            if tree is None:
+                raise ValueError(f"No MusicXML document found inside archive: {filename}")
     else:
         tree = ET.parse(filename)
+
+    if tree is None:
+        raise ValueError(f"No MusicXML document found inside archive: {filename}")
 
     root = tree.getroot()
     parts: list[PartInfo] = []
@@ -527,11 +516,6 @@ def _mark_colliding_notes_as_chords(noteseq: list[INote], *, chord_note_stagger_
             note.duration += stagger * (count - 1)
 
 
-def _is_fingering_text(text: str) -> bool:
-    value = text.strip()
-    return value in _CIRCLED_TO_FINGER
-
-
 def _valid_output_finger(value: int | str) -> int | None:
     """Normalize a generated finger to 1..5; return None when it should be skipped."""
     if isinstance(value, str):
@@ -566,7 +550,7 @@ def _clear_note_fingering(note_el: ET.Element, lyrics: bool) -> None:
             note_el.remove(lyric_el)
             continue
         text_el = _child(lyric_el, "text")
-        if text_el is not None and text_el.text and _is_fingering_text(text_el.text):
+        if text_el is not None and text_el.text and text_el.text.strip() in _CIRCLED_TO_FINGER:
             note_el.remove(lyric_el)
 
 
@@ -652,11 +636,11 @@ def annotate_part_with_fingering(
 
     # Optional fixed mapping from finger numbers to colors.
     finger_colors = {
-        1: "#ef4444",
-        2: "#f97316",
-        3: "#22c55e",
-        4: "#3b82f6",
-        5: "#2563eb",
+        1: "#ad3030",
+        2: "#e06b18",
+        3: "#097a32",
+        4: "#3691ce",
+        5: "#2054c4",
     }
 
     cost_min = 0.0

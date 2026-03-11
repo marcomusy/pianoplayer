@@ -48,7 +48,8 @@ pianoplayer = "pianoplayer.cli:main"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["pianoplayer*", "webapi*"]
+where = ["."]
+include = ["pianoplayer", "pianoplayer.*", "webapi", "webapi.*"]
 
 [tool.setuptools.package-data]
 webapi = ["*.html", "images/*"]
