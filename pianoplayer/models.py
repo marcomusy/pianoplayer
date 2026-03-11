@@ -55,6 +55,8 @@ class AnnotateOptions:
     colorize_hands: bool = False
     colorize_by_cost: bool = False
     colorize_by_fingering: bool = False
+    cost_colormap: str = "traffic"
+    fingering_colors: str = ""
     rh_color: str = "#d62828"
     lh_color: str = "#1d4ed8"
     with_vedo: bool = False

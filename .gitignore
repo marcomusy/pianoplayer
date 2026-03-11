@@ -7,3 +7,5 @@ dist/
 pianoplayer.egg-info/
 store/
 scores/.mscbackup/
+.DS_Store
+webapi/.app.py.swp

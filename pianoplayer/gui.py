@@ -18,6 +18,7 @@ from tkinter import (
     StringVar,
     TclError,
     Tk,
+    colorchooser as tk_colorchooser,
     messagebox,
 )
 from tkinter import (
@@ -92,6 +93,14 @@ class PianoGUI(Frame):
         self.colorize_hands_var = BooleanVar(value=False)
         self.colorize_by_cost_var = BooleanVar(value=False)
         self.colorize_by_fingering_var = BooleanVar(value=False)
+        self.cost_colormap_var = StringVar(value="traffic")
+        self.finger_color_vars = {
+            1: StringVar(value="#ad3030"),
+            2: StringVar(value="#e06b18"),
+            3: StringVar(value="#097a32"),
+            4: StringVar(value="#3691ce"),
+            5: StringVar(value="#2054c4"),
+        }
         self.rh_color_var = StringVar(value="#d62828")
         self.lh_color_var = StringVar(value="#1d4ed8")
         self.quiet_var = BooleanVar(value=False)
@@ -462,24 +471,84 @@ class PianoGUI(Frame):
         ).grid(row=10, column=0, sticky="w", padx=8, pady=6)
         colors_row = TtkFrame(opts)
         colors_row.grid(row=10, column=1, sticky="w", padx=8, pady=6)
-        Label(colors_row, text="RH").pack(side="left")
-        self.rh_color_entry = Entry(colors_row, textvariable=self.rh_color_var, width=10)
-        self.rh_color_entry.pack(side="left", padx=(4, 10))
-        Label(colors_row, text="LH").pack(side="left")
-        self.lh_color_entry = Entry(colors_row, textvariable=self.lh_color_var, width=10)
-        self.lh_color_entry.pack(side="left", padx=(4, 0))
-        Checkbutton(
-            opts,
-            text="Colorize by cost",
-            variable=self.colorize_by_cost_var,
-            command=lambda: self._sync_colorize_mode("cost"),
-        ).grid(row=11, column=0, sticky="w", padx=8, pady=6)
+        self.rh_color_pick_btn = Button(
+            colors_row,
+            text="RH",
+            style="RHColor.TButton",
+            width=3,
+            command=lambda: self._pick_color(
+                self.rh_color_var,
+                self.rh_color_pick_btn,
+                "RHColor.TButton",
+            ),
+        )
+        self.rh_color_pick_btn.pack(side="left", padx=(0, 8))
+        self.lh_color_pick_btn = Button(
+            colors_row,
+            text="LH",
+            style="LHColor.TButton",
+            width=3,
+            command=lambda: self._pick_color(
+                self.lh_color_var,
+                self.lh_color_pick_btn,
+                "LHColor.TButton",
+            ),
+        )
+        self.lh_color_pick_btn.pack(side="left", padx=(0, 0))
         Checkbutton(
             opts,
             text="Colorize by fingering",
             variable=self.colorize_by_fingering_var,
             command=lambda: self._sync_colorize_mode("fingering"),
+        ).grid(row=11, column=0, sticky="w", padx=8, pady=6)
+        fingers_row = TtkFrame(opts)
+        fingers_row.grid(row=11, column=1, sticky="w", padx=8, pady=6)
+        self.fingering_color_pick_buttons = []
+        finger_styles = (
+            "Finger1Color.TButton",
+            "Finger2Color.TButton",
+            "Finger3Color.TButton",
+            "Finger4Color.TButton",
+            "Finger5Color.TButton",
+        )
+        for finger in (1, 2, 3, 4, 5):
+            pick_btn = Button(
+                fingers_row,
+                text=str(finger),
+                style=finger_styles[finger - 1],
+                width=2,
+                command=lambda f=finger: self._pick_color(
+                    self.finger_color_vars[f],
+                    self.fingering_color_pick_buttons[f - 1],
+                    finger_styles[f - 1],
+                ),
+            )
+            pick_btn.pack(side="left", padx=(0, 6))
+            self.fingering_color_pick_buttons.append(pick_btn)
+        Checkbutton(
+            opts,
+            text="Colorize by cost",
+            variable=self.colorize_by_cost_var,
+            command=lambda: self._sync_colorize_mode("cost"),
         ).grid(row=12, column=0, sticky="w", padx=8, pady=6)
+        self.cost_colormap_combo = Combobox(
+            opts,
+            textvariable=self.cost_colormap_var,
+            values=("traffic", "viridis", "plasma", "magma", "coolwarm", "turbo"),
+            state="readonly",
+            width=12,
+        )
+        self.cost_colormap_combo.grid(row=12, column=1, sticky="w", padx=8, pady=6)
+        for button, color in (
+            (self.rh_color_pick_btn, self.rh_color_var.get()),
+            (self.lh_color_pick_btn, self.lh_color_var.get()),
+            *(
+                (self.fingering_color_pick_buttons[finger - 1], self.finger_color_vars[finger].get())
+                for finger in (1, 2, 3, 4, 5)
+            ),
+        ):
+            style_name = str(button.cget("style"))
+            self._set_color_button_style(button, style_name, color.strip())
         Checkbutton(opts, text="Quiet logs", variable=self.quiet_var).grid(
             row=13, column=0, sticky="w", padx=8, pady=6
         )
@@ -524,14 +593,56 @@ class PianoGUI(Frame):
         enabled = bool(self.colorize_hands_var.get())
         cost_mode = bool(self.colorize_by_cost_var.get())
         fingering_mode = bool(self.colorize_by_fingering_var.get())
-        state = ["!disabled"] if enabled and not cost_mode and not fingering_mode else ["disabled"]
-        for widget in (
-            getattr(self, "rh_color_entry", None),
-            getattr(self, "lh_color_entry", None),
-        ):
+        hand_state = ["!disabled"] if enabled and not cost_mode and not fingering_mode else ["disabled"]
+        for widget in (getattr(self, "rh_color_pick_btn", None), getattr(self, "lh_color_pick_btn", None)):
             if widget is None:
                 continue
-            widget.state(state)
+            widget.state(hand_state)
+        cost_state = ["!disabled"] if cost_mode and not enabled and not fingering_mode else ["disabled"]
+        for widget in (getattr(self, "cost_colormap_combo", None),):
+            if widget is None:
+                continue
+            widget.state(cost_state)
+        fingering_state = ["!disabled"] if fingering_mode and not enabled and not cost_mode else ["disabled"]
+        for widget in (getattr(self, "fingering_color_pick_buttons", []) or []):
+            if widget is None:
+                continue
+            widget.state(fingering_state)
+
+    def _set_color_button_style(self, target_button: Button, style_name: str, token: str) -> None:
+        """Apply button colors with readable text contrast."""
+        color = token if token.startswith("#") and len(token) == 7 else "#d1d5db"
+        fg = "#111111"
+        if color.startswith("#") and len(color) == 7:
+            try:
+                r = int(color[1:3], 16)
+                g = int(color[3:5], 16)
+                b = int(color[5:7], 16)
+                yiq = (299 * r + 587 * g + 114 * b) / 1000
+                fg = "#111111" if yiq >= 140 else "#ffffff"
+            except ValueError:
+                color = "#d1d5db"
+                fg = "#111111"
+        style = Style()
+        style.configure(style_name, background=color, foreground=fg)
+        style.map(
+            style_name,
+            background=[("disabled", color), ("active", color), ("pressed", color)],
+            foreground=[("disabled", fg), ("active", fg), ("pressed", fg)],
+        )
+        target_button.configure(style=style_name)
+
+    def _pick_color(self, target_var: StringVar, target_button: Button, style_name: str) -> None:
+        """Open a native color picker and store the chosen hex color."""
+        initial = target_var.get().strip() or None
+        _rgb, picked = tk_colorchooser.askcolor(
+            color=initial,
+            parent=self.parent,
+            title="Choose color",
+        )
+        if picked:
+            target_var.set(picked)
+            self._set_color_button_style(target_button, style_name, picked.strip())
 
     def _resize_banner(self) -> None:
         """Scale banner down so it fits horizontally in current window width."""
@@ -667,6 +778,12 @@ class PianoGUI(Frame):
                 colorize_hands=bool(self.colorize_hands_var.get()),
                 colorize_by_cost=bool(self.colorize_by_cost_var.get()),
                 colorize_by_fingering=bool(self.colorize_by_fingering_var.get()),
+                cost_colormap=(self.cost_colormap_var.get().strip() or "traffic"),
+                fingering_colors=",".join(
+                    f"{finger}:{self.finger_color_vars[finger].get().strip()}"
+                    for finger in (1, 2, 3, 4, 5)
+                    if self.finger_color_vars[finger].get().strip()
+                ),
                 rh_color=(self.rh_color_var.get().strip() or "#d62828"),
                 lh_color=(self.lh_color_var.get().strip() or "#1d4ed8"),
                 with_vedo=bool(self.with_vedo_var.get()),

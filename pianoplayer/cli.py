@@ -103,12 +103,27 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--colorize-by-cost",
         action="store_true",
-        help="Colorize notes/fingerings by computed cost (green->red).",
+        help="Colorize notes/fingerings by computed cost.",
     )
     parser.add_argument(
         "--colorize-by-fingering",
         action="store_true",
         help="Colorize notes/fingerings by fingering (1=red, 5=blue).",
+    )
+    parser.add_argument(
+        "--cost-colormap",
+        metavar="",
+        type=str,
+        choices=["traffic", "viridis", "plasma", "magma", "coolwarm", "turbo"],
+        default="traffic",
+        help="[traffic] Colormap used with --colorize-by-cost.",
+    )
+    parser.add_argument(
+        "--fingering-colors",
+        metavar="",
+        type=str,
+        default="",
+        help="Custom fingering colors, e.g. '1:#ff0000,2:#ffaa00,3:#00aa00,4:#3399ff,5:#2244dd'.",
     )
     parser.add_argument(
         "--rh-color",
@@ -200,8 +215,13 @@ def main() -> None:
                 lines.append("[cyan]Audio:[/cyan] off")
             if args.colorize_hands:
                 lines.append(f"[cyan]Colors:[/cyan] RH {args.rh_color} | LH {args.lh_color}")
+            if args.colorize_by_cost:
+                lines.append(f"[cyan]Colors:[/cyan] by cost ({args.cost_colormap})")
             if args.colorize_by_fingering:
-                lines.append("[cyan]Colors:[/cyan] by fingering")
+                if args.fingering_colors:
+                    lines.append(f"[cyan]Colors:[/cyan] by fingering ({args.fingering_colors})")
+                else:
+                    lines.append("[cyan]Colors:[/cyan] by fingering (default palette)")
 
             body = "\n".join(lines)
             try:

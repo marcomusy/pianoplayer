@@ -35,6 +35,21 @@ _CIRCLED_TO_FINGER = {v: k for k, v in _CIRCLED_FINGER.items()}
 _FINGERING_LYRIC_NUMBER = "pianoplayer-fingering"
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{6})$")
 _COLOR_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+_DEFAULT_FINGER_COLORS = {
+    1: "#ad3030",
+    2: "#e06b18",
+    3: "#097a32",
+    4: "#3691ce",
+    5: "#2054c4",
+}
+_COST_COLORMAPS = {
+    "traffic": [(34, 197, 94), (245, 158, 11), (220, 38, 38)],
+    "viridis": [(68, 1, 84), (59, 82, 139), (33, 145, 140), (94, 201, 98), (253, 231, 37)],
+    "plasma": [(13, 8, 135), (126, 3, 168), (203, 71, 119), (248, 149, 64), (240, 249, 33)],
+    "magma": [(0, 0, 4), (72, 18, 113), (182, 54, 121), (251, 136, 97), (252, 253, 191)],
+    "coolwarm": [(59, 76, 192), (221, 221, 221), (180, 4, 38)],
+    "turbo": [(48, 18, 59), (70, 117, 237), (40, 187, 235), (86, 240, 92), (245, 239, 65), (221, 50, 43)],
+}
 
 
 def _local_name(tag: str) -> str:
@@ -591,23 +606,39 @@ def _set_note_fingering(
     fingering_el.text = text
 
 
-def _color_from_cost(value: float, min_cost: float, max_cost: float) -> str:
-    """Map normalized cost to a green->yellow->red gradient."""
+def _valid_color_token(value: str | None) -> str | None:
+    if value is None:
+        return None
+    token = value.strip()
+    if _HEX_COLOR_RE.match(token) or _COLOR_NAME_RE.match(token):
+        return token
+    return None
+
+
+def _color_from_cost(value: float, min_cost: float, max_cost: float, colormap: str = "traffic") -> str:
+    """Map normalized cost to a selectable gradient colormap."""
     if max_cost <= min_cost:
         t = 0.0
     else:
         t = (value - min_cost) / (max_cost - min_cost)
     t = max(0.0, min(1.0, t))
 
-    # 0.0 -> green, 0.5 -> yellow, 1.0 -> red
-    if t <= 0.5:
-        u = t / 0.5
-        c0 = (34, 197, 94)   # green-500
-        c1 = (245, 158, 11)  # amber-500
-    else:
-        u = (t - 0.5) / 0.5
-        c0 = (245, 158, 11)  # amber-500
-        c1 = (220, 38, 38)   # red-600
+    palette_name = str(colormap or "traffic").strip().lower()
+    stops = _COST_COLORMAPS.get(palette_name)
+    if not stops:
+        logger.warning("Unknown cost colormap '%s'; using 'traffic'.", colormap)
+        stops = _COST_COLORMAPS["traffic"]
+
+    if len(stops) == 1:
+        rgb = stops[0]
+        return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
+
+    n_segments = len(stops) - 1
+    scaled = t * n_segments
+    seg_idx = min(n_segments - 1, int(scaled))
+    u = scaled - seg_idx
+    c0 = stops[seg_idx]
+    c1 = stops[seg_idx + 1]
     rgb = tuple(int(round(c0[i] + (c1[i] - c0[i]) * u)) for i in range(3))
     return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
 
@@ -622,26 +653,41 @@ def annotate_part_with_fingering(
     hand_color: str | None = None,
     colorize_by_cost: bool = False,
     colorize_by_fingering: bool = False,
+    cost_colormap: str = "traffic",
+    fingering_colors: str = "",
 ) -> None:
     """Write generated fingering values back into one MusicXML part.
 
     When `target_staff` is set, only notes on that staff are consumed and annotated.
     """
     seq = list(hand_noteseq)
-    color = None
-    if hand_color:
-        token = hand_color.strip()
-        if _HEX_COLOR_RE.match(token) or _COLOR_NAME_RE.match(token):
-            color = token
-
-    # Optional fixed mapping from finger numbers to colors.
-    finger_colors = {
-        1: "#ad3030",
-        2: "#e06b18",
-        3: "#097a32",
-        4: "#3691ce",
-        5: "#2054c4",
-    }
+    color = _valid_color_token(hand_color)
+    finger_colors = dict(_DEFAULT_FINGER_COLORS)
+    color_spec = str(fingering_colors or "").strip()
+    if color_spec:
+        tokens = [token.strip() for token in re.split(r"[;,]", color_spec) if token.strip()]
+        if len(tokens) == 5 and all((":" not in token and "=" not in token) for token in tokens):
+            for idx, token in enumerate(tokens, start=1):
+                normalized = _valid_color_token(token)
+                if normalized:
+                    finger_colors[idx] = normalized
+        else:
+            for token in tokens:
+                if ":" in token:
+                    key_text, value_text = token.split(":", 1)
+                elif "=" in token:
+                    key_text, value_text = token.split("=", 1)
+                else:
+                    continue
+                try:
+                    finger_idx = int(key_text.strip())
+                except ValueError:
+                    continue
+                if finger_idx < 1 or finger_idx > 5:
+                    continue
+                normalized = _valid_color_token(value_text)
+                if normalized:
+                    finger_colors[finger_idx] = normalized
 
     cost_min = 0.0
     cost_max = 0.0
@@ -672,7 +718,7 @@ def annotate_part_with_fingering(
             except (TypeError, ValueError):
                 return None
             if val >= 0:
-                return _color_from_cost(val, cost_min, cost_max)
+                return _color_from_cost(val, cost_min, cost_max, cost_colormap)
             return None
         return color
 

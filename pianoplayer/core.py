@@ -160,6 +160,8 @@ def run_annotate(
     colorize_hands=False,
     colorize_by_cost=False,
     colorize_by_fingering=False,
+    cost_colormap="traffic",
+    fingering_colors="",
     rh_color="#d62828",
     lh_color="#1d4ed8",
     with_vedo=0,
@@ -188,6 +190,8 @@ def run_annotate(
         colorize_hands=colorize_hands,
         colorize_by_cost=colorize_by_cost,
         colorize_by_fingering=colorize_by_fingering,
+        cost_colormap=cost_colormap,
+        fingering_colors=fingering_colors,
         rh_color=rh_color,
         lh_color=lh_color,
         with_vedo=with_vedo,
@@ -499,6 +503,8 @@ def write_annotated_output(args, score_info, rh, lh):
     colorize_hands = bool(getattr(args, "colorize_hands", False))
     colorize_by_cost = bool(getattr(args, "colorize_by_cost", False))
     colorize_by_fingering = bool(getattr(args, "colorize_by_fingering", False))
+    cost_colormap = str(getattr(args, "cost_colormap", "traffic") or "traffic")
+    fingering_colors = str(getattr(args, "fingering_colors", "") or "")
     rh_color = str(getattr(args, "rh_color", "#d62828"))
     lh_color = str(getattr(args, "lh_color", "#1d4ed8"))
 
@@ -591,6 +597,8 @@ def write_annotated_output(args, score_info, rh, lh):
                 hand_color=(rh_color if colorize_hands else None),
                 colorize_by_cost=colorize_by_cost,
                 colorize_by_fingering=colorize_by_fingering,
+                cost_colormap=cost_colormap,
+                fingering_colors=fingering_colors,
             )
 
     if not args.right_only and lh is not None:
@@ -610,6 +618,8 @@ def write_annotated_output(args, score_info, rh, lh):
                 hand_color=(lh_color if colorize_hands else None),
                 colorize_by_cost=colorize_by_cost,
                 colorize_by_fingering=colorize_by_fingering,
+                cost_colormap=cost_colormap,
+                fingering_colors=fingering_colors,
             )
 
     strip_layout_breaks(score_info)

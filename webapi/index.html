@@ -313,6 +313,14 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
       padding: 0.38rem 0.5rem;
       font-size: 0.9rem;
     }
+    .colorize-inline .color-chip select {
+      width: 8.2rem;
+      padding: 0.34rem 0.5rem;
+      font-size: 0.9rem;
+    }
+    #fingering_colors {
+      width: min(24rem, 60vw);
+    }
 
     label {
       font-size: 0.82rem;
@@ -578,6 +586,19 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
                       <input id="colorize_by_cost" type="checkbox" name="colorize_by_cost" value="true" />
                       Colorize by cost
                     </label>
+                    <span class="colorize-inline">
+                      <span class="color-chip" id="cost_colormap_field">
+                        <label for="cost_colormap">Map</label>
+                        <select id="cost_colormap" name="cost_colormap">
+                          <option value="traffic" selected>traffic</option>
+                          <option value="viridis">viridis</option>
+                          <option value="plasma">plasma</option>
+                          <option value="magma">magma</option>
+                          <option value="coolwarm">coolwarm</option>
+                          <option value="turbo">turbo</option>
+                        </select>
+                      </span>
+                    </span>
                   </div>
                 </div>
                 <div class="field full">
@@ -586,6 +607,18 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
                       <input id="colorize_by_fingering" type="checkbox" name="colorize_by_fingering" value="true" />
                       Colorize by fingering
                     </label>
+                    <span class="colorize-inline">
+                      <span class="color-chip" id="fingering_colors_field">
+                        <label for="fingering_colors">Fingers</label>
+                        <input
+                          id="fingering_colors"
+                          name="fingering_colors"
+                          type="text"
+                          placeholder="1:#ff0000,2:#ffaa00,3:#00aa00,4:#3399ff,5:#2244dd"
+                          value="1:#ad3030,2:#e06b18,3:#097a32,4:#3691ce,5:#2054c4"
+                        />
+                      </span>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -651,6 +684,10 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     const colorizeHandsEl = document.getElementById("colorize_hands");
     const colorizeByCostEl = document.getElementById("colorize_by_cost");
     const colorizeByFingeringEl = document.getElementById("colorize_by_fingering");
+    const costColormapEl = document.getElementById("cost_colormap");
+    const costColormapFieldEl = document.getElementById("cost_colormap_field");
+    const fingeringColorsEl = document.getElementById("fingering_colors");
+    const fingeringColorsFieldEl = document.getElementById("fingering_colors_field");
     const rhColorEl = document.getElementById("rh_color");
     const lhColorEl = document.getElementById("lh_color");
     const rhColorFieldEl = document.getElementById("rh_color_field");
@@ -719,6 +756,13 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
         if (!el) return;
         el.classList.toggle("muted", !allowManualColor);
       });
+      const allowCostColor = costMode && !enabled && !fingeringMode;
+      if (costColormapEl) costColormapEl.disabled = !allowCostColor;
+      if (costColormapFieldEl) costColormapFieldEl.classList.toggle("muted", !allowCostColor);
+
+      const allowFingeringColor = fingeringMode && !enabled && !costMode;
+      if (fingeringColorsEl) fingeringColorsEl.disabled = !allowFingeringColor;
+      if (fingeringColorsFieldEl) fingeringColorsFieldEl.classList.toggle("muted", !allowFingeringColor);
     }
     if (colorizeHandsEl) colorizeHandsEl.addEventListener("change", syncColorizeMode);
     if (colorizeByCostEl) colorizeByCostEl.addEventListener("change", syncColorizeMode);
