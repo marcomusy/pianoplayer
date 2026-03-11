@@ -106,6 +106,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Colorize notes/fingerings by computed cost (green->red).",
     )
     parser.add_argument(
+        "--colorize-by-fingering",
+        action="store_true",
+        help="Colorize notes/fingerings by fingering (1=red, 5=blue).",
+    )
+    parser.add_argument(
         "--rh-color",
         metavar="",
         type=str,
@@ -171,6 +176,8 @@ def show_startup_banner(args: argparse.Namespace) -> None:
         lines.append("[cyan]Audio:[/cyan] off")
     if args.colorize_hands:
         lines.append(f"[cyan]Colors:[/cyan] RH {args.rh_color} | LH {args.lh_color}")
+    if args.colorize_by_fingering:
+        lines.append("[cyan]Colors:[/cyan] by fingering")
 
     body = "\n".join(lines)
     try:

@@ -54,6 +54,7 @@ class AnnotateOptions:
     below_beam: bool = False
     colorize_hands: bool = False
     colorize_by_cost: bool = False
+    colorize_by_fingering: bool = False
     rh_color: str = "#d62828"
     lh_color: str = "#1d4ed8"
     with_vedo: bool = False

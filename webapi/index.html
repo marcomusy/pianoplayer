@@ -580,6 +580,14 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
                     </label>
                   </div>
                 </div>
+                <div class="field full">
+                  <div class="radio-group">
+                    <label for="colorize_by_fingering">
+                      <input id="colorize_by_fingering" type="checkbox" name="colorize_by_fingering" value="true" />
+                      Colorize by fingering
+                    </label>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -642,6 +650,7 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     const belowBeamEl = document.getElementById("below_beam");
     const colorizeHandsEl = document.getElementById("colorize_hands");
     const colorizeByCostEl = document.getElementById("colorize_by_cost");
+    const colorizeByFingeringEl = document.getElementById("colorize_by_fingering");
     const rhColorEl = document.getElementById("rh_color");
     const lhColorEl = document.getElementById("lh_color");
     const rhColorFieldEl = document.getElementById("rh_color_field");
@@ -684,7 +693,8 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     function syncColorizeMode() {
       const enabled = !!(colorizeHandsEl && colorizeHandsEl.checked);
       const costMode = !!(colorizeByCostEl && colorizeByCostEl.checked);
-      const allowManualColor = enabled && !costMode;
+      const fingeringMode = !!(colorizeByFingeringEl && colorizeByFingeringEl.checked);
+      const allowManualColor = enabled && !costMode && !fingeringMode;
       [rhColorEl, lhColorEl].forEach((el) => {
         if (!el) return;
         el.disabled = !allowManualColor;
@@ -696,6 +706,7 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     }
     if (colorizeHandsEl) colorizeHandsEl.addEventListener("change", syncColorizeMode);
     if (colorizeByCostEl) colorizeByCostEl.addEventListener("change", syncColorizeMode);
+    if (colorizeByFingeringEl) colorizeByFingeringEl.addEventListener("change", syncColorizeMode);
     syncColorizeMode();
 
     fileInputEl.addEventListener("change", () => {
@@ -723,6 +734,10 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
         formData.set("below_beam", belowBeamEl && belowBeamEl.checked ? "true" : "false");
         formData.set("colorize_hands", colorizeHandsEl && colorizeHandsEl.checked ? "true" : "false");
         formData.set("colorize_by_cost", colorizeByCostEl && colorizeByCostEl.checked ? "true" : "false");
+        formData.set(
+          "colorize_by_fingering",
+          colorizeByFingeringEl && colorizeByFingeringEl.checked ? "true" : "false",
+        );
 
         const response = await fetch("/annotate", { method: "POST", body: formData });
         if (!response.ok) {

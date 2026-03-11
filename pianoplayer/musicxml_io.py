@@ -637,6 +637,7 @@ def annotate_part_with_fingering(
     target_staff: int | None = None,
     hand_color: str | None = None,
     colorize_by_cost: bool = False,
+    colorize_by_fingering: bool = False,
 ) -> None:
     """Write generated fingering values back into one MusicXML part.
 
@@ -648,6 +649,15 @@ def annotate_part_with_fingering(
         token = hand_color.strip()
         if _HEX_COLOR_RE.match(token) or _COLOR_NAME_RE.match(token):
             color = token
+
+    # Optional fixed mapping from finger numbers to colors.
+    finger_colors = {
+        1: "#ef4444",
+        2: "#f97316",
+        3: "#22c55e",
+        4: "#3b82f6",
+        5: "#2563eb",
+    }
 
     cost_min = 0.0
     cost_max = 0.0
@@ -666,6 +676,11 @@ def annotate_part_with_fingering(
             cost_max = max(valid_costs)
 
     def pick_color(note_obj: INote) -> str | None:
+        if colorize_by_fingering:
+            finger = _valid_output_finger(note_obj.fingering)
+            if finger is not None:
+                return finger_colors.get(finger)
+            return None
         if colorize_by_cost:
             raw = getattr(note_obj, "cost", None)
             try:

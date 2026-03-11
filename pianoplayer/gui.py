@@ -81,6 +81,7 @@ class PianoGUI(Frame):
         self.below_beam_var = BooleanVar(value=False)
         self.colorize_hands_var = BooleanVar(value=False)
         self.colorize_by_cost_var = BooleanVar(value=False)
+        self.colorize_by_fingering_var = BooleanVar(value=False)
         self.rh_color_var = StringVar(value="#d62828")
         self.lh_color_var = StringVar(value="#1d4ed8")
         self.quiet_var = BooleanVar(value=False)
@@ -382,11 +383,20 @@ class PianoGUI(Frame):
         Label(colors_row, text="LH").pack(side="left")
         self.lh_color_entry = Entry(colors_row, textvariable=self.lh_color_var, width=10)
         self.lh_color_entry.pack(side="left", padx=(4, 0))
-        Checkbutton(opts, text="Colorize by cost", variable=self.colorize_by_cost_var).grid(
-            row=11, column=0, sticky="w", padx=8, pady=6
-        )
+        Checkbutton(
+            opts,
+            text="Colorize by cost",
+            variable=self.colorize_by_cost_var,
+            command=self._sync_colorize_mode,
+        ).grid(row=11, column=0, sticky="w", padx=8, pady=6)
+        Checkbutton(
+            opts,
+            text="Colorize by fingering",
+            variable=self.colorize_by_fingering_var,
+            command=self._sync_colorize_mode,
+        ).grid(row=12, column=0, sticky="w", padx=8, pady=6)
         Checkbutton(opts, text="Quiet logs", variable=self.quiet_var).grid(
-            row=12, column=0, sticky="w", padx=8, pady=6
+            row=13, column=0, sticky="w", padx=8, pady=6
         )
         self._sync_routing_mode()
         self._sync_colorize_mode()
@@ -414,7 +424,9 @@ class PianoGUI(Frame):
     def _sync_colorize_mode(self) -> None:
         """Enable color fields only when hand colorization is active."""
         enabled = bool(self.colorize_hands_var.get())
-        state = ["!disabled"] if enabled else ["disabled"]
+        cost_mode = bool(self.colorize_by_cost_var.get())
+        fingering_mode = bool(self.colorize_by_fingering_var.get())
+        state = ["!disabled"] if enabled and not cost_mode and not fingering_mode else ["disabled"]
         for widget in (
             getattr(self, "rh_color_entry", None),
             getattr(self, "lh_color_entry", None),
@@ -534,6 +546,7 @@ class PianoGUI(Frame):
                 below_beam=bool(self.below_beam_var.get()),
                 colorize_hands=bool(self.colorize_hands_var.get()),
                 colorize_by_cost=bool(self.colorize_by_cost_var.get()),
+                colorize_by_fingering=bool(self.colorize_by_fingering_var.get()),
                 rh_color=(self.rh_color_var.get().strip() or "#d62828"),
                 lh_color=(self.lh_color_var.get().strip() or "#1d4ed8"),
                 with_vedo=bool(self.with_vedo_var.get()),

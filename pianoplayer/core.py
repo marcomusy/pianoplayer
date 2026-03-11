@@ -159,6 +159,7 @@ def run_annotate(
     below_beam=False,
     colorize_hands=False,
     colorize_by_cost=False,
+    colorize_by_fingering=False,
     rh_color="#d62828",
     lh_color="#1d4ed8",
     with_vedo=0,
@@ -186,6 +187,7 @@ def run_annotate(
         below_beam=below_beam,
         colorize_hands=colorize_hands,
         colorize_by_cost=colorize_by_cost,
+        colorize_by_fingering=colorize_by_fingering,
         rh_color=rh_color,
         lh_color=lh_color,
         with_vedo=with_vedo,
@@ -559,6 +561,7 @@ def write_annotated_output(args, score_info, rh, lh):
 
     colorize_hands = bool(getattr(args, "colorize_hands", False))
     colorize_by_cost = bool(getattr(args, "colorize_by_cost", False))
+    colorize_by_fingering = bool(getattr(args, "colorize_by_fingering", False))
     rh_color = str(getattr(args, "rh_color", "#d62828"))
     lh_color = str(getattr(args, "lh_color", "#1d4ed8"))
 
@@ -640,6 +643,7 @@ def write_annotated_output(args, score_info, rh, lh):
                 target_staff=getattr(args, "_resolved_rstaff", None),
                 hand_color=(rh_color if colorize_hands else None),
                 colorize_by_cost=colorize_by_cost,
+                colorize_by_fingering=colorize_by_fingering,
             )
 
     if not args.right_only and lh is not None:
@@ -658,6 +662,7 @@ def write_annotated_output(args, score_info, rh, lh):
                 target_staff=getattr(args, "_resolved_lstaff", None),
                 hand_color=(lh_color if colorize_hands else None),
                 colorize_by_cost=colorize_by_cost,
+                colorize_by_fingering=colorize_by_fingering,
             )
 
     strip_layout_breaks(score_info)
@@ -851,6 +856,7 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
     rh_status = hand_status(is_right=True, score_info=score_info).replace("RH=", "")
     lh_status = hand_status(is_right=False, score_info=score_info).replace("LH=", "")
     colorize_by_cost = bool(getattr(args, "colorize_by_cost", False))
+    colorize_by_fingering = bool(getattr(args, "colorize_by_fingering", False))
 
     cost_values: list[float] = []
     for hand in (rh, lh):
@@ -871,6 +877,7 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
     else:
         cost_range_info = "n.a."
     cost_mode_info = "ON" if colorize_by_cost else "off"
+    fingering_mode_info = "ON" if colorize_by_fingering else "off"
 
     try:
         from rich.console import Console
@@ -890,6 +897,7 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         table.add_row("Left  Hand", f"{styled_status(lh_status)} | notes={lh_count}")
         table.add_row("Cost Range", cost_range_info)
         table.add_row("Cost Colors", cost_mode_info)
+        table.add_row("Finger Colors", fingering_mode_info)
         table.add_row("Elapsed Time", f"{elapsed_s:.2f} seconds")
         Console().print(table)
 
@@ -907,7 +915,7 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         logger.info(
             (
                 "Summary | input=%s | output=%s | depth=%s | parts=%s | elapsed=%.2fs "
-                "| RH-route=%s | LH-route=%s | cost-range=%s | cost-colors=%s "
+                "| RH-route=%s | LH-route=%s | cost-range=%s | cost-colors=%s | finger-colors=%s "
                 "| RH=%s(notes=%s) | LH=%s(notes=%s)"
             ),
             args.filename,
@@ -919,6 +927,7 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
             hand_route(is_right=False),
             cost_range_info,
             cost_mode_info,
+            fingering_mode_info,
             rh_status,
             rh_count,
             lh_status,
