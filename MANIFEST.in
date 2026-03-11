@@ -1,1 +1,3 @@
 include scores/*
+include webapi/images/*
+include webapi/*.html
