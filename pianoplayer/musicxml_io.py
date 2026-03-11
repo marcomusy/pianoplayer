@@ -37,6 +37,37 @@ _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{6})$")
 _COLOR_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
 
 
+def _local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1] if tag.startswith("{") else tag
+
+
+def _namespace(element: ET.Element) -> str:
+    tag = element.tag
+    if tag.startswith("{"):
+        return tag[1 : tag.rindex("}")]
+    return ""
+
+
+def _qname(element: ET.Element, local: str) -> str:
+    namespace = _namespace(element)
+    return f"{{{namespace}}}{local}" if namespace else local
+
+
+def _children(element: ET.Element, local: str) -> list[ET.Element]:
+    return [child for child in list(element) if _local_name(child.tag) == local]
+
+
+def _child(element: ET.Element, local: str) -> ET.Element | None:
+    for child in element:
+        if _local_name(child.tag) == local:
+            return child
+    return None
+
+
+def _iter_local(node: ET.Element, local: str) -> list[ET.Element]:
+    return [el for el in node.iter() if _local_name(el.tag) == local]
+
+
 @dataclass(slots=True)
 class PitchInfo:
     name: str
@@ -73,8 +104,8 @@ class ScoreInfo:
 def strip_layout_breaks(score: ScoreInfo) -> None:
     """Remove explicit page-break directives from a parsed MusicXML tree."""
     root = score.tree.getroot()
-    for measure_el in root.findall(".//part/measure"):
-        for print_el in list(measure_el.findall("print")):
+    for measure_el in _iter_local(root, "measure"):
+        for print_el in list(_children(measure_el, "print")):
             # Keep system-break and other layout content; remove only forced page breaks.
             print_el.attrib.pop("new-page", None)
             # Drop now-empty print tags to keep output clean.
@@ -91,17 +122,17 @@ def _note_name(step: str, alter: int) -> str:
 
 
 def _pitch_from_note(note_el: ET.Element) -> PitchInfo | None:
-    pitch_el = note_el.find("pitch")
+    pitch_el = _child(note_el, "pitch")
     if pitch_el is None:
         return None
 
-    step_el = pitch_el.find("step")
-    octave_el = pitch_el.find("octave")
+    step_el = _child(pitch_el, "step")
+    octave_el = _child(pitch_el, "octave")
     if step_el is None or octave_el is None or step_el.text is None or octave_el.text is None:
         return None
 
     step = step_el.text.strip().upper()
-    alter_el = pitch_el.find("alter")
+    alter_el = _child(pitch_el, "alter")
     alter = int(alter_el.text) if alter_el is not None and alter_el.text is not None else 0
     octave = int(octave_el.text)
 
@@ -112,7 +143,8 @@ def _pitch_from_note(note_el: ET.Element) -> PitchInfo | None:
 
 def _note_staff(note_el: ET.Element) -> int:
     """Return MusicXML staff number for one note element (0 when missing)."""
-    staff_text = note_el.findtext("staff", "")
+    staff_el = _child(note_el, "staff")
+    staff_text = staff_el.text if staff_el is not None and staff_el.text is not None else ""
     if staff_text and staff_text.strip().isdigit():
         return int(staff_text.strip())
     return 0
@@ -196,19 +228,21 @@ def _drop_shorter_simultaneous_duplicates(events: list[EventInfo]) -> list[Event
 
 def _extract_note_fingering(note_el: ET.Element) -> int:
     """Return a pre-existing fingering annotation from one note element, if present."""
-    for fing_el in note_el.findall("./notations/technical/fingering"):
-        if fing_el.text is None:
-            continue
-        value = fing_el.text.strip()
-        if value in _CIRCLED_TO_FINGER:
-            return _CIRCLED_TO_FINGER[value]
-        if value.lstrip("+-").isdigit():
-            finger = abs(int(value))
-            if 1 <= finger <= 5:
-                return finger
+    for notation_el in _children(note_el, "notations"):
+        for technical_el in _children(notation_el, "technical"):
+            for fing_el in _children(technical_el, "fingering"):
+                if fing_el.text is None:
+                    continue
+                value = fing_el.text.strip()
+                if value in _CIRCLED_TO_FINGER:
+                    return _CIRCLED_TO_FINGER[value]
+                if value.lstrip("+-").isdigit():
+                    finger = abs(int(value))
+                    if 1 <= finger <= 5:
+                        return finger
 
-    for lyric_el in note_el.findall("./lyric"):
-        text_el = lyric_el.find("text")
+    for lyric_el in _children(note_el, "lyric"):
+        text_el = _child(lyric_el, "text")
         if text_el is None or text_el.text is None:
             continue
         value = text_el.text.strip()
@@ -260,7 +294,7 @@ def parse_musicxml(filename: str) -> ScoreInfo:
     root = tree.getroot()
     parts: list[PartInfo] = []
 
-    for part_el in root.findall("part"):
+    for part_el in _children(root, "part"):
         part_id = part_el.attrib.get("id", "")
         events: list[EventInfo] = []
 
@@ -268,7 +302,7 @@ def parse_musicxml(filename: str) -> ScoreInfo:
         current_offset = 0.0
 
         sequential_measure_no = 0
-        for measure_el in part_el.findall("measure"):
+        for measure_el in _children(part_el, "measure"):
             raw_measure = (measure_el.attrib.get("number", "0") or "0").strip()
             if raw_measure.isdigit():
                 measure_no = int(raw_measure)
@@ -283,14 +317,14 @@ def parse_musicxml(filename: str) -> ScoreInfo:
 
             for child in measure_el:
                 # Divisions can change across measures; keep it updated.
-                if child.tag == "attributes":
-                    div_el = child.find("divisions")
+                if _local_name(child.tag) == "attributes":
+                    div_el = _child(child, "divisions")
                     if div_el is not None and div_el.text is not None:
                         divisions = max(1, int(div_el.text))
                     continue
 
-                if child.tag == "backup":
-                    duration_el = child.find("duration")
+                if _local_name(child.tag) == "backup":
+                    duration_el = _child(child, "duration")
                     duration_raw = (
                         int(duration_el.text)
                         if duration_el is not None and duration_el.text
@@ -299,8 +333,8 @@ def parse_musicxml(filename: str) -> ScoreInfo:
                     current_offset = max(0.0, current_offset - (duration_raw / divisions))
                     continue
 
-                if child.tag == "forward":
-                    duration_el = child.find("duration")
+                if _local_name(child.tag) == "forward":
+                    duration_el = _child(child, "duration")
                     duration_raw = (
                         int(duration_el.text)
                         if duration_el is not None and duration_el.text
@@ -309,14 +343,14 @@ def parse_musicxml(filename: str) -> ScoreInfo:
                     current_offset += duration_raw / divisions
                     continue
 
-                if child.tag != "note":
+                if _local_name(child.tag) != "note":
                     continue
 
                 note_el = child
-                if note_el.find("grace") is not None:
+                if _child(note_el, "grace") is not None:
                     continue
 
-                duration_el = note_el.find("duration")
+                duration_el = _child(note_el, "duration")
                 duration_raw = (
                     int(duration_el.text)
                     if duration_el is not None and duration_el.text
@@ -326,12 +360,12 @@ def parse_musicxml(filename: str) -> ScoreInfo:
 
                 tie_types = {
                     t.attrib.get("type", "")
-                    for t in note_el.findall("tie")
+                    for t in _children(note_el, "tie")
                     if t.attrib.get("type")
                 }
 
-                is_rest = note_el.find("rest") is not None
-                is_chord_member = note_el.find("chord") is not None
+                is_rest = _child(note_el, "rest") is not None
+                is_chord_member = _child(note_el, "chord") is not None
                 pitch = _pitch_from_note(note_el)
 
                 if is_rest:
@@ -515,24 +549,23 @@ def _valid_output_finger(value: int | str) -> int | None:
 
 def _clear_note_fingering(note_el: ET.Element, lyrics: bool) -> None:
     """Remove existing fingering markup so we write a single annotation per note."""
-    for technical_el in note_el.findall("./notations/technical"):
-        for fing_el in list(technical_el.findall("fingering")):
-            technical_el.remove(fing_el)
-        if len(technical_el) == 0:
-            parent = note_el.find("./notations")
-            if parent is not None:
-                parent.remove(technical_el)
-    for notations_el in list(note_el.findall("./notations")):
+    for notations_el in list(_children(note_el, "notations")):
+        for technical_el in list(_children(notations_el, "technical")):
+            for fing_el in list(_children(technical_el, "fingering")):
+                technical_el.remove(fing_el)
+            if len(technical_el) == 0:
+                notations_el.remove(technical_el)
+    for notations_el in list(_children(note_el, "notations")):
         if len(notations_el) == 0:
             note_el.remove(notations_el)
 
     if not lyrics:
         return
-    for lyric_el in list(note_el.findall("lyric")):
+    for lyric_el in list(_children(note_el, "lyric")):
         if lyric_el.attrib.get("number", "") == _FINGERING_LYRIC_NUMBER:
             note_el.remove(lyric_el)
             continue
-        text_el = lyric_el.find("text")
+        text_el = _child(lyric_el, "text")
         if text_el is not None and text_el.text and _is_fingering_text(text_el.text):
             note_el.remove(lyric_el)
 
@@ -555,20 +588,20 @@ def _set_note_fingering(
         attrs = {"number": _FINGERING_LYRIC_NUMBER}
         if color:
             attrs["color"] = color
-        lyric_el = ET.SubElement(note_el, "lyric", attrs)
-        text_el = ET.SubElement(lyric_el, "text")
+        lyric_el = ET.SubElement(note_el, _qname(note_el, "lyric"), attrs)
+        text_el = ET.SubElement(lyric_el, _qname(note_el, "text"))
         if color:
             text_el.set("color", color)
         text_el.text = text
         return
 
-    notations_el = note_el.find("notations")
+    notations_el = _child(note_el, "notations")
     if notations_el is None:
-        notations_el = ET.SubElement(note_el, "notations")
-    technical_el = notations_el.find("technical")
+        notations_el = ET.SubElement(note_el, _qname(note_el, "notations"))
+    technical_el = _child(notations_el, "technical")
     if technical_el is None:
-        technical_el = ET.SubElement(notations_el, "technical")
-    fingering_el = ET.SubElement(technical_el, "fingering")
+        technical_el = ET.SubElement(notations_el, _qname(note_el, "technical"))
+    fingering_el = ET.SubElement(technical_el, _qname(note_el, "fingering"))
     if color:
         fingering_el.set("color", color)
     fingering_el.text = text

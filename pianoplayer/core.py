@@ -167,6 +167,7 @@ def run_annotate(
     right_only=False,
     hand_size="M",
     chord_note_stagger_s=0.05,
+    cost_path=None,
 ):
     """Programmatic entry point mirroring CLI options."""
     options = AnnotateOptions(
@@ -193,6 +194,7 @@ def run_annotate(
         right_only=right_only,
         hand_size=hand_size,
         chord_note_stagger_s=chord_note_stagger_s,
+        cost_path=cost_path,
     )
     options_ns = options.to_namespace()
     # GUI/programmatic callers expect progress unless quiet mode is requested.
@@ -320,6 +322,55 @@ def _resolve_musicxml_routing(args: SimpleNamespace, score_info: Any) -> None:
         args.lpart,
         f" staff {args._resolved_lstaff}" if args._resolved_lstaff else "",
     )
+
+
+def _write_cost_profile(path: str, rh: Any, lh: Any) -> None:
+    rows: list[tuple[str, int, float, float, float, int, float, int, int]] = []
+    for hand_name, hand in (("RH", rh), ("LH", lh)):
+        if hand is None or getattr(hand, "noteseq", None) is None:
+            continue
+
+        for idx, note in enumerate(hand.noteseq):
+            raw_cost = getattr(note, "cost", None)
+            try:
+                cost = float(raw_cost)
+            except (TypeError, ValueError):
+                continue
+
+            pitch = getattr(note, "pitch", 0)
+            try:
+                pitch_value = float(pitch)
+            except (TypeError, ValueError):
+                pitch_value = 0.0
+
+            fingering = getattr(note, "fingering", 0)
+            try:
+                fingering_value = int(fingering)
+            except (TypeError, ValueError):
+                fingering_value = 0
+
+            rows.append(
+                (
+                    hand_name,
+                    idx,
+                    float(getattr(note, "time", 0.0)),
+                    float(getattr(note, "duration", 0.0)),
+                    pitch_value,
+                    fingering_value,
+                    cost,
+                    int(getattr(note, "measure", 0)),
+                    int(getattr(note, "staff", 0)),
+                )
+            )
+
+    rows.sort(key=lambda row: (row[0], row[1], row[2]))
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(
+            ["hand", "index", "time", "duration", "pitch", "fingering", "cost", "measure", "staff"]
+        )
+        for row in rows:
+            writer.writerow(row)
 
 
 def _filter_noteseq_by_staff(noteseq: list[Any] | None, staff: int | None) -> list[Any] | None:
@@ -779,6 +830,12 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
         rh, lh = generate_hands(args, rh_noteseq, lh_noteseq, progress=progress)
         progress.write_start()
         write_annotated_output(args, score_info, rh, lh)
+        cost_path = getattr(args, "cost_path", None)
+        if cost_path:
+            try:
+                _write_cost_profile(str(cost_path), rh, lh)
+            except Exception as exc:
+                logger.warning("Unable to write cost profile to %s: %s", cost_path, exc)
         progress.write_done()
 
     # Optional 3D playback happens after output generation.

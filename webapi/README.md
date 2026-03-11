@@ -21,7 +21,7 @@ Open:
 - `POST /annotate` (multipart form-data)
   - required: `file`
   - optional: `hand_size`, `depth`, `n_measures`, `start_measure`,
-    `left_only`, `right_only`, `below_beam`, `rbeam`, `lbeam`,
+    `left_only`, `right_only`, `below_beam`, `rpart`, `lpart`,
     `chord_note_stagger_s`
 
 Response:
