@@ -308,18 +308,35 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
       white-space: nowrap;
     }
 
-    .colorize-inline .color-chip input[type="text"] {
-      width: 8.2rem;
-      padding: 0.38rem 0.5rem;
-      font-size: 0.9rem;
-    }
     .colorize-inline .color-chip select {
       width: 8.2rem;
       padding: 0.34rem 0.5rem;
       font-size: 0.9rem;
     }
-    #fingering_colors {
-      width: min(24rem, 60vw);
+    .colorize-inline .color-chip input[type="color"] {
+      width: 2.35rem;
+      min-width: 2.35rem;
+      height: 2rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 0.12rem;
+      background: #ffffff;
+      cursor: pointer;
+    }
+    .colorize-inline .fingers-palette {
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+    .colorize-inline .finger-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.22rem;
+    }
+    .colorize-inline .finger-chip .finger-label {
+      font-weight: 800;
+      color: #334155;
+      min-width: 0.7rem;
+      text-align: center;
     }
 
     label {
@@ -538,15 +555,40 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
         <div id="advanced-panel" class="panel" role="tabpanel">
           <div class="adv-groups">
             <section class="adv-group">
+              <p class="adv-title">Routing</p>
+              <div class="grid">
+                <div class="field full">
+                  <label for="auto_routing">Mode for assigning hands to parts/staves</label>
+                  <select id="auto_routing" name="auto_routing">
+                    <option value="true" selected>Auto (recommended)</option>
+                    <option value="false">Manual</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="lpart">Left Part number</label>
+                  <input id="lpart" name="lpart" type="number" min="0" value="1" />
+                </div>
+                <div class="field">
+                  <label for="rpart">Right Part number</label>
+                  <input id="rpart" name="rpart" type="number" min="0" value="0" />
+                </div>
+                <div class="field">
+                  <label for="lstaff">Left Staff number (0=auto)</label>
+                  <input id="lstaff" name="lstaff" type="number" min="0" value="0" />
+                </div>
+                <div class="field">
+                  <label for="rstaff">Right Staff number (0=auto)</label>
+                  <input id="rstaff" name="rstaff" type="number" min="0" value="0" />
+                </div>
+              </div>
+            </section>
+
+            <section class="adv-group">
               <p class="adv-title">Solver</p>
               <div class="grid">
                 <div class="field">
                   <label for="depth">Depth of search (0=auto)</label>
                   <input id="depth" name="depth" type="number" min="0" max="9" value="0" />
-                </div>
-                <div class="field">
-                  <label for="chord_note_stagger_s">Chord Stagger (seconds)</label>
-                  <input id="chord_note_stagger_s" name="chord_note_stagger_s" type="number" step="0.01" min="0" value="0.05" />
                 </div>
               </div>
             </section>
@@ -571,11 +613,11 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
                     <span class="colorize-inline">
                       <span class="color-chip" id="lh_color_field">
                         <label for="lh_color">LH</label>
-                        <input id="lh_color" name="lh_color" type="text" value="#1d4ed8" />
+                        <input id="lh_color" name="lh_color" type="color" value="#1d4ed8" aria-label="Left hand color" />
                       </span>
                       <span class="color-chip" id="rh_color_field">
                         <label for="rh_color">RH</label>
-                        <input id="rh_color" name="rh_color" type="text" value="#d62828" />
+                        <input id="rh_color" name="rh_color" type="color" value="#d62828" aria-label="Right hand color" />
                       </span>
                     </span>
                   </div>
@@ -608,15 +650,29 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
                       Colorize by fingering
                     </label>
                     <span class="colorize-inline">
-                      <span class="color-chip" id="fingering_colors_field">
-                        <label for="fingering_colors">Fingers</label>
-                        <input
-                          id="fingering_colors"
-                          name="fingering_colors"
-                          type="text"
-                          placeholder="1:#ff0000,2:#ffaa00,3:#00aa00,4:#3399ff,5:#2244dd"
-                          value="1:#ad3030,2:#e06b18,3:#097a32,4:#3691ce,5:#2054c4"
-                        />
+                      <span class="color-chip fingers-palette" id="fingering_colors_field">
+                        <label>Fingers</label>
+                        <span class="finger-chip">
+                          <span class="finger-label">1</span>
+                          <input id="finger_color_1" type="color" value="#ad3030" aria-label="Finger 1 color" />
+                        </span>
+                        <span class="finger-chip">
+                          <span class="finger-label">2</span>
+                          <input id="finger_color_2" type="color" value="#e06b18" aria-label="Finger 2 color" />
+                        </span>
+                        <span class="finger-chip">
+                          <span class="finger-label">3</span>
+                          <input id="finger_color_3" type="color" value="#097a32" aria-label="Finger 3 color" />
+                        </span>
+                        <span class="finger-chip">
+                          <span class="finger-label">4</span>
+                          <input id="finger_color_4" type="color" value="#3691ce" aria-label="Finger 4 color" />
+                        </span>
+                        <span class="finger-chip">
+                          <span class="finger-label">5</span>
+                          <input id="finger_color_5" type="color" value="#2054c4" aria-label="Finger 5 color" />
+                        </span>
+                        <input id="fingering_colors" name="fingering_colors" type="hidden" value="1:#ad3030,2:#e06b18,3:#097a32,4:#3691ce,5:#2054c4" />
                       </span>
                     </span>
                   </div>
@@ -624,34 +680,6 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
               </div>
             </section>
 
-            <section class="adv-group">
-              <p class="adv-title">Routing</p>
-              <div class="grid">
-                <div class="field full">
-                  <label for="auto_routing">Routing Mode</label>
-                  <select id="auto_routing" name="auto_routing">
-                    <option value="true" selected>Auto (recommended)</option>
-                    <option value="false">Manual</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="lpart">Left Part number</label>
-                  <input id="lpart" name="lpart" type="number" min="0" value="1" />
-                </div>
-                <div class="field">
-                  <label for="rpart">Right Part number</label>
-                  <input id="rpart" name="rpart" type="number" min="0" value="0" />
-                </div>
-                <div class="field">
-                  <label for="lstaff">Left Staff number (0=auto)</label>
-                  <input id="lstaff" name="lstaff" type="number" min="0" value="0" />
-                </div>
-                <div class="field">
-                  <label for="rstaff">Right Staff number (0=auto)</label>
-                  <input id="rstaff" name="rstaff" type="number" min="0" value="0" />
-                </div>
-              </div>
-            </section>
           </div>
         </div>
 
@@ -687,6 +715,9 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     const costColormapEl = document.getElementById("cost_colormap");
     const costColormapFieldEl = document.getElementById("cost_colormap_field");
     const fingeringColorsEl = document.getElementById("fingering_colors");
+    const fingerColorInputs = [1, 2, 3, 4, 5]
+      .map((finger) => document.getElementById(`finger_color_${finger}`))
+      .filter((el) => !!el);
     const fingeringColorsFieldEl = document.getElementById("fingering_colors_field");
     const rhColorEl = document.getElementById("rh_color");
     const lhColorEl = document.getElementById("lh_color");
@@ -727,6 +758,23 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
     autoRoutingEl.addEventListener("change", syncRoutingMode);
     syncRoutingMode();
 
+    function buildFingeringColorSpec() {
+      return fingerColorInputs
+        .map((el, idx) => `${idx + 1}:${(el.value || "").trim()}`)
+        .join(",");
+    }
+
+    function syncFingeringColorSpec() {
+      if (!fingeringColorsEl) return;
+      fingeringColorsEl.value = buildFingeringColorSpec();
+    }
+
+    fingerColorInputs.forEach((el) => {
+      el.addEventListener("input", syncFingeringColorSpec);
+      el.addEventListener("change", syncFingeringColorSpec);
+    });
+    syncFingeringColorSpec();
+
     function syncColorizeMode(ev) {
       const source = ev && ev.target;
       if (source) {
@@ -761,7 +809,9 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
       if (costColormapFieldEl) costColormapFieldEl.classList.toggle("muted", !allowCostColor);
 
       const allowFingeringColor = fingeringMode && !enabled && !costMode;
-      if (fingeringColorsEl) fingeringColorsEl.disabled = !allowFingeringColor;
+      fingerColorInputs.forEach((el) => {
+        el.disabled = !allowFingeringColor;
+      });
       if (fingeringColorsFieldEl) fingeringColorsFieldEl.classList.toggle("muted", !allowFingeringColor);
     }
     if (colorizeHandsEl) colorizeHandsEl.addEventListener("change", syncColorizeMode);
@@ -798,6 +848,8 @@ uvicorn webapi.app:app --host 127.0.0.1 --port 8000
           "colorize_by_fingering",
           colorizeByFingeringEl && colorizeByFingeringEl.checked ? "true" : "false",
         );
+        syncFingeringColorSpec();
+        formData.set("fingering_colors", fingeringColorsEl ? fingeringColorsEl.value : "");
 
         const response = await fetch("/annotate", { method: "POST", body: formData });
         if (!response.ok) {

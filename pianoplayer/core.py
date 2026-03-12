@@ -752,16 +752,18 @@ def annotate(args: AnnotateOptions | SimpleNamespace | Any):
                     finger = int(text)
             if isinstance(finger, int) and 1 <= abs(finger) <= 5:
                 lh_anchors += 1
-        if rh_anchors + lh_anchors:
+        anchor_log_key = "_anchor_detection_logged"
+        if rh_anchors + lh_anchors and not bool(getattr(args, anchor_log_key, False)):
             parts = []
             if not args.left_only:
                 parts.append(f"RH={rh_anchors}")
             if not args.right_only:
                 parts.append(f"LH={lh_anchors}")
-            logger.debug(
+            logger.info(
                 "Detected pre-annotated fingers (%s). They will be preserved and used as anchors.",
                 ", ".join(parts),
             )
+            setattr(args, anchor_log_key, True)
         progress.parse_done()
         rh, lh = generate_hands(args, rh_noteseq, lh_noteseq, progress=progress)
         progress.write_start()

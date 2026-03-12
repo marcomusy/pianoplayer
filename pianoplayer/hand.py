@@ -527,6 +527,8 @@ class Hand:
                     start_finger = out[1] if len(out) > 1 else out[0]
 
                 best_finger = self._enforce_chord_group_consistency(i, best_finger)
+                # Keep solver state in sync when chord consistency overrides the chosen finger.
+                out[0] = best_finger
                 an.fingering = best_finger
                 self.set_fingers_positions(out, ninenotes, 0)
                 self.fingerseq.append(list(self.finger_positions))

@@ -11,7 +11,6 @@ from importlib.resources import read_binary
 from tkinter import (
     BOTH,
     BooleanVar,
-    DoubleVar,
     Frame,
     IntVar,
     PhotoImage,
@@ -86,7 +85,6 @@ class PianoGUI(Frame):
         self.lpart_var = IntVar(value=1)
         self.rstaff_var = IntVar(value=0)
         self.lstaff_var = IntVar(value=0)
-        self.chord_stagger_var = DoubleVar(value=0.05)
         self.with_vedo_var = BooleanVar(value=False)
         self.sound_off_var = BooleanVar(value=False)
         self.below_beam_var = BooleanVar(value=False)
@@ -442,35 +440,25 @@ class PianoGUI(Frame):
             row=6, column=1, sticky="w", padx=8, pady=6
         )
 
-        Label(opts, text="Chord Stagger (sec)").grid(row=7, column=0, sticky="w", padx=8, pady=6)
-        Spinbox(
-            opts,
-            from_=0.0,
-            to=1.0,
-            increment=0.01,
-            textvariable=self.chord_stagger_var,
-            width=8,
-        ).grid(row=7, column=1, sticky="w", padx=8, pady=6)
-
         # 3D playback controls.
         Checkbutton(opts, text="Enable 3D playback (vedo)", variable=self.with_vedo_var).grid(
-            row=8, column=0, sticky="w", padx=8, pady=6
+            row=7, column=0, sticky="w", padx=8, pady=6
         )
         Checkbutton(opts, text="3D sound off", variable=self.sound_off_var).grid(
-            row=8, column=1, sticky="w", padx=8, pady=6
+            row=7, column=1, sticky="w", padx=8, pady=6
         )
         # Output/diagnostic toggles.
         Checkbutton(opts, text="Show annotations below beam", variable=self.below_beam_var).grid(
-            row=9, column=0, sticky="w", padx=8, pady=6
+            row=8, column=0, sticky="w", padx=8, pady=6
         )
         Checkbutton(
             opts,
             text="Colorize by hand",
             variable=self.colorize_hands_var,
             command=lambda: self._sync_colorize_mode("hands"),
-        ).grid(row=10, column=0, sticky="w", padx=8, pady=6)
+        ).grid(row=9, column=0, sticky="w", padx=8, pady=6)
         colors_row = TtkFrame(opts)
-        colors_row.grid(row=10, column=1, sticky="w", padx=8, pady=6)
+        colors_row.grid(row=9, column=1, sticky="w", padx=8, pady=6)
         self.rh_color_pick_btn = Button(
             colors_row,
             text="RH",
@@ -500,9 +488,9 @@ class PianoGUI(Frame):
             text="Colorize by fingering",
             variable=self.colorize_by_fingering_var,
             command=lambda: self._sync_colorize_mode("fingering"),
-        ).grid(row=11, column=0, sticky="w", padx=8, pady=6)
+        ).grid(row=10, column=0, sticky="w", padx=8, pady=6)
         fingers_row = TtkFrame(opts)
-        fingers_row.grid(row=11, column=1, sticky="w", padx=8, pady=6)
+        fingers_row.grid(row=10, column=1, sticky="w", padx=8, pady=6)
         self.fingering_color_pick_buttons = []
         finger_styles = (
             "Finger1Color.TButton",
@@ -530,7 +518,7 @@ class PianoGUI(Frame):
             text="Colorize by cost",
             variable=self.colorize_by_cost_var,
             command=lambda: self._sync_colorize_mode("cost"),
-        ).grid(row=12, column=0, sticky="w", padx=8, pady=6)
+        ).grid(row=11, column=0, sticky="w", padx=8, pady=6)
         self.cost_colormap_combo = Combobox(
             opts,
             textvariable=self.cost_colormap_var,
@@ -538,7 +526,7 @@ class PianoGUI(Frame):
             state="readonly",
             width=12,
         )
-        self.cost_colormap_combo.grid(row=12, column=1, sticky="w", padx=8, pady=6)
+        self.cost_colormap_combo.grid(row=11, column=1, sticky="w", padx=8, pady=6)
         for button, color in (
             (self.rh_color_pick_btn, self.rh_color_var.get()),
             (self.lh_color_pick_btn, self.lh_color_var.get()),
@@ -550,7 +538,7 @@ class PianoGUI(Frame):
             style_name = str(button.cget("style"))
             self._set_color_button_style(button, style_name, color.strip())
         Checkbutton(opts, text="Quiet logs", variable=self.quiet_var).grid(
-            row=13, column=0, sticky="w", padx=8, pady=6
+            row=12, column=0, sticky="w", padx=8, pady=6
         )
         self._sync_routing_mode()
         self._sync_colorize_mode()
@@ -753,11 +741,6 @@ class PianoGUI(Frame):
             except (TypeError, ValueError):
                 lstaff = 0
 
-            try:
-                chord_stagger = float(self.chord_stagger_var.get())
-            except (TypeError, ValueError):
-                chord_stagger = 0.05
-
             # Collect current widget values and call the synchronous core runner.
             auto_routing = bool(self.auto_routing_var.get())
             core.run_annotate(
@@ -789,7 +772,6 @@ class PianoGUI(Frame):
                 with_vedo=bool(self.with_vedo_var.get()),
                 sound_off=bool(self.sound_off_var.get()),
                 hand_size=(self.hand_size_var.get() or "M"),
-                chord_note_stagger_s=max(0.0, chord_stagger),
                 left_only=left_on and not right_on,
                 right_only=right_on and not left_on,
             )
